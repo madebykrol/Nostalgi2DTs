@@ -1,5 +1,3 @@
-import { createBoinkSound as createBoinkSoundBuffer } from "./soundbuffers";
-
 /**
  * SoundManager is responsible for managing audio playback in the browser
  */
@@ -16,7 +14,7 @@ export class SoundManager {
      * Initialize the audio context. This should be called after user interaction
      * to comply with browser autoplay policies.
      */
-    private initAudioContext(): void {
+    initAudioContext(): void {
         if (!this.audioContext) {
             this.audioContext = new AudioContext();
             this.gainNode = this.audioContext.createGain();
@@ -88,21 +86,6 @@ export class SoundManager {
         gainNode.connect(this.gainNode);
         
         source.start(0);
-    }
-
-    /**
-     * Create a simple "boink" sound effect using oscillators.
-     * This generates a synthetic sound without needing an audio file.
-     */
-    createBoinkSound(): void {
-        this.initAudioContext();
-
-        if (!this.audioContext) {
-            throw new Error("AudioContext not initialized");
-        }
-
-        const audioBuffer = createBoinkSoundBuffer(this.audioContext);
-        this.loadSoundFromBuffer("boink", audioBuffer);
     }
 
     /**
