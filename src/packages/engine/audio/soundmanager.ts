@@ -51,6 +51,7 @@ export class SoundManager {
      * @param buffer - The audio buffer
      */
     loadSoundFromBuffer(name: string, buffer: AudioBuffer): void {
+        this.initAudioContext();
         this.sounds.set(name, buffer);
     }
 
@@ -153,7 +154,9 @@ export class SoundManager {
      */
     dispose(): void {
         if (this.audioContext) {
-            this.audioContext.close();
+            this.audioContext.close().catch((error) => {
+                console.error("Error closing audio context:", error);
+            });
             this.audioContext = null;
         }
         this.sounds.clear();
