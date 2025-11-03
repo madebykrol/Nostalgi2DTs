@@ -20,7 +20,8 @@ import {
   Constructor, 
   EngineBuilder, 
   AbstractConstructor,
-  InputManager
+  InputManager,
+  SoundManager
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { DemoActor } from "@repo/example";
@@ -98,6 +99,11 @@ const App = () => {
 
   const [engine] = useState(e);
   const [level] = useState(new Level());
+  const [soundManager] = useState(() => {
+    const sm = new SoundManager();
+    sm.createBoinkSound(); // Create the synthetic boink sound
+    return sm;
+  });
 
   useEffect(() => {
     let disposed = false;
@@ -239,6 +245,8 @@ const App = () => {
             const spawnedActor = new DemoActor("SpawnedActor-"+i+Date.now());
             spawnedActor.setPosition(worldPos);
             engine.spawnActor(spawnedActor);
+            // Play the boink sound when spawning an actor
+            soundManager.playSound("boink");
           }
 
           console.log(`Canvas clicked {${canvasX.toFixed(2)}, ${canvasY.toFixed(2)}} => World ${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}`);
