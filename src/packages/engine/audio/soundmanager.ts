@@ -14,7 +14,7 @@ export class SoundManager {
      * Initialize the audio context. This should be called after user interaction
      * to comply with browser autoplay policies.
      */
-    private initAudioContext(): void {
+    initAudioContext(): void {
         if (!this.audioContext) {
             this.audioContext = new AudioContext();
             this.gainNode = this.audioContext.createGain();
@@ -86,42 +86,6 @@ export class SoundManager {
         gainNode.connect(this.gainNode);
         
         source.start(0);
-    }
-
-    /**
-     * Create a simple "boink" sound effect using oscillators
-     * This generates a synthetic sound without needing an audio file
-     */
-    createBoinkSound(): void {
-        this.initAudioContext();
-
-        if (!this.audioContext) {
-            throw new Error("AudioContext not initialized");
-        }
-
-        const sampleRate = this.audioContext.sampleRate;
-        const duration = 0.2; // 200ms
-        const numSamples = Math.floor(sampleRate * duration);
-        const audioBuffer = this.audioContext.createBuffer(1, numSamples, sampleRate);
-        const channelData = audioBuffer.getChannelData(0);
-
-        // Create a "boink" sound by combining frequencies
-        const frequency1 = 800; // Main frequency
-        const frequency2 = 400; // Lower harmonic
-        const decayRate = 5; // How fast the sound fades
-
-        for (let i = 0; i < numSamples; i++) {
-            const t = i / sampleRate;
-            const envelope = Math.exp(-decayRate * t); // Exponential decay
-            
-            // Combine two sine waves for a richer sound
-            const value1 = Math.sin(2 * Math.PI * frequency1 * t);
-            const value2 = Math.sin(2 * Math.PI * frequency2 * t) * 0.5;
-            
-            channelData[i] = (value1 + value2) * envelope * 0.3; // Scale down to avoid clipping
-        }
-
-        this.loadSoundFromBuffer("boink", audioBuffer);
     }
 
     /**

@@ -21,7 +21,8 @@ import {
   EngineBuilder, 
   AbstractConstructor,
   InputManager,
-  SoundManager
+  SoundManager,
+  createBoinkSound
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { DemoActor } from "@repo/example";
@@ -101,7 +102,11 @@ const App = () => {
   const [level] = useState(new Level());
   const [soundManager] = useState(() => {
     const sm = new SoundManager();
-    sm.createBoinkSound(); // Create the synthetic boink sound
+    sm.initAudioContext();
+    
+    // Create and load the boink sound using the extracted function
+    const boinkBuffer = createBoinkSound(sm.getAudioContext()!);
+    sm.loadSoundFromBuffer("boink", boinkBuffer);
     return sm;
   });
 

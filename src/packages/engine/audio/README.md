@@ -5,13 +5,15 @@ The SoundManager class provides audio playback functionality for the Nostalgi2DT
 ## Basic Usage
 
 ```typescript
-import { SoundManager } from "@repo/engine";
+import { SoundManager, createBoinkSound } from "@repo/engine";
 
 // Create a sound manager instance
 const soundManager = new SoundManager();
+soundManager.initAudioContext();
 
-// Create the built-in "boink" sound effect
-soundManager.createBoinkSound();
+// Create the "boink" sound effect using the sound buffer function
+const boinkBuffer = createBoinkSound(soundManager.getAudioContext()!);
+soundManager.loadSoundFromBuffer("boink", boinkBuffer);
 
 // Play the boink sound
 soundManager.playSound("boink");
@@ -55,6 +57,21 @@ if (soundManager.hasSound("boink")) {
 const buffer: AudioBuffer = ...; // Your audio buffer
 soundManager.loadSoundFromBuffer("custom", buffer);
 soundManager.playSound("custom");
+```
+
+## Creating Custom Sound Buffers
+
+Sound buffers can be created using the functions in the `soundbuffers` module:
+
+```typescript
+import { createBoinkSound } from "@repo/engine";
+
+// Create a custom sound buffer
+const audioContext = soundManager.getAudioContext();
+if (audioContext) {
+  const customBuffer = createBoinkSound(audioContext);
+  soundManager.loadSoundFromBuffer("mySound", customBuffer);
+}
 ```
 
 ## In the Client App
