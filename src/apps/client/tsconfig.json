@@ -1,0 +1,10 @@
+{
+  "extends": "@repo/typescript-config/vite.json",
+  "include": ["src", "../../packages/example/controllers/playercontroller.ts"],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["DOM", "ESNext", "DOM.Iterable"],
+    "module": "esnext",
+    "target": "esnext"
+  }
+}

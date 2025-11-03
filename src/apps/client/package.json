@@ -1,0 +1,37 @@
+{
+  "name": "web",
+  "homepage": "https://madebykrol.github.io/Nostalgi2DTs/client/",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --clearScreen false",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.ts\"",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "@repo/basicrenderer": "*",
+    "@repo/engine": "*",
+    "@repo/tiler": "*",
+    "@repo/ui": "*",
+    "@repo/example": "*",
+    "react": "^18.2.0",
+    "gh-pages": "^6.3.0",
+    "react-dom": "^18.2.0",
+    "inversify": "^7.1.1",
+    "reflect-metadata": "0.2.2"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^3.1.0",
+    "eslint": "^8.57.0",
+    "typescript": "5.5.4",
+    "vite": "^5.1.4"
+  }
+}

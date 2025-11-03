@@ -1,0 +1,9 @@
+{
+  "extends": "@repo/typescript-config/react-library.json",
+  "include": [".", "../engine/rendering/fragment.ts", "../engine/rendering/vertex.ts"],
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "lib": ["DOM", "ESNext"],
+    "experimentalDecorators": true
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@repo/example",
+  "version": "1.0.0",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint \"**/*.ts\""
+  },
+  "dependencies": {
+    "@repo/engine": "*"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "eslint": "^8.57.0",
+    "typescript": "5.5.4"
+  }
+}
