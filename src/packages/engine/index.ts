@@ -9,7 +9,7 @@ export * from "./utils";
 export { EngineBuilder } from "./engineBuilder";
 export {GameInstance, Controller, PlayerState} from "./game";
 export {InputManager} from "./input";
-export {SoundManager} from "./audio";
+export {SoundManager, createBoinkSound} from "./audio";
 
 
 export {actor} from "./actorRegistroy";

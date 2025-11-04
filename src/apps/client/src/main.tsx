@@ -22,7 +22,8 @@ import {
   AbstractConstructor,
   InputManager,
   SoundManager,
-  createBoinkSound
+  createBoinkSound,
+  CollisionComponent
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { DemoActor } from "@repo/example";
@@ -30,6 +31,7 @@ import { Camera, OrthoCamera } from "../../../packages/engine/camera/Camera";
 import { Parser, TiledPoint, TileMapActor, type TileMapActorOptions }from "@repo/tiler";
 import { TiledObjectLayer } from "@repo/tiler";
 import { Container, decorate, inject, injectable } from 'inversify';
+import { GainChannel } from "../../../packages/engine/audio";
 
 class InversifyContainer implements IContainer {
   private container: Container;
@@ -106,7 +108,7 @@ const App = () => {
     
     // Create and load the boink sound using the extracted function
     const boinkBuffer = createBoinkSound(sm.getAudioContext()!);
-    sm.loadSoundFromBuffer("boink", boinkBuffer);
+    sm.loadSoundFromBuffer("boink", boinkBuffer, GainChannel.Effects);
     return sm;
   });
 
@@ -250,8 +252,13 @@ const App = () => {
             const spawnedActor = new DemoActor("SpawnedActor-"+i+Date.now());
             spawnedActor.setPosition(worldPos);
             engine.spawnActor(spawnedActor);
+
+            const boink = soundManager.getSound("boink");
+            soundManager.setMasterVolume(0.1)
+            soundManager.setEffectsVolume(1);
+            boink?.setVolume(1)
             // Play the boink sound when spawning an actor
-            soundManager.playSound("boink");
+            boink?.play(false, 0);
           }
 
           console.log(`Canvas clicked {${canvasX.toFixed(2)}, ${canvasY.toFixed(2)}} => World ${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}`);
