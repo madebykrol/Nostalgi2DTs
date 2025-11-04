@@ -32,6 +32,7 @@ import { Parser, TiledPoint, TileMapActor, type TileMapActorOptions }from "@repo
 import { TiledObjectLayer } from "@repo/tiler";
 import { Container, decorate, inject, injectable } from 'inversify';
 import { GainChannel } from "../../../packages/engine/audio";
+import { PlayerController } from "./PlayerController";
 
 class InversifyContainer implements IContainer {
   private container: Container;
@@ -51,14 +52,6 @@ class InversifyContainer implements IContainer {
   }
   get<T>(ctor: Constructor<T> | AbstractConstructor<T>): T {
     return this.container.get(ctor);
-  }
-}
-
-class PlayerController extends Controller {
-
-  constructor(@inject(InputManager) inputManager: InputManager) {
-    super(inputManager);
-    
   }
 }
 
