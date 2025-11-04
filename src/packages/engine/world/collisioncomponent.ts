@@ -1,6 +1,5 @@
 import { Vector2 } from "../math";
 import type { CollisionShapeDescriptor } from "../physics";
-import { Actor } from "./actor";
 import { Component } from "./component";
 
 export abstract class CollisionComponent extends Component {
