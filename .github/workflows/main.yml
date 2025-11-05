@@ -30,10 +30,13 @@ jobs:
           cache: 'npm'
  
       - name: Install dependencies
+        working-directory: ./src
         run: npm install
  
       - name: Build
+        working-directory: ./src
         run: npm run build
  
       - name: Test
+        working-directory: ./src
         run: npm run test
