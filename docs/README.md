@@ -32,14 +32,24 @@ The actor synchronization protocol defines how game objects (actors) are synchro
    - Debugging tips
    - Architecture diagrams
 
+4. **[actor-sync-diagrams.md](./actor-sync-diagrams.md)** - Visual diagrams
+   - System architecture diagram
+   - Data flow diagrams
+   - Connection flow sequence
+   - Ownership model visualization
+   - Message timing diagrams
+   - State reconciliation flow
+   - Bandwidth optimization examples
+
 ### Getting Started
 
 If you're implementing actor synchronization for the first time:
 
 1. Start with the **Quick Reference** to understand the key concepts
-2. Read the **Protocol Specification** to understand the full protocol
-3. Refer to **Implementation Examples** for code samples
-4. Use the **Quick Reference** during development
+2. Review the **Visual Diagrams** to see the flows and architecture
+3. Read the **Protocol Specification** to understand the full protocol
+4. Refer to **Implementation Examples** for code samples
+5. Use the **Quick Reference** during development
 
 ### Related Code
 
