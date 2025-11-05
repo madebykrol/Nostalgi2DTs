@@ -1,3 +1,4 @@
+name: ci
 on:
   push:
     branches:
@@ -24,11 +25,10 @@ jobs:
           fetch-depth: 2
  
       - name: Setup Node.js environment
-        working-directory: ./src
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+
  
       - name: Install dependencies
         working-directory: ./src
