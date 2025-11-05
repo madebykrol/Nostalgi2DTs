@@ -9,3 +9,11 @@ dist-ssr
 .cache
 server/dist
 public/dist
+
+# TypeScript build artifacts
+apps/server/*.js
+apps/server/*.d.ts
+apps/server/*.d.ts.map
+packages/engine/network/*.js
+packages/engine/network/*.d.ts
+packages/engine/network/*.d.ts.map
