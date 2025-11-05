@@ -6,10 +6,11 @@ export * from "./math";
 export * from "./physics";
 export * from "./level";
 export * from "./utils";
+export * from "./camera";
+export * from "./audio";
 export { EngineBuilder } from "./engineBuilder";
 export {GameInstance, Controller, PlayerState} from "./game";
 export {InputManager} from "./input";
-export {SoundManager, createBoinkSound} from "./audio";
 
 
 export {actor} from "./actorRegistroy";

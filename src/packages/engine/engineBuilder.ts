@@ -1,3 +1,4 @@
+import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
 import { Endpoint } from "./network";
 import { Constructor, IContainer } from "./utils";
@@ -9,15 +10,24 @@ export class EngineBuilder<TSocket, TReq> {
     private world: World | null = null;
     private endPoint: Endpoint<TSocket, TReq> | undefined = undefined;
     private networkMode: EngineNetworkMode = "singleplayer";
+    private soundManager: SoundManager | null = null;
 
     constructor(private container: IContainer) {
         // Initialize any necessary properties
     }
 
     withWorld(world: World): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingletonInstance<World>(World, world);
         this.world = world;
         return this;
     }
+
+    withWorldType<T extends World>(ctor: Constructor<T>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingleton<World, T>(World, ctor);
+        this.world = this.container.get<T>(ctor);
+        return this;
+    }
+
 
     addSingleton<TAbstract, TConcrete extends TAbstract>(ctor: Constructor<TConcrete>, ctor2: Constructor<TConcrete>): EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton<TAbstract, TConcrete>(ctor, ctor2);
@@ -38,6 +48,12 @@ export class EngineBuilder<TSocket, TReq> {
         // Configure the engine with a network endpoint
         this.endPoint = endpoint;
         this.networkMode = mode;
+        return this;
+    }
+
+    withSoundManager(soundManager: SoundManager): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingletonInstance<SoundManager>(SoundManager, soundManager);
+        this.soundManager = soundManager;
         return this;
     }
 
