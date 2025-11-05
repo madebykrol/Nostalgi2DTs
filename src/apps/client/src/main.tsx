@@ -5,7 +5,6 @@ import "./style.css";
 import {Canvas} from "@repo/basicrenderer"
 import { Header, Counter, EngineContext } from "@repo/ui";
 import { 
-  Engine,
   Level,
   Vector2,
   Actor, 
@@ -23,15 +22,15 @@ import {
   InputManager,
   SoundManager,
   createBoinkSound,
-  CollisionComponent
+  Camera,
+  OrthoCamera,
+  GainChannel
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { DemoActor } from "@repo/example";
-import { Camera, OrthoCamera } from "../../../packages/engine/camera/Camera";
 import { Parser, TiledPoint, TileMapActor, type TileMapActorOptions }from "@repo/tiler";
 import { TiledObjectLayer } from "@repo/tiler";
-import { Container, decorate, inject, injectable } from 'inversify';
-import { GainChannel } from "../../../packages/engine/audio";
+import { Container } from 'inversify';
 import { PlayerController } from "./PlayerController";
 
 class InversifyContainer implements IContainer {
@@ -43,6 +42,10 @@ class InversifyContainer implements IContainer {
     });
   }
 
+  registerSingletonInstance<T>(ctor: Constructor<T> | AbstractConstructor<T>, instance: T): void {
+    this.container.bind(ctor).toConstantValue(instance);
+  }
+
   registerSingleton<T, U extends T>(ctor: Constructor<T> | AbstractConstructor<T>, ctor2: Constructor<U>): void {
     this.container.bind(ctor).to(ctor2);
   }
@@ -50,6 +53,11 @@ class InversifyContainer implements IContainer {
   register<T1, T2 extends T1>(ctor: Constructor<T1> | AbstractConstructor<T1>, ctor2: Constructor<T2>): void {
     this.container.bind(ctor).to(ctor2);
   }
+
+  registerInstance<T>(ctor: Constructor<T> | AbstractConstructor<T>, instance: T): void {
+    this.container.bind(ctor).toConstantValue(instance);
+  }
+
   get<T>(ctor: Constructor<T> | AbstractConstructor<T>): T {
     return this.container.get(ctor);
   }
