@@ -14,7 +14,6 @@ import {
   PhysicsComponent, 
   Vertex2,   
   EngineBuilder, 
-  InputManager,
   SoundManager,
   createBoinkSound,
   Camera,
@@ -50,15 +49,15 @@ const App = () => {
   const startTime = performance.now();
 
   const container = new InversifyContainer();
-
-  container.registerSingleton(InputManager, DefaultInputManager);  
   container.registerSingletonInstance(Container, container);
 
   var builder = new EngineBuilder<WebSocket, http.IncomingMessage>(container);
   builder
-    .withWorld(new PlanckWorld({gravity: new Vector2(-10, 0), allowSleep: true}))
-    .withEndpoint(new ClientEndpoint("localhost", 3001))
+    .withWorldInstance(new PlanckWorld({gravity: new Vector2(-10, 0), allowSleep: true}))
+    .withEndpointInstance(new ClientEndpoint("localhost", 3001))
     .withDefaultRenderer(BaseActorRenderer)
+    .withInputManager(DefaultInputManager)
+    .withSoundManager(SoundManager)
     .withActor(DemoActor)
     .withActor(GameTileMapActor, TileMapActorRenderer)
     .withActor(BombActor)
@@ -76,15 +75,7 @@ const App = () => {
 
   const [engine] = useState(e);
   const [level] = useState(new Level());
-  const [soundManager] = useState(() => {
-    const sm = new SoundManager();
-    sm.initAudioContext();
-    
-    // Create and load the boink sound using the extracted function
-    const boinkBuffer = createBoinkSound(sm.getAudioContext()!);
-    sm.loadSoundFromBuffer("boink", boinkBuffer, GainChannel.Effects);
-    return sm;
-  });
+
 
   console.log(container.verify())
 
@@ -94,11 +85,6 @@ const App = () => {
     const demoActor = new DemoActor();
 
     demoActor.layer = 5;
-
-    const playerState = engine.getLocalPlayerState();
-
-    console.log("Local player state:", playerState);
-    console.log("Local player controller:", playerState?.getController());
 
     engine.getLocalPlayerState()?.getController()?.possess(demoActor);
 
@@ -124,11 +110,6 @@ const App = () => {
 
         await engine.loadLevelObject(level);
 
-        // engine.setControllerTypeForPlayer<PlayerController>(
-        //   engine.getLocalPlayerState(),
-        //   PlayerController
-        // );
-
         const worldSize = level.getWorldSize();
 
         if (worldSize) {
@@ -148,45 +129,6 @@ const App = () => {
     };
 
     setupLevel();
-
-    window.addEventListener("keydown", (e: KeyboardEvent) => {
-      console.log("Key down:", e.key);
-
-      if (e.key === "ArrowLeft") {
-        // Handle ArrowLeft key press
-        const cameraPos = demoActor?.getPosition();
-        if (cameraPos) {
-          console.log("Moving left", demoActor);
-          // demoActor!.setPosition(new Vector2(cameraPos.x - 1, cameraPos.y));
-        
-        }
-      } else if (e.key === "ArrowRight") {
-        // Handle ArrowRight key press
-        const cameraPos = demoActor?.getPosition();
-        if (cameraPos) {
-          console.log("Moving right", cameraPos);
-          // demoActor!.setPosition(new Vector2(cameraPos.x + 1, cameraPos.y));
-        }
-      } else if (e.key === "ArrowUp") {
-        // Handle ArrowUp key press
-        const cameraPos = demoActor?.getPosition();
-        if (cameraPos) {
-          console.log("Moving up", cameraPos);
-          // demoActor!.setPosition(new Vector2(cameraPos.x, cameraPos.y + 1));
-            const currentZoom = engine.getCurrentCamera()?.getZoom() ?? 1;
-          engine.getCurrentCamera()?.setZoom(currentZoom+0.1);
-        }
-      } else if (e.key === "ArrowDown") {
-        // Handle ArrowDown key press
-        const cameraPos = demoActor?.getPosition();
-        if (cameraPos) {
-          console.log("Moving down", cameraPos);
-          // demoActor!.setPosition(new Vector2(cameraPos.x, cameraPos.y - 1));
-            const currentZoom = engine.getCurrentCamera()?.getZoom() ?? 1;
-          engine.getCurrentCamera()?.setZoom(currentZoom-0.1);
-        }
-      }
-    });
 
     return () => {
       disposed = true;
@@ -210,49 +152,7 @@ const App = () => {
 
     <Header title="Rendered Engine" />
     <div className="card">
-    <Canvas draw={draw} options={{ context: 'webgl2' }} onClick={(e: React.MouseEvent<HTMLCanvasElement>) => {
-          const canvas = e.currentTarget as HTMLCanvasElement;
-          const rect = canvas.getBoundingClientRect();
-
-          // Account for CSS scaling vs. backing store resolution (hiDPI support)
-          const scaleX = canvas.width / rect.width;
-          const scaleY = canvas.height / rect.height;
-
-          const canvasX = (e.clientX - rect.left) * scaleX;
-          const canvasY = (e.clientY - rect.top) * scaleY;
-
-          const camera = engine.getCurrentCamera();
-          
-          if (!camera) {
-            return;
-          }
-
-          const worldPos = camera.screenToWorld(new Vector2(canvasX, canvasY), canvas.width, canvas.height);
-
-          const hitActors = engine.aabbCast(worldPos, true, true, Actor);
-
-          if (hitActors.length > 0) {
-            
-            for (const actor of hitActors) {
-              console.log(`Clicked actor: ${actor.getId()}`);
-              actor.isMarkedForDespawn = true;
-            }
-            return;
-          }
-
-          for(let i = 0; i < 1; i++) {
-            engine.spawnActor(DemoActor, undefined, worldPos);
-
-            const boink = soundManager.getSound("boink");
-            soundManager.setMasterVolume(0.1)
-            soundManager.setEffectsVolume(1);
-            boink?.setVolume(1)
-            // Play the boink sound when spawning an actor
-            boink?.play(false, 0);
-          }
-
-          console.log(`Canvas clicked {${canvasX.toFixed(2)}, ${canvasY.toFixed(2)}} => World ${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}`);
-        }} />
+    <Canvas draw={draw} options={{ context: 'webgl2' }} />
     </div>
     <EngineContext.Provider value={engine}>
       <Counter />

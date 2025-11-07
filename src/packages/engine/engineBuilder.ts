@@ -1,3 +1,4 @@
+import { DefaultInputManager } from "@repo/client";
 import { DemoActor } from "../example/actors/demo";
 import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
@@ -6,8 +7,13 @@ import { Endpoint } from "./network";
 import { ActorRenderer } from "./rendering";
 import { Constructor, Container } from "./utils";
 import { Actor, World } from "./world";
+import { InputManager } from "./input";
 
 export class EngineBuilder<TSocket, TReq> {
+    withInputManager<T extends DefaultInputManager>(DefaultInputManager: Constructor<T>) : EngineBuilder<TSocket, TReq> {
+      this.container.registerSingleton(InputManager, DefaultInputManager);
+      return this;
+    }
     // Implementation of the EngineBuilder class
 
     private world: World | null = null;
@@ -23,12 +29,12 @@ export class EngineBuilder<TSocket, TReq> {
         // Initialize any necessary properties
     }
 
-    withEndpoint(endpoint: Endpoint<TSocket, TReq>): EngineBuilder<TSocket, TReq> {
+    withEndpointInstance(endpoint: Endpoint<TSocket, TReq>): EngineBuilder<TSocket, TReq> {
         this.container.registerSingletonInstance<Endpoint<TSocket, TReq>>(Endpoint<TSocket, TReq>, endpoint);
         return this;
     }
 
-    withWorld(world: World): EngineBuilder<TSocket, TReq> {
+    withWorldInstance(world: World): EngineBuilder<TSocket, TReq> {
         this.container.registerSingletonInstance<World>(World, world);
         return this;
     }
@@ -40,7 +46,7 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-    withWorldType<T extends World>(ctor: Constructor<T>): EngineBuilder<TSocket, TReq> {
+    withWorld<T extends World>(ctor: Constructor<T>): EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton<World, T>(World, ctor);
         this.world = this.container.get<T>(ctor);
         return this;
@@ -63,9 +69,8 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-    withSoundManager(soundManager: SoundManager): EngineBuilder<TSocket, TReq> {
-        this.container.registerSingletonInstance<SoundManager>(SoundManager, soundManager);
-        this.soundManager = soundManager;
+    withSoundManager(ctor: Constructor<SoundManager>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingleton(ctor, ctor);
         return this;
     }
 

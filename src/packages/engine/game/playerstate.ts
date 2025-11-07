@@ -13,7 +13,7 @@ export class PlayerState {
     playerId: string;
     playerName: string;
     isConnected: boolean = true;
-    isLocal: unknown;
+    isLocal: boolean = true;
 
     constructor(playerId: string, playerName: string) {
         this.playerId = playerId;
