@@ -2,7 +2,7 @@ import http from "http";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
-import {Canvas} from "@repo/basicrenderer"
+import {BaseActorRenderer, Canvas} from "@repo/basicrenderer"
 import { Header, Counter, EngineContext } from "@repo/ui";
 import { 
   Level,
@@ -11,63 +11,24 @@ import {
   actor, 
   PolygonCollisionComponent, 
   ActorRenderer, 
-  render, 
   PhysicsComponent, 
-  Vertex2, 
-  Controller,  
-  IContainer, 
-  Constructor, 
+  Vertex2,   
   EngineBuilder, 
-  AbstractConstructor,
-  InputManager,
   SoundManager,
   createBoinkSound,
   Camera,
   OrthoCamera,
-  GainChannel
+  GainChannel,
+  Container
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
-import { DemoActor } from "@repo/example";
-import { Parser, TiledPoint, TileMapActor, type TileMapActorOptions }from "@repo/tiler";
+import { BombActor, DemoActor } from "@repo/example";
+import { Parser, TiledPoint, TileMapActor, TileMapActorRenderer, type TileMapActorOptions }from "@repo/tiler";
 import { TiledObjectLayer } from "@repo/tiler";
-import { Container } from 'inversify';
+import { unmanaged } from 'inversify';
 import { PlayerController } from "./PlayerController";
 
-class InversifyContainer implements IContainer {
-  private container: Container;
-
-  constructor() {
-    this.container = new Container({
-        autobind: true
-    });
-  }
-
-  registerSingletonInstance<T>(ctor: Constructor<T> | AbstractConstructor<T>, instance: T): void {
-    this.container.bind(ctor).toConstantValue(instance);
-  }
-
-  registerSingleton<T, U extends T>(ctor: Constructor<T> | AbstractConstructor<T>, ctor2: Constructor<U>): void {
-    this.container.bind(ctor).to(ctor2);
-  }
-
-  register<T1, T2 extends T1>(ctor: Constructor<T1> | AbstractConstructor<T1>, ctor2: Constructor<T2>): void {
-    this.container.bind(ctor).to(ctor2);
-  }
-
-  registerInstance<T>(ctor: Constructor<T> | AbstractConstructor<T>, instance: T): void {
-    this.container.bind(ctor).toConstantValue(instance);
-  }
-
-  get<T>(ctor: Constructor<T> | AbstractConstructor<T>): T {
-    return this.container.get(ctor);
-  }
-}
-
-
-class DefaultInputManager extends InputManager {
-  // Implement default input manager logic here
-}
-
+import { InversifyContainer, ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 const App = () => {
 
   const ws = useRef<WebSocket>(null);
@@ -84,47 +45,59 @@ const App = () => {
     ws.current.addEventListener("message", (d) => console.log("msg:", JSON.stringify(d.data)));
   }, []);
 
+  // Begin performance timing
+  const startTime = performance.now();
+
   const container = new InversifyContainer();
-
-
-  container.registerSingleton(InputManager, DefaultInputManager);  
-  container.registerSingleton(Controller, PlayerController);
-
-  const pc = container.get<Controller>(Controller);
-
-  console.log(pc);
+  container.registerSingletonInstance(Container, container);
 
   var builder = new EngineBuilder<WebSocket, http.IncomingMessage>(container);
   builder
-    .withWorld(new PlanckWorld({gravity: new Vector2(-10, 0), allowSleep: true}))
-    .asLocalSinglePlayer();
+    .withWorldInstance(new PlanckWorld({gravity: new Vector2(-10, 0), allowSleep: true}))
+    .withEndpointInstance(new ClientEndpoint("localhost", 3001))
+    .withDefaultRenderer(BaseActorRenderer)
+    .withInputManager(DefaultInputManager)
+    .withSoundManager(SoundManager)
+    .withActor(DemoActor)
+    .withActor(GameTileMapActor, TileMapActorRenderer)
+    .withActor(BombActor)
+    .withActor(WallActor, WallActorRenderer)
+    .withPlayerController(PlayerController)
+    .withDebugLogging()
+    .asLocalSinglePlayer("LocalPlayer", "local_player");
 
-  const e = builder.build();
+  const e = builder.build(ClientEngine);
+  e.startup();
+
+  // Log time to startup
+  const endTime = performance.now();
+  console.log(`Engine built in ${(endTime - startTime).toFixed(4)} ms`);
 
   const [engine] = useState(e);
   const [level] = useState(new Level());
-  const [soundManager] = useState(() => {
-    const sm = new SoundManager();
-    sm.initAudioContext();
-    
-    // Create and load the boink sound using the extracted function
-    const boinkBuffer = createBoinkSound(sm.getAudioContext()!);
-    sm.loadSoundFromBuffer("boink", boinkBuffer, GainChannel.Effects);
-    return sm;
-  });
+
+
+  console.log(container.verify())
 
   useEffect(() => {
     let disposed = false;
 
-    const demoActor = new DemoActor("DemoActor");
+    const demoActor = new DemoActor();
 
     demoActor.layer = 5;
+
+    engine.getLocalPlayerState()?.getController()?.possess(demoActor);
 
     level.addActor(demoActor);
 
     const setupLevel = async () => {
       try {
-        const tileMapActor = new GameTileMapActor("GrasslandsMap", "/Nostalgi2DTs/client/grasslands.tmx", new Parser(), {});
+
+        // Begin performance timing
+        const startTime = performance.now();
+
+        const tileMapActor = new GameTileMapActor("/Nostalgi2DTs/client/grasslands.tmx", new Parser(), container);
+        tileMapActor.setName("GrasslandsMap");
 
         level.addActor(tileMapActor);
         
@@ -137,11 +110,6 @@ const App = () => {
 
         await engine.loadLevelObject(level);
 
-        // engine.setControllerTypeForPlayer<PlayerController>(
-        //   engine.getLocalPlayerState(),
-        //   PlayerController
-        // );
-
         const worldSize = level.getWorldSize();
 
         if (worldSize) {
@@ -150,6 +118,10 @@ const App = () => {
         } else {
           engine.setCurrentCamera(new OrthoCamera(new Vector2(0, 0), 1));
         }
+        
+        // Log time to load level 
+        const endTime = performance.now();
+        console.log(`Level loaded in ${(endTime - startTime).toFixed(2)} ms`);
 
       } catch (error) {
         console.error("Failed to initialize level", error);
@@ -157,45 +129,6 @@ const App = () => {
     };
 
     setupLevel();
-
-    window.addEventListener("keydown", (e: KeyboardEvent) => {
-      console.log("Key down:", e.key);
-
-      if (e.key === "ArrowLeft") {
-        // Handle ArrowLeft key press
-        const cameraPos = demoActor?.getPosition();
-        if (cameraPos) {
-          console.log("Moving left", demoActor);
-          // demoActor!.setPosition(new Vector2(cameraPos.x - 1, cameraPos.y));
-        
-        }
-      } else if (e.key === "ArrowRight") {
-        // Handle ArrowRight key press
-        const cameraPos = demoActor?.getPosition();
-        if (cameraPos) {
-          console.log("Moving right", cameraPos);
-          // demoActor!.setPosition(new Vector2(cameraPos.x + 1, cameraPos.y));
-        }
-      } else if (e.key === "ArrowUp") {
-        // Handle ArrowUp key press
-        const cameraPos = demoActor?.getPosition();
-        if (cameraPos) {
-          console.log("Moving up", cameraPos);
-          // demoActor!.setPosition(new Vector2(cameraPos.x, cameraPos.y + 1));
-            const currentZoom = engine.getCurrentCamera()?.getZoom() ?? 1;
-          engine.getCurrentCamera()?.setZoom(currentZoom+0.1);
-        }
-      } else if (e.key === "ArrowDown") {
-        // Handle ArrowDown key press
-        const cameraPos = demoActor?.getPosition();
-        if (cameraPos) {
-          console.log("Moving down", cameraPos);
-          // demoActor!.setPosition(new Vector2(cameraPos.x, cameraPos.y - 1));
-            const currentZoom = engine.getCurrentCamera()?.getZoom() ?? 1;
-          engine.getCurrentCamera()?.setZoom(currentZoom-0.1);
-        }
-      }
-    });
 
     return () => {
       disposed = true;
@@ -219,51 +152,7 @@ const App = () => {
 
     <Header title="Rendered Engine" />
     <div className="card">
-    <Canvas draw={draw} options={{ context: 'webgl2' }} onClick={(e: React.MouseEvent<HTMLCanvasElement>) => {
-          const canvas = e.currentTarget as HTMLCanvasElement;
-          const rect = canvas.getBoundingClientRect();
-
-          // Account for CSS scaling vs. backing store resolution (hiDPI support)
-          const scaleX = canvas.width / rect.width;
-          const scaleY = canvas.height / rect.height;
-
-          const canvasX = (e.clientX - rect.left) * scaleX;
-          const canvasY = (e.clientY - rect.top) * scaleY;
-
-          const camera = engine.getCurrentCamera();
-          
-          if (!camera) {
-            return;
-          }
-
-          const worldPos = camera.screenToWorld(new Vector2(canvasX, canvasY), canvas.width, canvas.height);
-
-          const hitActors = engine.aabbCast(worldPos, true, true, Actor);
-
-          if (hitActors.length > 0) {
-            
-            for (const actor of hitActors) {
-              console.log(`Clicked actor: ${actor.name}`);
-              actor.isMarkedForDespawn = true;
-            }
-            return;
-          }
-
-          for(let i = 0; i < 1; i++) {
-            const spawnedActor = new DemoActor("SpawnedActor-"+i+Date.now());
-            spawnedActor.setPosition(worldPos);
-            engine.spawnActor(spawnedActor);
-
-            const boink = soundManager.getSound("boink");
-            soundManager.setMasterVolume(0.1)
-            soundManager.setEffectsVolume(1);
-            boink?.setVolume(1)
-            // Play the boink sound when spawning an actor
-            boink?.play(false, 0);
-          }
-
-          console.log(`Canvas clicked {${canvasX.toFixed(2)}, ${canvasY.toFixed(2)}} => World ${worldPos.x.toFixed(2)}, ${worldPos.y.toFixed(2)}`);
-        }} />
+    <Canvas draw={draw} options={{ context: 'webgl2' }} />
     </div>
     <EngineContext.Provider value={engine}>
       <Counter />
@@ -273,11 +162,10 @@ const App = () => {
 
 createRoot(document.getElementById("app")!).render(<App />);
 
-
 @actor()
 class GameTileMapActor extends TileMapActor {
-  constructor(name: string, mapUrl: string, parser: Parser = new Parser(), options: TileMapActorOptions = {}) {
-    super(name, mapUrl, parser, options);
+  constructor(@unmanaged() mapUrl: string, parser: Parser = new Parser(), container: Container, options: TileMapActorOptions = {}) {
+    super(mapUrl, parser, container, options);
   }
 
   protected handleLayer(layer: TiledObjectLayer): boolean {
@@ -290,7 +178,7 @@ class GameTileMapActor extends TileMapActor {
           : "";
 
       if (layerName.includes("wall") || layerType === "walls") {
-        console.log("Handling walls for layer:", layer.name);
+          console.log("Handling walls for layer:", layer.name);
           this.handleWalls(layer);
           return true;
       }
@@ -304,7 +192,6 @@ class GameTileMapActor extends TileMapActor {
 
       const scale = this.getWorldUnitsPerPixel();
       const translation = this.getRenderTranslation();
-      const existingNames = new Set(this.getChildren().map((child) => child.name));
 
       console.log("Processing walls for layer:", layer.name);
 
@@ -317,7 +204,7 @@ class GameTileMapActor extends TileMapActor {
           let vertices: Vertex2[] = [];
 
           if (polygon && polygon.length >= 3) {
-            vertices = this.handlePolygonWall(polygon, scale, translation, object.rotation ?? 0);
+            vertices = this.handlePolygonWall(polygon, scale, object.rotation ?? 0);
           }
 
           else {
@@ -329,11 +216,10 @@ class GameTileMapActor extends TileMapActor {
             ] : [];
           }
 
-          const baseName = this.getObjectBaseName(layer, object, index);
-          const uniqueName = this.makeUniqueName(baseName, existingNames);
-          existingNames.add(uniqueName);
+          const wallActor = this.container.get<WallActor>(WallActor);
+          wallActor.applyProperties({ vertices: vertices });
 
-          const wallActor = new WallActor(uniqueName, vertices);
+          wallActor.initialize();
 
           const posX = (object.x + (layer.offsetX ?? 0)) * scale;
           const posY = -((object.y + (layer.offsetY ?? 0)) * scale);
@@ -341,12 +227,10 @@ class GameTileMapActor extends TileMapActor {
           wallActor.setPosition(worldPosition);
 
           this.addChild(wallActor);
-
-          this.getWorld()?.spawnActor(wallActor, worldPosition);
       });
   }
 
-  private handlePolygonWall(polygon: TiledPoint[], scale: number, translation: Vector2, rotation: number): { x: number; y: number }[] {
+  private handlePolygonWall(polygon: TiledPoint[], scale: number, rotation: number): { x: number; y: number }[] {
     const rotationRadians = -(rotation * (Math.PI / 180));
     const cos = Math.cos(rotationRadians);
     const sin = Math.sin(rotationRadians);
@@ -362,21 +246,25 @@ class GameTileMapActor extends TileMapActor {
   }
 }
 
-@actor()
 class WallActor extends Actor {
-  private readonly physics: PhysicsComponent;
 
-  constructor(name: string, vertices: Vertex2[]){
-    super(name);
-    this.physics = this.addComponent(new PhysicsComponent());
-    this.physics.setSimulationState(true, "static");
+  vertices: Vertex2[] | undefined;
 
-    const collisionComponent = new PolygonCollisionComponent(vertices);
+  constructor(){
+    super();
+  }
+
+  initialize(): void {
+    const physicsComponent = new PhysicsComponent();
+    physicsComponent.setSimulationState(true, "static");
+    this.addComponent(physicsComponent);
+
+    const collisionComponent = new PolygonCollisionComponent(this.vertices ? this.vertices : []);
     this.addComponent(collisionComponent);
   }
+  
 }
 
-@render(WallActor)
 class WallActorRenderer extends ActorRenderer<WallActor> {
   render(_actor: WallActor, _camera: Camera, _gl: WebGL2RenderingContext, _debugPhysics?: boolean): boolean {
     return true;

@@ -2,11 +2,12 @@ import { Frustum, Camera } from "./camera";
 import { Actor, World, BaseObject } from "./world";
 import { Level } from "./level";
 import { PlayerState, Controller } from "./game";
-import { Url, TimerManager } from "./utils";
+import { Url, TimerManager, Constructor, Container } from "./utils";
 import { Vector2 } from "./math";
 import { Endpoint } from "./network/endpoint";
 import { InputManager } from "./input/inputmanager";
 import { listRendererForActor } from "./actorRegistroy";
+import { ActorRenderer } from "./rendering";
 
 class RootObject extends BaseObject {
 
@@ -23,6 +24,7 @@ export class Engine<TSocket, TReq> {
       this.afterRenderCallbacks.set(id, afterRenderHandle);
       return id;
     }
+
     offAfterRender(id: string): void {
       this.afterRenderCallbacks.delete(id);
     }
@@ -40,26 +42,27 @@ export class Engine<TSocket, TReq> {
     protected serverRpcs: Map<string, Function> = new Map();
 
     protected timerManager: TimerManager = new TimerManager();
-    protected inputManager: InputManager = new InputManager();
+    protected inputManager: InputManager | undefined = undefined;
 
     protected frameTimes: number[] = [];
     private frameId: number = 0; // increments every render pass
-    private rendererCache: Map<any, any[]> = new Map();
+    private rendererCache: Map<any, any> = new Map();
     // private spatialGrid: SpatialGrid = new SpatialGrid(10);
-    private spatialEnabled: boolean = true; // toggle if needed
-    public debugPhysics: boolean = true; // show physics debug outlines
+    public debugMeshes: boolean = false; // show physics debug outlines
+    public useDebugLogging: boolean = false;
 
     players: PlayerState[] = [];
     controllers: Controller[] = [];
 
-    rootObject: BaseObject = new RootObject("root");
+    rootObject: BaseObject = new RootObject();
+
+    private controllerTypeForPlayer: Constructor<Controller> | null = null;
 
     constructor(
         protected world: World,
         protected netEndpoint: Endpoint<TSocket, TReq> | undefined,
-        protected networkMode: EngineNetworkMode = "singleplayer") {
-        this.currentCamera = undefined;
-        this.currentMap = undefined;
+        protected networkMode: EngineNetworkMode = "singleplayer", 
+        protected container: Container) {
     }
 
     setCurrentCamera(camera: Camera): void {
@@ -71,11 +74,15 @@ export class Engine<TSocket, TReq> {
     }
 
     setControllerTypeForPlayer<T extends Controller>(
-        playerState: PlayerState,
-        controllerCtor: (new () => T)
+        controllerCtor: Constructor<T> | null
     ): void {
-        const controller = new controllerCtor();
-        playerState.setController(controller);
+        console.log("Setting controller type for player");
+        this.controllerTypeForPlayer = controllerCtor;
+    }
+
+    setIsDebug(enabled: boolean): void {
+        this.debugMeshes = enabled;
+        this.useDebugLogging = enabled;
     }
 
     getLocalPlayerState(): PlayerState | undefined {
@@ -124,7 +131,7 @@ export class Engine<TSocket, TReq> {
         return this.world.radialCast(start, radius, includeStatic, includeDynamic, targetCtor) as T[];
     }
 
-    getDebugPhysics(): boolean { return this.debugPhysics; }
+    getDebugPhysics(): boolean { return this.debugMeshes; }
 
     getTimerManager(): TimerManager { return this.timerManager; }
 
@@ -150,15 +157,21 @@ export class Engine<TSocket, TReq> {
             this.netEndpoint?.onMessage<any>("input", (data) => {
                 console.log("Received player input:", data);
             });
+
+                    // Start server timers
+            this.timerManager.setTimer(() => {
+                this.handleNetworkTick();
+            }, 1000 / this.netTickRate, true); // 60 Hz server tick);
         }
 
         // Initialize all renderers
-        // const renderers = listRenderers();
+        // const renderers = listRenderers()
+    }
 
-        // Start server timers
-        this.timerManager.setTimer(() => {
-            this.handleNetworkTick();
-        }, 1000 / this.netTickRate, true); // 60 Hz server tick);
+    public addPlayer(player: PlayerState): void {
+        this.players.push(player);
+        if(this.controllerTypeForPlayer)
+            player.setController(this.container.get(this.controllerTypeForPlayer));
     }
 
     protected handleNetworkTick(): void {
@@ -203,6 +216,10 @@ export class Engine<TSocket, TReq> {
         this.lastTickTime = now;
 
         this.tickTimerManager(this.deltaTime);
+
+        this.players.forEach(player => {
+            player.getController()?._tick(this.deltaTime);
+        });
         this.tickActorsAndWorld(this.deltaTime);
 
         // Update spatial partition (simple: reinsert/move all for now; can optimize with dirty flags later)
@@ -266,7 +283,7 @@ export class Engine<TSocket, TReq> {
         }
 
         // Second pass: draw debug overlays on top so they always appear above main pass
-        if (this.debugPhysics && this.currentCamera) {
+        if (this.debugMeshes && this.currentCamera) {
             const wasDepthEnabled = gl.isEnabled(gl.DEPTH_TEST);
             gl.disable(gl.DEPTH_TEST);
             for (const actor of actors) {
@@ -278,31 +295,42 @@ export class Engine<TSocket, TReq> {
 
     private renderActor(actor: Actor, gl: WebGL2RenderingContext): void {
         const ctor = Object.getPrototypeOf(actor).constructor;
-        let renderers = this.rendererCache.get(ctor);
-        if (!renderers) {
-            renderers = listRendererForActor(ctor);
-            this.rendererCache.set(ctor, renderers);
+        let renderer = this.rendererCache.get(ctor);
+
+
+        if (!renderer) {
+            renderer = this.getRendererForActor(actor);
+            this.rendererCache.set(ctor, renderer);
         }
-        for (const renderer of renderers) {
-            const rendered = renderer.render(actor, this.currentCamera, gl, this.debugPhysics);
-            // if(rendered)
-            //     return;
+        if (renderer) {
+            const rendered = renderer.render(actor, this.currentCamera, gl, this.debugMeshes);
         }
     }
 
-    private renderActorDebug(actor: Actor, gl: WebGL2RenderingContext, skipChildren?: boolean): void {
+    private getRendererForActor<TActor extends Actor>(actor: TActor): ActorRenderer<TActor> | null {
         const ctor = Object.getPrototypeOf(actor).constructor;
-        let renderers = this.rendererCache.get(ctor);
-        if (!renderers) {
-            renderers = listRendererForActor(ctor);
-            this.rendererCache.set(ctor, renderers);
+        let renderer = this.rendererCache.get(ctor);
+        if (!renderer) {
+            renderer = this.container.getByIdentifier<ActorRenderer<TActor>>(ctor.name + "Renderer");
+            console.log("Renderer:", renderer);
+        }
+        if(!renderer) {
+            renderer = this.container.getByIdentifier<ActorRenderer<TActor>>("BaseActorRenderer");
+        }
+        return renderer;
+    }
+
+
+    private renderActorDebug(actor: Actor, gl: WebGL2RenderingContext, skipChildren?: boolean): void {
+        
+
+        const renderer = this.getRendererForActor(actor);
+
+        if (!renderer) {
+            return;
         }
 
-        for (const renderer of renderers) {
-            if (typeof renderer.renderDebug === "function") {
-                renderer.renderDebug(actor, this.currentCamera!, gl);
-            }
-        }
+        renderer.renderDebug?.(actor, this.currentCamera!, gl);
 
         if (!skipChildren) {
             for (const child of actor.getChildrenOfType(Actor)) {
@@ -423,7 +451,7 @@ export class Engine<TSocket, TReq> {
 
         const actors = this.rootObject.getChildrenOfType(Actor);
         for (const actor of actors) {
-            console.log("Loading actor:", actor.name);
+            console.log("Loading actor:", actor.getId());
             await actor.onLoad();
         }
 
@@ -455,7 +483,7 @@ export class Engine<TSocket, TReq> {
       
         const actors = this.rootObject.getChildrenOfType(Actor);
         for (const actor of actors) {
-            console.log("Loading actor:", actor.name);
+            console.log("Loading actor:", actor.getId());
             await actor.onLoad();
         }
 
@@ -463,7 +491,38 @@ export class Engine<TSocket, TReq> {
         await this.spawnLevelActors();
     }
 
-    async spawnActor(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
+    async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent?: Actor, position?: Vector2, properties?: Record<string, any>): Promise<void> {
+        if (!this.world) {
+            throw new Error("No world loaded");
+        }
+
+        const actor = this.container.get<TActor>(ctor);
+        if (properties)
+            actor.applyProperties(properties);
+
+        actor.initialize();
+
+        if(parent)
+            parent.addChild(actor);
+        else
+            this.rootObject.addChild(actor);
+
+        if(position !== undefined)
+            actor.setPosition(position);
+
+
+        this.world.spawnActor(actor, actor.getPosition());
+        const children = actor.getChildrenOfType(Actor);
+        for(const child of children) {
+            await this.spawnActorInstance(child, actor);
+        }
+        actor.onSpawned();
+        // if (this.spatialEnabled) {
+        //     this.spatialGrid.insert(actor);
+        // }
+    }
+
+     async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
         if (!this.world) {
             throw new Error("No world loaded");
         }
@@ -480,7 +539,7 @@ export class Engine<TSocket, TReq> {
         this.world.spawnActor(actor, actor.getPosition());
         const children = actor.getChildrenOfType(Actor);
         for(const child of children) {
-            await this.spawnActor(child, actor);
+            await this.spawnActorInstance(child, actor);
         }
         actor.onSpawned();
         // if (this.spatialEnabled) {
@@ -491,7 +550,7 @@ export class Engine<TSocket, TReq> {
     private async spawnLevelActors(): Promise<void> {
         const actors = this.rootObject.getChildrenOfType(Actor);
         for (const actor of actors) {
-            await this.spawnActor(actor);
+            await this.spawnActorInstance(actor);
             actor.onSpawned();
         }
     }

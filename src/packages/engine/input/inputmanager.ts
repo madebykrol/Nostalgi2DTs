@@ -8,7 +8,7 @@ export abstract class InputManager {
         this.listeners.get(event)?.push(listener);
     }
 
-    emit(event: string, data: any): void {
-        this.listeners.get(event)?.forEach(listener => listener(data));
+    emit(event: string, data: any, modifiers: any): void {
+        this.listeners.get(event)?.forEach(listener => listener(data, modifiers));
     }
 }

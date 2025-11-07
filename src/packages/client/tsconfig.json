@@ -4,11 +4,7 @@
   "exclude": ["node_modules"],
   "compilerOptions": {
     "lib": ["DOM", "ESNext"],
-    "outDir": "dist",
-    "module": "esnext",
-    // "moduleResolution": "Node",
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true
+    "target": "esnext",
+    "experimentalDecorators": true
   }
 }

@@ -1,4 +1,4 @@
-import { actor, Actor, PhysicsComponent, PolygonCollisionComponent, create, Vector2 } from "@repo/engine";
+import { actor, Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container } from "@repo/engine";
 import { Parser, TiledMap, type TiledObject, TiledObjectLayer } from "./parser";
 
 export interface TileMapActorOptions {
@@ -17,19 +17,18 @@ export interface TileMapActorOptions {
 @actor()
 export class TileMapObjectActor extends Actor {
     constructor(
-        name: string,
         public readonly objectData: TiledObject,
         public readonly layerName: string
     ) {
-        super(name);
+        super();
         this.shouldTick = false;
     }
 }
 
 @actor()
 export class WaterActor extends Actor {
-    constructor(name: string) {
-        super(name);
+    constructor() {
+        super();
         this.shouldTick = true;
     }
 }
@@ -39,12 +38,11 @@ export class WallActor extends Actor {
     private readonly collisionComponent: PolygonCollisionComponent;
 
     constructor(
-        name: string,
         polygonPoints: { x: number; y: number }[],
         public readonly layerName: string,
         public readonly objectData: TiledObject
     ) {
-        super(name);
+        super();
         this.shouldTick = false;
         const physics = this.addComponent(new PhysicsComponent());
         physics.setSimulationState(true, "static");
@@ -69,12 +67,12 @@ export class TileMapActor extends Actor {
     private renderTranslation: Vector2 = new Vector2(0, 0);
 
     constructor(
-        name: string,
         private readonly mapUrl: string,
         private readonly parser: Parser = new Parser(),
+        protected readonly container:Container,
         options: TileMapActorOptions = {}
     ) {
-        super(name);
+        super();
         this.shouldTick = false;
         this.options = options;
         this.normalizedMapUrl = this.mapUrl.replace(/\\/g, "/");
@@ -248,41 +246,33 @@ export class TileMapActor extends Actor {
         }
 
         console.log("Creating actors for layer:", layer.name);
-        const existingNames = new Set(this.getChildren().map((child) => child.name));
         const scale = this.getWorldUnitsPerPixel();
 
         layer.objects.forEach((object, index) => {
-            const baseName = this.getObjectBaseName(layer, object, index);
-            const uniqueName = this.makeUniqueName(baseName, existingNames);
             let actorsToAdd: Actor[] = [];
             try {
                 if(object.properties.Type) {
-                    const createdActor = create(object.properties.Type as string, uniqueName) as Actor;
-                    const factoryResult = this.options.objectActorFactory?.({
-                        tileMap: this,
-                        layer,
-                        object,
-                        index,
-                        defaultActor: createdActor
-                    });
-                    actorsToAdd = this.normalizeFactoryResult(factoryResult, createdActor);
-                } else {
-
-                    // const createdActor = create(baseName, uniqueName); // Example of creating a WaterActor
-                    // console.log(createdActor)
-                    const defaultActor = new TileMapObjectActor(uniqueName, object, layer.name);
-                    const factoryResult = this.options.objectActorFactory?.({
-                        tileMap: this,
-                        layer,
-                        object,
-                        index,
-                        defaultActor
-                    });
-                    actorsToAdd = this.normalizeFactoryResult(factoryResult, defaultActor);
+                    const createdActor = this.container.getByIdentifier<Actor>(object.properties.Type as  string);
+                    console.log("Created actor from container for type:", object.properties.Type, createdActor);
+                    actorsToAdd.push(createdActor);
                 }
+                // } else {
+
+                //     // const createdActor = create(baseName, uniqueName); // Example of creating a WaterActor
+                //     // console.log(createdActor)
+                //     const defaultActor = new TileMapObjectActor(uniqueName, object, layer.name);
+                //     const factoryResult = this.options.objectActorFactory?.({
+                //         tileMap: this,
+                //         layer,
+                //         object,
+                //         index,
+                //         defaultActor
+                //     });
+                //     actorsToAdd = this.normalizeFactoryResult(factoryResult, defaultActor);
+                // }
                 
             } catch (e) {
-                console.error(`Error creating actor for object '${uniqueName}' of type '${object.properties.Type}':`, e);
+                console.error(`Error creating actor for object of type '${object.properties.Type}':`, e);
                 return;
             }
             
@@ -295,14 +285,6 @@ export class TileMapActor extends Actor {
             const rotation = object.rotation * (Math.PI / 180);
 
             actorsToAdd.forEach((actorToAdd) => {
-                if (!actorToAdd.name || existingNames.has(actorToAdd.name)) {
-                    const base = actorToAdd.name && actorToAdd.name.trim().length > 0
-                        ? actorToAdd.name.trim()
-                        : `${layer.name}_object`;
-                    actorToAdd.name = this.makeUniqueName(base, existingNames);
-                }
-                existingNames.add(actorToAdd.name);
-
                 const localX = posX + this.renderTranslation.x;
                 const localY = posY + this.renderTranslation.y;
                 actorToAdd.setPosition(new Vector2(localX, localY));
