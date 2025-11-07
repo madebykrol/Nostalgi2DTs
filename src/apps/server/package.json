@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "nodemon --watch ./ --ext ts --exec tsx server.ts",
     "build": "tsc",
-    "preview": "node server.js",
+    "preview": "node dist/server.js",
     "lint": "eslint \"**/*.ts\""
   },
   "dependencies": {

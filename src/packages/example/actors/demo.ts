@@ -7,8 +7,8 @@ export class BombActor extends Actor {
         
     }
 
-    constructor(name: string) {
-        super(name);
+    constructor() {
+        super();
         this.shouldTick = true;
         const physics = this.addComponent(new PhysicsComponent());
         physics.setSimulationState(true, "dynamic");
@@ -24,8 +24,8 @@ export class BombActor extends Actor {
 @actor()
 export class DemoActor extends Actor {
     
-    constructor(name: string) {
-        super(name);
+    constructor() {
+        super();
         this.shouldTick = true;
         const physics = this.addComponent(new PhysicsComponent());
         physics.setSimulationState(true, "dynamic");
@@ -33,6 +33,10 @@ export class DemoActor extends Actor {
         const collisionComponent = new CircleCollisionComponent(1);
         
         this.addComponent(collisionComponent);
+    }
+
+    initialize(): void {
+        console.log("DemoActor initialized with id:", this.getId());
     }
 
     tick(_deltaTime: number): void {

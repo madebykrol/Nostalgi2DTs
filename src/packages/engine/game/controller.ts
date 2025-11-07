@@ -1,8 +1,10 @@
 import { InputManager } from "../input";
+import { Actor } from "../world";
 
 export abstract class Controller {
 
     private inputManager: InputManager;
+    protected possessedActor: Actor | null = null;
 
     constructor(inputManager: InputManager) { 
         this.inputManager = inputManager;
@@ -15,6 +17,20 @@ export abstract class Controller {
 
     protected getInputManager(): InputManager {
         return this.inputManager;
+    }
+
+    public possess(actor: Actor): void {
+        
+        if (this.possessedActor !== actor) {
+            this.possessedActor?.isOwnedBy(null);
+        }
+
+        // Logic to possess the given actor
+        this.possessedActor = actor;
+        actor.isOwnedBy(this);
+
+        console.log(`Controller possessed actor with id: ${actor.getId()}`);
+
     }
 
 

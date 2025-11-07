@@ -8,6 +8,12 @@ import { PhysicsComponent } from "../physics";
 import { EngineNetworkMode } from "../engine";
 
 export abstract class Actor extends BaseObject {
+    isOwnedBy<TController extends Controller>(controller: TController|null): boolean {
+        return this.possessedBy === controller;
+    }
+    willSpawn() {
+        throw new Error("Method not implemented.");
+    }
     // If true, this actor will tick its children when it ticks
     tickComponents: boolean = true;
 
@@ -37,14 +43,22 @@ export abstract class Actor extends BaseObject {
     private world: World | null = null;
     private isRendering: boolean = false;
 
-    constructor(public name:string) {
-        super(name);
+    protected name: string|undefined = undefined;
+
+    constructor() {
+        super();
         this.components = [];
         this.position = new Vector2(0, 0);
     }
 
     async onLoad(): Promise<void> {
         
+    }
+
+    public setName(name: string): void {
+        if (this.name !== name) {
+            this.name = name;
+        }
     }
 
     setIsRendering(rendering: boolean): void {
@@ -147,6 +161,17 @@ export abstract class Actor extends BaseObject {
 
         return bounds;
     }
+    
+    initialize(): void {}
+
+    // Called after the actor has been spawned in the world
+    // Override this to implement custom behavior
+    onSpawned(): void {}
+    
+    // Called when the game starts or when the actor is spawned
+    // Override this to implement custom behavior
+    onBeginPlay(): void {}
+    
 
     private syncPhysicsTransform(): void {
         const physicsComponents = this.getComponentsOfType(PhysicsComponent);
@@ -217,14 +242,6 @@ export abstract class Actor extends BaseObject {
         this.tick(deltaTime, engineNetworkMode);
     }
 
-    // Called after the actor has been spawned in the world
-    // Override this to implement custom behavior
-    onSpawned(): void {}
-    
-    // Called when the game starts or when the actor is spawned
-    // Override this to implement custom behavior
-    onBeginPlay(): void {}
-    
     // Override this to implement custom behavior
     public tick(_deltaTime: number, _engineNetworkMode: EngineNetworkMode): void {}
 }

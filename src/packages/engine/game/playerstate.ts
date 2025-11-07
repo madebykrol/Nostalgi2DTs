@@ -1,8 +1,14 @@
 import { Controller } from "./controller";
 
 export class PlayerState {
+    private controller: Controller | null = null;
+
+    getController(): Controller | null {
+        return this.controller;
+    }
+    
     setController<T extends Controller>(controller: T) {
-        throw new Error("Method not implemented.");
+        this.controller = controller;
     }
     playerId: string;
     playerName: string;
