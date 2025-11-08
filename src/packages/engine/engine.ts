@@ -8,6 +8,7 @@ import { Endpoint } from "./network/endpoint";
 import { InputManager } from "./input/inputmanager";
 import { listRendererForActor } from "./actorRegistroy";
 import { ActorRenderer } from "./rendering";
+import { GameMode } from "./game/gameMode";
 
 class RootObject extends BaseObject {
 
@@ -17,6 +18,7 @@ export type EngineNetworkMode = "client" | "server" | "singleplayer";
 
 export class Engine<TSocket, TReq> {
     afterRenderCallbacks: Map<string, (() => void)> = new Map();
+    currentGameMode: GameMode | undefined;
 
     onAfterRender(afterRenderHandle: (() => void)): string {
       // Add a callback to be called after rendering is complete
@@ -73,7 +75,7 @@ export class Engine<TSocket, TReq> {
         return this.currentCamera;
     }
 
-    setControllerTypeForPlayer<T extends Controller>(
+    protected setControllerTypeForPlayer<T extends Controller>(
         controllerCtor: Constructor<T> | null
     ): void {
         console.log("Setting controller type for player");
@@ -449,11 +451,22 @@ export class Engine<TSocket, TReq> {
 
         this.rootObject.addChildren(level.getActors());
 
-        const actors = this.rootObject.getChildrenOfType(Actor);
-        for (const actor of actors) {
-            console.log("Loading actor:", actor.getId());
-            await actor.onLoad();
+        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
+        this.world.setGravity(level.getGravity());
+        console.log("Current Game Mode:", this.currentGameMode);
+
+        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
+
+        console.log(this.controllerTypeForPlayer);
+
+        for(const player of this.players) {
+            if(this.controllerTypeForPlayer)
+                player.setController(this.container.get(this.controllerTypeForPlayer));
         }
+
+        const actors = this.rootObject.getChildrenOfType(Actor);
+
+        await Promise.all(actors.map(actor => actor.onLoad()));
 
         await this.spawnLevelActors();
     }
@@ -517,9 +530,6 @@ export class Engine<TSocket, TReq> {
             await this.spawnActorInstance(child, actor);
         }
         actor.onSpawned();
-        // if (this.spatialEnabled) {
-        //     this.spatialGrid.insert(actor);
-        // }
     }
 
      async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {

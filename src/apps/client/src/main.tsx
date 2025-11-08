@@ -29,6 +29,7 @@ import { unmanaged } from 'inversify';
 import { PlayerController } from "./PlayerController";
 
 import { InversifyContainer, ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
+import { GameMode } from "../../../packages/engine/game/gameMode";
 const App = () => {
 
   const ws = useRef<WebSocket>(null);
@@ -46,18 +47,16 @@ const App = () => {
   }, []);
 
   // Begin performance timing
-  const startTime = performance.now();
+  var startTime = performance.now();
 
-  const container = new InversifyContainer();
-  container.registerSingletonInstance(Container, container);
-
-  var builder = new EngineBuilder<WebSocket, http.IncomingMessage>(container);
+  var builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
   builder
-    .withWorldInstance(new PlanckWorld({gravity: new Vector2(-10, 0), allowSleep: true}))
+    .withWorldInstance(new PlanckWorld())
     .withEndpointInstance(new ClientEndpoint("localhost", 3001))
     .withDefaultRenderer(BaseActorRenderer)
     .withInputManager(DefaultInputManager)
     .withSoundManager(SoundManager)
+    .withGameMode(DefaultGameMode)
     .withActor(DemoActor)
     .withActor(GameTileMapActor, TileMapActorRenderer)
     .withActor(BombActor)
@@ -74,10 +73,7 @@ const App = () => {
   console.log(`Engine built in ${(endTime - startTime).toFixed(4)} ms`);
 
   const [engine] = useState(e);
-  const [level] = useState(new Level());
-
-
-  console.log(container.verify())
+  const [level] = useState(new GrasslandsMap(builder.container));
 
   useEffect(() => {
     let disposed = false;
@@ -86,34 +82,18 @@ const App = () => {
 
     demoActor.layer = 5;
 
-    engine.getLocalPlayerState()?.getController()?.possess(demoActor);
-
     level.addActor(demoActor);
 
     const setupLevel = async () => {
       try {
-
+        startTime = performance.now();
         // Begin performance timing
-        const startTime = performance.now();
-
-        const tileMapActor = new GameTileMapActor("/Nostalgi2DTs/client/grasslands.tmx", new Parser(), container);
-        tileMapActor.setName("GrasslandsMap");
-
-        level.addActor(tileMapActor);
-        
-        if (disposed) {
-          return;
-        }
-
-        const mapCenter = tileMapActor.getWorldCenter();
-        tileMapActor.setPosition(mapCenter);
-
         await engine.loadLevelObject(level);
 
         const worldSize = level.getWorldSize();
 
         if (worldSize) {
-          const camera = new OrthoCamera(mapCenter.clone(), 1, 40);
+          const camera = new OrthoCamera(new Vector2(worldSize.x / 2, worldSize.y / 2), 1, 40);
           engine.setCurrentCamera(camera);
         } else {
           engine.setCurrentCamera(new OrthoCamera(new Vector2(0, 0), 1));
@@ -126,6 +106,8 @@ const App = () => {
       } catch (error) {
         console.error("Failed to initialize level", error);
       }
+
+      engine.getLocalPlayerState()?.getController()?.possess(demoActor);
     };
 
     setupLevel();
@@ -162,7 +144,28 @@ const App = () => {
 
 createRoot(document.getElementById("app")!).render(<App />);
 
-@actor()
+class DefaultGameMode extends GameMode {
+  start(): void {
+    throw new Error("Method not implemented.");
+  }
+  stop(): void {
+    throw new Error("Method not implemented.");
+  }
+  playerControllerType: typeof PlayerController = PlayerController;
+}
+
+class GrasslandsMap extends Level {
+  constructor(container: Container) {
+    super();
+    const tileMapActor = new GameTileMapActor("/Nostalgi2DTs/client/grasslands.tmx", new Parser(), container);
+
+    this.addActor(tileMapActor);
+    
+    const mapCenter = tileMapActor.getWorldCenter();
+    tileMapActor.setPosition(mapCenter);
+  }
+}
+
 class GameTileMapActor extends TileMapActor {
   constructor(@unmanaged() mapUrl: string, parser: Parser = new Parser(), container: Container, options: TileMapActorOptions = {}) {
     super(mapUrl, parser, container, options);

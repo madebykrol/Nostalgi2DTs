@@ -1,23 +1,34 @@
+import { GameMode } from "../game/gameMode";
 import { Vector2 } from "../math";
+import { Constructor } from "../utils";
 import { Actor } from "../world";
 import { BaseObject } from "../world/baseobject";
 
 export class Level {
-   
+
+    private gravity: Vector2 = new Vector2(0, 0);
+
+    getGravity(): Vector2 {
+        return this.gravity;
+    }
     protected objects: BaseObject[] = [];
 
-    findActor(name:string): Actor | null {
+    findActor(id:string): Actor | null {
         for(const actor of this.objects.filter(o => o instanceof Actor)) {
-            if(actor.name === name) {
+            if(actor.getId() === id) {
                 return actor;
             }
-            const childActor = actor.findChildOfType(name, Actor);
+            const childActor = actor.findChildOfType(id, Actor);
             if(childActor) {
                 return childActor;
             }
         }
 
         return null;
+    }
+
+    getGameMode(): Constructor<GameMode> | undefined {
+        return;
     }
 
     getWorldSize(): Vector2 | null {
@@ -28,7 +39,7 @@ export class Level {
     }
 
     addActor(actor: Actor): void {
-        if (this.findActor(actor.name)) {
+        if (this.findActor(actor.getId())) {
             return;
         }
         this.objects.push(actor);
@@ -36,7 +47,7 @@ export class Level {
 
     addActors(actors: Actor[]): void {
         for(const actor of actors) {
-            if (this.findActor(actor.name)) {
+            if (this.findActor(actor.getId())) {
                 continue;
             }
             this.objects.push(actor);

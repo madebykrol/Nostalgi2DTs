@@ -11,11 +11,6 @@ export class PlayerController extends Controller {
   constructor(@inject(InputManager) inputManager: InputManager, @inject(Engine) engine: Engine<WebSocket, http.IncomingMessage>, @inject(SoundManager) soundManager: SoundManager) {
     super(inputManager);
 
-    console.log(inputManager)
-    console.log("PlayerController initialized");
-
-
-
     inputManager.on("keyDown", (key: string, modifiers: any) => {
 
       const physicsComponent = this.possessedActor?.getComponentsOfType<PhysicsComponent>(PhysicsComponent)[0];
