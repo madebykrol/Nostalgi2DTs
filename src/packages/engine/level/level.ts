@@ -7,6 +7,18 @@ import { BaseObject } from "../world/baseobject";
 export class Level {
 
     private gravity: Vector2 = new Vector2(0, 0);
+    public name: string = "Unnamed Level";
+
+    /**
+     *
+     */
+    constructor() {
+        
+    }
+
+    protected setGravity(gravity: Vector2): void {
+        this.gravity = gravity;
+    }
 
     getGravity(): Vector2 {
         return this.gravity;

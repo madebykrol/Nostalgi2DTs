@@ -81,13 +81,11 @@ export class TileMapActor extends Actor {
     }
 
     async onLoad(): Promise<void> {
-        console.log("Loading tile map from URL:", this.mapUrl);
         if (this.mapData) {
             return;
         }
 
         this.mapData = await this.parser.parse(this.mapUrl);
-        console.log("Loaded map data:", this.mapData);
         this.worldUnitsPerPixel = this.computeWorldUnitsPerPixel();
         this.updateWorldSize();
 

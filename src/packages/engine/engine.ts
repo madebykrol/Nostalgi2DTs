@@ -314,7 +314,6 @@ export class Engine<TSocket, TReq> {
         let renderer = this.rendererCache.get(ctor);
         if (!renderer) {
             renderer = this.container.getByIdentifier<ActorRenderer<TActor>>(ctor.name + "Renderer");
-            console.log("Renderer:", renderer);
         }
         if(!renderer) {
             renderer = this.container.getByIdentifier<ActorRenderer<TActor>>("BaseActorRenderer");
@@ -443,21 +442,18 @@ export class Engine<TSocket, TReq> {
         }
     }
 
+    getCurrentLevel(): Level | undefined {
+        return this.currentMap;
+    }
+
     async loadLevelObject(level: Level): Promise<void> {
         if (!level) {
             throw new Error("Invalid level object");
         }
+        
         this.currentMap = level;
 
         this.rootObject.addChildren(level.getActors());
-
-        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
-        this.world.setGravity(level.getGravity());
-        console.log("Current Game Mode:", this.currentGameMode);
-
-        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
-
-        console.log(this.controllerTypeForPlayer);
 
         for(const player of this.players) {
             if(this.controllerTypeForPlayer)
@@ -467,6 +463,13 @@ export class Engine<TSocket, TReq> {
         const actors = this.rootObject.getChildrenOfType(Actor);
 
         await Promise.all(actors.map(actor => actor.onLoad()));
+
+        console.log("Derp:", level.getGameMode()?.name);
+
+        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
+        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
+        
+        this.world.setGravity(level.getGravity());
 
         await this.spawnLevelActors();
     }

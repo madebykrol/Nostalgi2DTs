@@ -28,9 +28,6 @@ export abstract class Controller {
         // Logic to possess the given actor
         this.possessedActor = actor;
         actor.isOwnedBy(this);
-
-        console.log(`Controller possessed actor with id: ${actor.getId()}`);
-
     }
 
 

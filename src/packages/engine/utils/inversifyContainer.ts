@@ -4,11 +4,16 @@ import { Container as InvContainer } from "inversify";
 
 export class InversifyContainer implements Container {
     private container: InvContainer;
+    private readonly identifierBindingMap: Map<string, Constructor<unknown> | AbstractConstructor<unknown>> = new Map();
 
     constructor() {
         this.container = new InvContainer({
             autobind: true,
         });
+    }
+
+    getTypeForIdentifier(identifier: string): Constructor<unknown> | AbstractConstructor<unknown> | null {
+      return this.identifierBindingMap.get(identifier) || null;
     }
 
     verify(): string {
@@ -27,6 +32,8 @@ export class InversifyContainer implements Container {
     registerSelf<T>(ctor: Constructor<T>, identifier: string|undefined = undefined): void {
         this.container.bind(ctor).toSelf();
         this.container.bind(identifier || ctor.name).to(ctor);
+
+        this.identifierBindingMap.set(identifier || ctor.name, ctor);
     }
 
     registerSingletonInstance<T>(ctor: Constructor<T> | AbstractConstructor<T>, instance: T): void {

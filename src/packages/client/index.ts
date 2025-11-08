@@ -10,9 +10,7 @@ export class DefaultInputManager extends InputManager {
    *
    */
   constructor(@inject(Engine<WebSocket, http.IncomingMessage>) protected engine: Engine<WebSocket, http.IncomingMessage>) {
-    super();  
-
-    console.log(engine);
+    super();
     // Handle keyboard input
     window.addEventListener("keydown", (event) => {
       
@@ -73,9 +71,7 @@ export class DefaultInputManager extends InputManager {
 
   private getWorldPosition(canvasX: number, canvasY: number, canvasWidth: number, canvasHeight: number): Vector2 | undefined {
     const camera = this.engine.getCurrentCamera();
-
-    console.log(this.engine.getCurrentCamera())
-
+    
     if (!camera) {
       return ;
     }
