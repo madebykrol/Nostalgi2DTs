@@ -4,6 +4,7 @@ export type AbstractConstructor<T> =  abstract new (...args: any[]) => T;
 
 export abstract class Container {
     abstract getByIdentifier<T>(identifier: string): T;
+    abstract getTypeForIdentifier(identifier: string): Constructor<unknown> | AbstractConstructor<unknown> | null;
     abstract registerSelf<T>(ctor: Constructor<T>, identifier: string|undefined): unknown;
     abstract registerSingleton<T, U extends T>(ctor: Constructor<T> | AbstractConstructor<T>, ctor2: Constructor<U>): void;
     abstract registerSingletonInstance<T>(ctor: Constructor<T> | AbstractConstructor<T>, instance: T): void

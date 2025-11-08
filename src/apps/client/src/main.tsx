@@ -19,7 +19,8 @@ import {
   Camera,
   OrthoCamera,
   GainChannel,
-  Container
+  Container,
+  Constructor
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { BombActor, DemoActor } from "@repo/example";
@@ -28,7 +29,7 @@ import { TiledObjectLayer } from "@repo/tiler";
 import { unmanaged } from 'inversify';
 import { PlayerController } from "./PlayerController";
 
-import { InversifyContainer, ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
+import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 import { GameMode } from "../../../packages/engine/game/gameMode";
 const App = () => {
 
@@ -56,7 +57,7 @@ const App = () => {
     .withDefaultRenderer(BaseActorRenderer)
     .withInputManager(DefaultInputManager)
     .withSoundManager(SoundManager)
-    .withGameMode(DefaultGameMode)
+    .withGameMode(ExampleTopDownRPGGameMode)
     .withActor(DemoActor)
     .withActor(GameTileMapActor, TileMapActorRenderer)
     .withActor(BombActor)
@@ -130,8 +131,6 @@ const App = () => {
 
   return (
   <div>
-
-
     <Header title="Rendered Engine" />
     <div className="card">
     <Canvas draw={draw} options={{ context: 'webgl2' }} />
@@ -154,15 +153,45 @@ class DefaultGameMode extends GameMode {
   playerControllerType: typeof PlayerController = PlayerController;
 }
 
+class ExampleTopDownRPGGameMode extends GameMode {
+  start(): void {
+    throw new Error("Method not implemented.");
+  }
+  stop(): void {
+    throw new Error("Method not implemented.");
+  }
+  playerControllerType: typeof PlayerController = PlayerController;
+
+}
+
 class GrasslandsMap extends Level {
+
+  private tileMapActor: GameTileMapActor;
+  private container: Container;
   constructor(container: Container) {
     super();
-    const tileMapActor = new GameTileMapActor("/Nostalgi2DTs/client/grasslands.tmx", new Parser(), container);
 
-    this.addActor(tileMapActor);
-    
-    const mapCenter = tileMapActor.getWorldCenter();
-    tileMapActor.setPosition(mapCenter);
+    this.name = "Grasslands";
+    this.tileMapActor = new GameTileMapActor("/Nostalgi2DTs/client/grasslands.tmx", new Parser(), container);
+
+    this.container = container;
+
+    this.addActor(this.tileMapActor);
+    // const mapCenter = tileMapActor.getWorldCenter();
+    // tileMapActor.setPosition(mapCenter);
+  }
+
+  // get
+  getGravity(): Vector2 {
+    return new Vector2(
+      this.tileMapActor.getMap()?.properties?.GravityX as number ?? 0,
+      this.tileMapActor.getMap()?.properties?.GravityY as number ?? 0
+    );
+  }
+
+  getGameMode(): Constructor<GameMode> | undefined {
+    console.log(this.tileMapActor.getMap()?.properties?.GameMode);
+    return this.container.getTypeForIdentifier(this.tileMapActor.getMap()?.properties?.GameMode as  string) as Constructor<GameMode> | undefined;
   }
 }
 

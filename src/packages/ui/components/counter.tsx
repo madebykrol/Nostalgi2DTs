@@ -23,7 +23,7 @@ export const Counter = () => {
 
   return (
     <>
-      <p>FPS: {fps.toFixed(0)}, Actors: {engine?.getActorsCount()}</p>
+      <p>FPS: {fps.toFixed(0)}, Actors: {engine?.getActorsCount()} Level: {engine?.getCurrentLevel()?.name}</p>
     </>
   );
 };

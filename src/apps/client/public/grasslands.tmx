@@ -3,7 +3,7 @@
  <properties>
   <property name="GameMode" value="ExampleTopDownRPGGameMode"/>
   <property name="GravityX" type="float" value="0"/>
-  <property name="GravityY" type="float" value="0"/>
+  <property name="GravityY" type="float" value="10"/>
   <property name="Type" value="GrassLandLevel"/>
  </properties>
  <tileset firstgid="1" name="Cliff_tileset" tilewidth="32" tileheight="32" tilecount="240" columns="15">
