@@ -1,32 +1,32 @@
-import { DefaultInputManager } from "@repo/client";
-import { DemoActor } from "../example/actors/demo";
 import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
 import { PlayerState } from "./game";
 import { Endpoint } from "./network";
 import { ActorRenderer } from "./rendering";
-import { Constructor, Container } from "./utils";
+import { Constructor, Container, InversifyContainer } from "./utils";
 import { Actor, World } from "./world";
 import { InputManager } from "./input";
+import { GameMode } from "./game/gameMode";
 
 export class EngineBuilder<TSocket, TReq> {
-    withInputManager<T extends DefaultInputManager>(DefaultInputManager: Constructor<T>) : EngineBuilder<TSocket, TReq> {
-      this.container.registerSingleton(InputManager, DefaultInputManager);
-      return this;
-    }
+   
     // Implementation of the EngineBuilder class
-
-    private world: World | null = null;
-    private endPoint: Endpoint<TSocket, TReq> | undefined = undefined;
     private networkMode: EngineNetworkMode = "singleplayer";
-    private soundManager: SoundManager | null = null;
-    private playerControllerCtor: Constructor<any> | null = null;
     private localPlayerName = "Player";
     private localPlayerId = "player1"
     private useDebugLogging: boolean = false;
+    public readonly container: Container;
 
-    constructor(private container: Container) {
+    constructor(container?: Container) {
         // Initialize any necessary properties
+        if (container) {
+            this.container = container;
+            
+        } else {
+            this.container = new InversifyContainer();
+        }
+
+        this.container.registerSingletonInstance(Container, this.container);
     }
 
     withEndpointInstance(endpoint: Endpoint<TSocket, TReq>): EngineBuilder<TSocket, TReq> {
@@ -41,21 +41,27 @@ export class EngineBuilder<TSocket, TReq> {
 
     withPlayerController<TPlayerController>(ctor: Constructor<TPlayerController>): EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton<TPlayerController, TPlayerController>(ctor, ctor);
+        return this;
+    }
 
-        this.playerControllerCtor = ctor;
+    withGameMode(ctor: Constructor<GameMode>) : EngineBuilder<TSocket, TReq> 
+    {
+        this.container.registerSelf<GameMode>(ctor, ctor.name);
+        return this;
+    }
+
+    withInputManager<T extends InputManager>(DefaultInputManager: Constructor<T>) : EngineBuilder<TSocket, TReq> {
+        this.container.registerSingleton(InputManager, DefaultInputManager);
         return this;
     }
 
     withWorld<T extends World>(ctor: Constructor<T>): EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton<World, T>(World, ctor);
-        this.world = this.container.get<T>(ctor);
         return this;
     }
 
-
     asLocalSinglePlayer(playerName: string, playerId: string): EngineBuilder<TSocket, TReq> {
         // Configure the engine for local single-player mode
-        this.endPoint = undefined;
         this.networkMode = "singleplayer";
         this.localPlayerName = playerName;
         this.localPlayerId = playerId;
@@ -64,7 +70,6 @@ export class EngineBuilder<TSocket, TReq> {
 
     withNetworkEndpoint(endpoint: Endpoint<TSocket, TReq>, mode: EngineNetworkMode): EngineBuilder<TSocket, TReq> {
         // Configure the engine with a network endpoint
-        this.endPoint = endpoint;
         this.networkMode = mode;
         return this;
     }
@@ -101,7 +106,6 @@ export class EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton(Engine<TSocket, TReq>, ctor);
         const engine = this.container.get(Engine<TSocket, TReq>) as TEngine;
         engine.setIsDebug(this.useDebugLogging);
-        engine.setControllerTypeForPlayer(this.playerControllerCtor);
         if (this.networkMode === "singleplayer") {
             engine.addPlayer(new PlayerState(this.localPlayerId, this.localPlayerName));
         }

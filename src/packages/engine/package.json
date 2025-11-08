@@ -10,7 +10,10 @@
     "lint": "eslint \"**/*.ts\""
   },
   "dependencies": {
-    "uuid": "13.0.0"
+    "uuid": "13.0.0",
+    "@repo/client": "*",
+    "inversify": "^7.1.1",
+    "reflect-metadata": "0.2.2"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

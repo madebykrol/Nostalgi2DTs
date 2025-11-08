@@ -11,7 +11,18 @@ import { Frustum } from "../engine/camera/frustum";
 import { PlanckPhysicsBody } from "./planckPhysicsBody";
 
 export class PlanckWorld extends World {
-   
+    
+    private world: PWorld;
+
+    constructor(settings?: WorldSettings|undefined) {
+        super(settings);
+
+        this.world = new PWorld({
+            gravity: settings?.gravity ? new Vec2(settings.gravity.x, settings.gravity.y) : new Vec2(0, 0),
+            allowSleep: settings?.allowSleep ?? true
+        });
+    }
+
     aabbCast<T extends Actor>(point: Vector2, includeStatic: boolean, includeDynamic: boolean, ctor: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)): Actor[] {
         const hits = new Map<T, number>();
 
@@ -179,14 +190,4 @@ export class PlanckWorld extends World {
         }
     }
 
-    private world: PWorld;
-
-    constructor(settings: WorldSettings|undefined) {
-        super(settings);
-
-        this.world = new PWorld({
-            gravity: settings?.gravity ? new Vec2(settings.gravity.x, settings.gravity.y) : new Vec2(0, 0),
-            allowSleep: settings?.allowSleep ?? true
-        });
-    }
 }
