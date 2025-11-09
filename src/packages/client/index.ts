@@ -46,8 +46,9 @@ export class DefaultInputManager extends InputManager {
       if(!this.checkGameScreen(event))
         return;
 
-      const { x, y } = this.calculateMousePosition(event);
-      this.emit("mouseUp", {screenX : x, screenY: y, worldX: x, worldY: y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
+      const { x, y, width, height } = this.calculateMousePosition(event);
+      const worldPosition = this.getWorldPosition(x, y, width, height);
+      this.emit("mouseUp", {screenX : x, screenY: y, worldX: worldPosition?.x ?? x, worldY: worldPosition?.y ?? y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
     });
     window.addEventListener("wheel", (event) => {
 

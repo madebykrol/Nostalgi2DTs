@@ -12,8 +12,6 @@ export class EngineBuilder<TSocket, TReq> {
    
     // Implementation of the EngineBuilder class
     private networkMode: EngineNetworkMode = "singleplayer";
-    private localPlayerName = "Player";
-    private localPlayerId = "player1"
     private useDebugLogging: boolean = false;
     public readonly container: Container;
 
@@ -63,8 +61,6 @@ export class EngineBuilder<TSocket, TReq> {
     asLocalSinglePlayer(playerName: string, playerId: string): EngineBuilder<TSocket, TReq> {
         // Configure the engine for local single-player mode
         this.networkMode = "singleplayer";
-        this.localPlayerName = playerName;
-        this.localPlayerId = playerId;
         return this;
     }
 
@@ -106,9 +102,6 @@ export class EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton(Engine<TSocket, TReq>, ctor);
         const engine = this.container.get(Engine<TSocket, TReq>) as TEngine;
         engine.setIsDebug(this.useDebugLogging);
-        if (this.networkMode === "singleplayer") {
-            engine.addPlayer(new PlayerState(this.localPlayerId, this.localPlayerName));
-        }
 
         return engine;
     }

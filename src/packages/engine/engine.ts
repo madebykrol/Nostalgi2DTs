@@ -323,8 +323,6 @@ export class Engine<TSocket, TReq> {
 
 
     private renderActorDebug(actor: Actor, gl: WebGL2RenderingContext, skipChildren?: boolean): void {
-        
-
         const renderer = this.getRendererForActor(actor);
 
         if (!renderer) {
@@ -455,23 +453,17 @@ export class Engine<TSocket, TReq> {
 
         this.rootObject.addChildren(level.getActors());
 
+        await this.spawnLevelActors();
+        
+        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
+        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
+                
+        this.world.setGravity(level.getGravity());
+        
         for(const player of this.players) {
             if(this.controllerTypeForPlayer)
                 player.setController(this.container.get(this.controllerTypeForPlayer));
         }
-
-        const actors = this.rootObject.getChildrenOfType(Actor);
-
-        await Promise.all(actors.map(actor => actor.onLoad()));
-
-        console.log("Derp:", level.getGameMode()?.name);
-
-        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
-        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
-        
-        this.world.setGravity(level.getGravity());
-
-        await this.spawnLevelActors();
     }
 
     // Load a level from a given path (URL or local path)
@@ -503,7 +495,6 @@ export class Engine<TSocket, TReq> {
             await actor.onLoad();
         }
 
-
         await this.spawnLevelActors();
     }
 
@@ -525,7 +516,6 @@ export class Engine<TSocket, TReq> {
 
         if(position !== undefined)
             actor.setPosition(position);
-
 
         this.world.spawnActor(actor, actor.getPosition());
         const children = actor.getChildrenOfType(Actor);
@@ -562,6 +552,9 @@ export class Engine<TSocket, TReq> {
 
     private async spawnLevelActors(): Promise<void> {
         const actors = this.rootObject.getChildrenOfType(Actor);
+
+        await Promise.all(actors.map(actor => actor.onLoad()));
+
         for (const actor of actors) {
             await this.spawnActorInstance(actor);
             actor.onSpawned();

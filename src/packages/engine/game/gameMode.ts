@@ -17,4 +17,15 @@ export abstract class GameMode {
     }
 
     tick(deltaTime: number): void {}
+
+    public readonly _onGameStart = (): void => {
+        
+        
+     
+        this.onGameStart();
+    }
+
+    onGameStart(): void {
+        // Custom logic for when the game starts
+    }
 }

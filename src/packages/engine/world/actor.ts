@@ -51,6 +51,10 @@ export abstract class Actor extends BaseObject {
         this.position = new Vector2(0, 0);
     }
 
+    /**
+     * This method is called before the actor is being spawned.
+     * Used to load any necessary resources.
+     */
     async onLoad(): Promise<void> {
         
     }
