@@ -20,7 +20,8 @@ import {
   OrthoCamera,
   GainChannel,
   Container,
-  Constructor
+  Constructor,
+  PlayerState
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { BombActor, DemoActor } from "@repo/example";
@@ -107,6 +108,10 @@ const App = () => {
       } catch (error) {
         console.error("Failed to initialize level", error);
       }
+
+      engine.addPlayer(new PlayerState("local_player", "LocalPlayer"));
+
+      console.log(engine.getLocalPlayerState())
 
       engine.getLocalPlayerState()?.getController()?.possess(demoActor);
     };

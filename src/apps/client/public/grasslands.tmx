@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="64" height="64" tilewidth="32" tileheight="32" infinite="0" nextlayerid="14" nextobjectid="2811">
+<map version="1.10" tiledversion="1.10.2" orientation="orthogonal" renderorder="right-down" width="64" height="64" tilewidth="32" tileheight="32" infinite="0" nextlayerid="15" nextobjectid="2815">
  <properties>
   <property name="GameMode" value="ExampleTopDownRPGGameMode"/>
   <property name="GravityX" type="float" value="0"/>
-  <property name="GravityY" type="float" value="10"/>
+  <property name="GravityY" type="float" value="0"/>
   <property name="Type" value="GrassLandLevel"/>
  </properties>
  <tileset firstgid="1" name="Cliff_tileset" tilewidth="32" tileheight="32" tilecount="240" columns="15">
@@ -6657,7 +6657,7 @@
    </properties>
    <polygon points="0,0 -12.7525,15.6531 -16.0792,36.1225 -0.554455,57.7959 15.5247,59 38.2574,36.1225 39.9208,16.8572 24.396,1.80612"/>
   </object>
-  <object id="1164" x="779.67" y="1065" width="44" height="44">
+  <object id="1164" name="SoundActor" x="779.67" y="1065" width="44" height="44">
    <properties>
     <property name="Falloff Distance" type="float" value="4"/>
     <property name="Loop" type="bool" value="true"/>
@@ -6667,6 +6667,15 @@
     <property name="Type" value="com.nostalgi.engine.World.AmbientSoundActor"/>
     <property name="Volume" type="float" value="100"/>
    </properties>
+   <ellipse/>
+  </object>
+  <object id="2813" name="PlayerStart1" x="1158" y="758">
+   <properties>
+    <property name="Type" value="PlayerStart"/>
+   </properties>
+   <ellipse/>
+  </object>
+  <object id="2814" x="2250" y="654">
    <ellipse/>
   </object>
  </objectgroup>
