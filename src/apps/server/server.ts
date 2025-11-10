@@ -3,22 +3,8 @@ import { WebSocketServer, WebSocket } from "ws";
 
 import { Actor, Container, Engine, EngineBuilder, inject, Level, Url, Vector2, World } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
-import { Endpoint, ServerReplicationManager, ClientInputMessage, ClientToServerMessage, ActorUpdateMessage } from "../../packages/engine/network";
+import { Endpoint, ServerReplicationManager, ClientInputMessage } from "../../packages/engine/network";
 import { DemoActor } from "@repo/example";
-
-const stringify = (obj: any): string => {
-  var seen: any[] = [];
-
-  return JSON.stringify(obj, function(key, val) {
-    if (val != null && typeof val == "object") {
-          if (seen.indexOf(val) >= 0) {
-              return;
-          }
-          seen.push(val);
-    }
-    return val;
-});
-}
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -27,7 +13,7 @@ class UserSession {
   public socket: WebSocket;
   public lastSeen: number;
   public playerActor: Actor | null = null;
-  // Lägg till mer session-relaterad data här
+  
   constructor(id: string, socket: WebSocket) {
     this.id = id;
     this.socket = socket;
@@ -36,21 +22,17 @@ class UserSession {
 }
 
 class Server extends Endpoint<WebSocket, http.IncomingMessage>{
-
   private wss: WebSocketServer | undefined;
   private webServer: http.Server | undefined;
   private sessions: Map<string, UserSession> = new Map();
-  private replicationManager: ServerReplicationManager = new ServerReplicationManager();
+  private messageHandlers: Map<string, (sessionId: string, data: any) => void> = new Map();
 
-  protected physicsTickRate: number = 30; // ticks per second
-  protected snapshotRate: number = 30; // snapshots per second
-
-  constructor(adress: string, port: number) {
-    super(adress, port);
+  constructor(address: string, port: number) {
+    super(address, port);
   }
 
-  getReplicationManager(): ServerReplicationManager {
-    return this.replicationManager;
+  getSessions(): Map<string, UserSession> {
+    return this.sessions;
   }
 
   send(command: string, data: any): void {
@@ -70,13 +52,18 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
     }
   }
 
-  broadcastActorUpdates(updates: ActorUpdateMessage): void {
-    const message = JSON.stringify(updates);
+  broadcast(message: any): void {
+    const messageStr = JSON.stringify(message);
     this.sessions.forEach((session) => {
       if (session.socket.readyState === WebSocket.OPEN) {
-        session.socket.send(message);
+        session.socket.send(messageStr);
       }
     });
+  }
+
+  // Register a handler for a specific message type
+  onMessage<T>(messageType: string, callback: (sessionId: string, data: T) => void): void {
+    this.messageHandlers.set(messageType, callback as any);
   }
 
   cleanup(): void {
@@ -87,7 +74,6 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
       this.webServer.close();
     }
   }
-
 
   async connect(callback: (socket: WebSocket, req: http.IncomingMessage) => void): Promise<void> {
     this.webServer = http.createServer((_req, res) => {
@@ -106,16 +92,14 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
 
     console.log("WebSocket server starting...");
    
-    this.wss.on("connection", callback);
+    this.wss.on("connection", (socket, req) => {
+      this.handleConnection(socket, req);
+      callback(socket, req);
+    });
   }
 
-  disconnect(): Promise<void> {
-    return Promise.resolve();
-  }
-
-  onConnection(socket: WebSocket, req: http.IncomingMessage): void {
+  private handleConnection(socket: WebSocket, req: http.IncomingMessage): void {
     const params = new URL(req.url ?? "", "http://example.com/");
-    console.log(params);
     const userId = params.searchParams.get("userId") ?? "anonymous";
 
     // Register session
@@ -126,24 +110,15 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
 
     socket.on("message", (data) => {
       try {
-        const message = JSON.parse(data.toString()) as ClientToServerMessage;
-        console.log(`Message from ${sess.id}:`, message.type);
+        const message = JSON.parse(data.toString());
+        const messageType = message.type;
         
-        if (message.type === "client:input") {
-          // Handle input-based replication
-          const result = this.replicationManager.processClientInput(message as ClientInputMessage);
-          
-          if (!result.success) {
-            // Send error to client
-            this.sendToSession(sess.id, {
-              type: "error",
-              code: result.error,
-              message: `Failed to process input: ${result.error}`
-            });
-          }
-        } else if (message.type === "client:ready") {
-          console.log(`Client ${sess.id} is ready`);
-          // TODO: Send world snapshot to client
+        // Route to registered handler
+        const handler = this.messageHandlers.get(messageType);
+        if (handler) {
+          handler(sess.id, message);
+        } else {
+          console.log(`No handler for message type: ${messageType}`);
         }
       } catch (error) {
         console.error(`Error parsing message from ${sess.id}:`, error);
@@ -157,7 +132,7 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
     socket.on("close", () => {
       this.sessions.delete(sess.id);
       console.log(`Connection closed: ${sess.id}`);
-      // TODO: Despawn player actor
+      this.onDisconnection();
     });
 
     socket.on("error", (err) => {
@@ -165,14 +140,9 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
     });
   }
 
-  snapshotTick() {
-    // Broadcast actor updates for server-owned actors
-    const updates = this.replicationManager.getServerOwnedActorUpdates();
-    if (updates.updates.length > 0) {
-      this.broadcastActorUpdates(updates);
-    }
+  disconnect(): Promise<void> {
+    return Promise.resolve();
   }
-
 }
 
 // // Håll koll på aktiva klienter och hjärtslag
@@ -277,11 +247,38 @@ class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
   constructor(@inject(World)world: World, @inject(Endpoint<WebSocket, http.IncomingMessage>) endpoint: Endpoint<WebSocket, http.IncomingMessage> | undefined, @inject(Container)container: Container) {
     super(world, endpoint, "server", container);
     
-    // Get replication manager from server
-    if (endpoint && endpoint instanceof Server) {
-      this.replicationManager = endpoint.getReplicationManager();
-    } else {
-      this.replicationManager = new ServerReplicationManager();
+    this.replicationManager = new ServerReplicationManager();
+    this.setupNetworkHandlers();
+  }
+
+  private setupNetworkHandlers(): void {
+    const endpoint = this.netEndpoint;
+    if (!endpoint || !(endpoint instanceof Server)) {
+      return;
+    }
+
+    // Register message handlers using the Endpoint pattern
+    endpoint.onMessage<ClientInputMessage>("client:input", (sessionId, message) => {
+      this.handleClientInput(sessionId, message);
+    });
+
+    endpoint.onMessage<any>("client:ready", (sessionId, message) => {
+      console.log(`Client ${sessionId} is ready`);
+      // TODO: Send world snapshot
+    });
+  }
+
+  private handleClientInput(sessionId: string, message: ClientInputMessage): void {
+    const result = this.replicationManager.processClientInput(message);
+    
+    if (!result.success) {
+      // Send error to client using endpoint
+      const endpoint = this.netEndpoint as Server;
+      endpoint.sendToSession(sessionId, {
+        type: "error",
+        code: result.error,
+        message: `Failed to process input: ${result.error}`
+      });
     }
   }
 
@@ -305,15 +302,11 @@ class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
     // Broadcast all actor updates
     const updates = this.replicationManager.getActorUpdates();
     if (updates.updates.length > 0) {
-      const endpoint = this.getEndpoint();
+      const endpoint = this.netEndpoint;
       if (endpoint && endpoint instanceof Server) {
-        endpoint.broadcastActorUpdates(updates);
+        endpoint.broadcast(updates);
       }
     }
-  }
-
-  private getEndpoint(): Endpoint<WebSocket, http.IncomingMessage> | undefined {
-    return this.netEndpoint;
   }
 
   // Override spawnActor to register actors for replication
