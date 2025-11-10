@@ -1,4 +1,4 @@
-import { Actor, MeshComponent, PhysicsComponent, Quad, render } from "@repo/engine";
+import { Actor, MeshComponent, PhysicsComponent, Quad } from "@repo/engine";
 import { ActorRenderer } from "../engine/rendering/renderer";
 import { Camera } from "../engine/camera/Camera";
 import { VertexShader } from "../engine/rendering/vertex";
@@ -8,7 +8,6 @@ import { BaseActorFragmentShader } from "./shaders/baseActorFragmentShader";
 import { BoundingVolume } from "../engine/physics";
 import { Vector2, Vertex2 } from "../engine/math";
 
-@render(Actor, true)
 export class BaseActorRenderer extends ActorRenderer<Actor> {
     private vertexShader: VertexShader = new BaseFallbackActorVertexShader();
     private fragmentShader: FragmentShader = new BaseActorFragmentShader();

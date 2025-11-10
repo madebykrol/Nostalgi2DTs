@@ -23,7 +23,7 @@ export const Counter = () => {
 
   return (
     <>
-      <p>FPS: {fps.toFixed(0)}, Actors: {engine?.getActorsCount()}</p>
+      <p>FPS: {fps.toFixed(0)}, Actors: {engine?.getActorsCount()} Level: {engine?.getCurrentLevel()?.name} MousePos: {(engine?.getLocalPlayerState()?.getController() as any)?.lastMousePosition.x.toFixed(2)}, {(engine?.getLocalPlayerState()?.getController() as any)?.lastMousePosition.y.toFixed(2)}</p>
     </>
   );
 };

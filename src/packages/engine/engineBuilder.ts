@@ -1,69 +1,124 @@
 import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
 import { Endpoint } from "./network";
-import { Constructor, IContainer } from "./utils";
-import { World } from "./world";
+import { ActorRenderer } from "./rendering";
+import { Constructor, Container, InversifyContainer } from "./utils";
+import { Actor, World } from "./world";
+import { InputManager } from "./input";
+import { GameMode } from "./game/gameMode";
 
 export class EngineBuilder<TSocket, TReq> {
+   
     // Implementation of the EngineBuilder class
-
-    private world: World | null = null;
-    private endPoint: Endpoint<TSocket, TReq> | undefined = undefined;
     private networkMode: EngineNetworkMode = "singleplayer";
-    private soundManager: SoundManager | null = null;
+    private useDebugLogging: boolean = false;
+    public readonly container: Container;
 
-    constructor(private container: IContainer) {
+    constructor(container?: Container) {
         // Initialize any necessary properties
+        if (container) {
+            this.container = container;
+            
+        } else {
+            this.container = new InversifyContainer();
+        }
+
+        this.container.registerSingletonInstance(Container, this.container);
     }
 
-    withWorld(world: World): EngineBuilder<TSocket, TReq> {
+    withEndpointInstance(endpoint: Endpoint<TSocket, TReq>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingletonInstance<Endpoint<TSocket, TReq>>(Endpoint<TSocket, TReq>, endpoint);
+        return this;
+    }
+
+    withWorldInstance(world: World): EngineBuilder<TSocket, TReq> {
         this.container.registerSingletonInstance<World>(World, world);
-        this.world = world;
         return this;
     }
 
-    withWorldType<T extends World>(ctor: Constructor<T>): EngineBuilder<TSocket, TReq> {
+    withPlayerController<TPlayerController>(ctor: Constructor<TPlayerController>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingleton<TPlayerController, TPlayerController>(ctor, ctor);
+        return this;
+    }
+
+    withGameMode(ctor: Constructor<GameMode>) : EngineBuilder<TSocket, TReq> 
+    {
+        this.container.registerSelf<GameMode>(ctor, ctor.name);
+        return this;
+    }
+
+    withInputManager<T extends InputManager>(DefaultInputManager: Constructor<T>) : EngineBuilder<TSocket, TReq> {
+        this.container.registerSingleton(InputManager, DefaultInputManager);
+        return this;
+    }
+
+    withWorld<T extends World>(ctor: Constructor<T>): EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton<World, T>(World, ctor);
-        this.world = this.container.get<T>(ctor);
         return this;
     }
 
-
-    addSingleton<TAbstract, TConcrete extends TAbstract>(ctor: Constructor<TConcrete>, ctor2: Constructor<TConcrete>): EngineBuilder<TSocket, TReq> {
-        this.container.registerSingleton<TAbstract, TConcrete>(ctor, ctor2);
-        return this;
-    }
-
-    addSingletonInstance<TAbstract>(instance: TAbstract): EngineBuilder<TSocket, TReq> {
-        return this;
-    }
-
-    asLocalSinglePlayer(): EngineBuilder<TSocket, TReq> {
+    asSinglePlayer(_playerName: string, _playerId: string): EngineBuilder<TSocket, TReq> {
         // Configure the engine for local single-player mode
-        this.endPoint = undefined;
+        this.networkMode = "singleplayer";
         return this;
     }
 
-    withNetworkEndpoint(endpoint: Endpoint<TSocket, TReq>, mode: EngineNetworkMode): EngineBuilder<TSocket, TReq> {
+    asServer(_serverName: string): EngineBuilder<TSocket, TReq> {
+        // Configure the engine for server mode
+        this.networkMode = "server";
+        return this;
+    }
+
+    asClient(): EngineBuilder<TSocket, TReq> {
+        // Configure the engine for client mode
+        this.networkMode = "client";
+        return this;
+    }
+
+    withNetworkEndpoint(_endpoint: Endpoint<TSocket, TReq>, mode: EngineNetworkMode): EngineBuilder<TSocket, TReq> {
         // Configure the engine with a network endpoint
-        this.endPoint = endpoint;
+
+        this.container.registerSingletonInstance<Endpoint<TSocket, TReq>>(Endpoint<TSocket, TReq>, _endpoint);
         this.networkMode = mode;
         return this;
     }
 
-    withSoundManager(soundManager: SoundManager): EngineBuilder<TSocket, TReq> {
-        this.container.registerSingletonInstance<SoundManager>(SoundManager, soundManager);
-        this.soundManager = soundManager;
+    withSoundManager(ctor: Constructor<SoundManager>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingleton(ctor, ctor);
         return this;
     }
 
-    build(): Engine<TSocket, TReq> {
+    withDefaultRenderer(renderer: Constructor<ActorRenderer<Actor>>): EngineBuilder<TSocket, TReq> {
+      this.container.registerSelf(renderer, "BaseActorRenderer");
+      return this;
+    }
 
-        if (!this.world) {
-            throw new Error("World must be set before building the engine.");
+    withDebugLogging() : EngineBuilder<TSocket, TReq> {
+      this.useDebugLogging = true;
+      return this;
+    }
+
+    withActor<TActor extends Actor>(ctor: Constructor<TActor>, renderer?: Constructor<ActorRenderer<TActor>>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSelf<TActor>(ctor, ctor.name);
+
+        if (renderer) {
+            this.container.registerSelf(renderer, ctor.name + "Renderer");
+            this.container.get(ActorRenderer<TActor>);
         }
 
-        // Build and return an Engine instance
-        return new Engine<TSocket, TReq>(this.world, this.endPoint, this.networkMode);
+        return this;
+    }
+
+
+    build<TEngine extends Engine<TSocket, TReq>>(ctor: Constructor<TEngine>): TEngine {
+
+        this.container.registerSingleton(Engine<TSocket, TReq>, ctor);
+        const engine = this.container.get(Engine<TSocket, TReq>) as TEngine;
+        engine.setNetworkMode(this.networkMode);
+        engine.setIsDebug(this.useDebugLogging);
+
+
+
+        return engine;
     }
 }

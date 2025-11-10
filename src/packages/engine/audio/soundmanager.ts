@@ -25,7 +25,7 @@ export class SoundHandle {
 
         source.loop = loop;
 
-        source.start(0);
+        source.start(start);
     }
 }
 /**
@@ -189,6 +189,7 @@ export class SoundManager {
      * Get the audio context (useful for advanced audio operations)
      */
     getAudioContext(): AudioContext | null {
+        this.initAudioContext();
         return this.audioContext;
     }
 

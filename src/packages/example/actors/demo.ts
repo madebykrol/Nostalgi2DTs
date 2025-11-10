@@ -1,14 +1,13 @@
-import { actor, Actor, CircleCollisionComponent, CollisionComponent, PhysicsComponent } from "@repo/engine";
+import { Actor, CircleCollisionComponent, PhysicsComponent } from "@repo/engine";
 import { PolygonCollisionComponent } from "../../engine/world/circleCollisionComponent";
 
-@actor()
 export class BombActor extends Actor {
     tick(_deltaTime: number): void {
         
     }
 
-    constructor(name: string) {
-        super(name);
+    constructor() {
+        super();
         this.shouldTick = true;
         const physics = this.addComponent(new PhysicsComponent());
         physics.setSimulationState(true, "dynamic");
@@ -21,18 +20,21 @@ export class BombActor extends Actor {
 }
 
 
-@actor()
 export class DemoActor extends Actor {
     
-    constructor(name: string) {
-        super(name);
+    constructor() {
+        super();
         this.shouldTick = true;
         const physics = this.addComponent(new PhysicsComponent());
         physics.setSimulationState(true, "dynamic");
 
-        const collisionComponent = new CircleCollisionComponent(1);
+        const collisionComponent = new CircleCollisionComponent(0.5);
         
         this.addComponent(collisionComponent);
+    }
+
+    initialize(): void {
+        console.log("DemoActor initialized with id:", this.getId());
     }
 
     tick(_deltaTime: number): void {

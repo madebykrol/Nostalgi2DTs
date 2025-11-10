@@ -1,7 +1,7 @@
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 
-import { Actor, Engine, Level, Url, Vector2 } from "@repo/engine";
+import { Actor, Container, Engine, EngineBuilder, inject, Level, Url, Vector2, World } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { Endpoint } from "../../packages/engine/network/endpoint";
 import { DemoActor } from "@repo/example";
@@ -226,16 +226,35 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
 
 const server = new Server("localhost", PORT);
 
-const engine = new Engine(new PlanckWorld({gravity: new Vector2(0, -10), allowSleep: true}), server, "server");
+class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
+  // Implement server-specific engine logic here
+  /**
+   *
+   */
+  constructor(@inject(World)world: World, @inject(Endpoint<WebSocket, http.IncomingMessage>) endpoint: Endpoint<WebSocket, http.IncomingMessage> | undefined, @inject(Container)container: Container) {
+    super(world, endpoint, "server", container);
+    
+  }
+}
+
+var builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
+builder
+  .withWorldInstance(new PlanckWorld())
+  .withEndpointInstance(server)
+  .withActor(DemoActor)
+  .withDebugLogging()
+  .asServer("ServerEngine");
+
+const engine = builder.build(ServerEngine);
 
 engine.startup();
 const level = new Level();
-const demoActor = new DemoActor("DemoActor");
+const demoActor = new DemoActor();
 
-demoActor.addChild(new DemoActor("ChildActor1"));
-demoActor.addChild(new DemoActor("ChildActor2"));
+demoActor.addChild(new DemoActor());
+demoActor.addChild(new DemoActor());
 
-const demo2Actor = new DemoActor("DemoActor2");
+const demo2Actor = new DemoActor();
 demo2Actor.tickGroup = "post-physics";
 
 level.addActor(demoActor);
