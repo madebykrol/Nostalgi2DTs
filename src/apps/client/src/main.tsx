@@ -8,17 +8,14 @@ import {
   Level,
   Vector2,
   Actor, 
-  actor, 
   PolygonCollisionComponent, 
   ActorRenderer, 
   PhysicsComponent, 
   Vertex2,   
   EngineBuilder, 
   SoundManager,
-  createBoinkSound,
   Camera,
   OrthoCamera,
-  GainChannel,
   Container,
   Constructor,
   PlayerState
@@ -29,7 +26,6 @@ import { Parser, TiledPoint, TileMapActor, TileMapActorRenderer, type TileMapAct
 import { TiledObjectLayer } from "@repo/tiler";
 import { unmanaged } from 'inversify';
 import { PlayerController } from "./PlayerController";
-
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 import { GameMode } from "../../../packages/engine/game/gameMode";
 const App = () => {
@@ -65,7 +61,7 @@ const App = () => {
     .withActor(WallActor, WallActorRenderer)
     .withPlayerController(PlayerController)
     .withDebugLogging()
-    .asLocalSinglePlayer("LocalPlayer", "local_player");
+    .asSinglePlayer("LocalPlayer", "local_player");
 
   const e = builder.build(ClientEngine);
   e.startup();
@@ -78,8 +74,6 @@ const App = () => {
   const [level] = useState(new GrasslandsMap(builder.container));
 
   useEffect(() => {
-    let disposed = false;
-
     const demoActor = new DemoActor();
 
     demoActor.layer = 5;
@@ -119,7 +113,6 @@ const App = () => {
     setupLevel();
 
     return () => {
-      disposed = true;
     };
   }, [engine, level]);
 
@@ -147,16 +140,6 @@ const App = () => {
 )};
 
 createRoot(document.getElementById("app")!).render(<App />);
-
-class DefaultGameMode extends GameMode {
-  start(): void {
-    throw new Error("Method not implemented.");
-  }
-  stop(): void {
-    throw new Error("Method not implemented.");
-  }
-  playerControllerType: typeof PlayerController = PlayerController;
-}
 
 class ExampleTopDownRPGGameMode extends GameMode {
   start(): void {
@@ -232,7 +215,7 @@ class GameTileMapActor extends TileMapActor {
 
       console.log("Processing walls for layer:", layer.name);
 
-      layer.objects.forEach((object, index) => {
+      layer.objects.forEach((object, _index) => {
           if (!object.visible) {
               return;
           }

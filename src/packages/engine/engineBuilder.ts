@@ -1,6 +1,5 @@
 import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
-import { PlayerState } from "./game";
 import { Endpoint } from "./network";
 import { ActorRenderer } from "./rendering";
 import { Constructor, Container, InversifyContainer } from "./utils";
@@ -58,14 +57,28 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-    asLocalSinglePlayer(playerName: string, playerId: string): EngineBuilder<TSocket, TReq> {
+    asSinglePlayer(_playerName: string, _playerId: string): EngineBuilder<TSocket, TReq> {
         // Configure the engine for local single-player mode
         this.networkMode = "singleplayer";
         return this;
     }
 
-    withNetworkEndpoint(endpoint: Endpoint<TSocket, TReq>, mode: EngineNetworkMode): EngineBuilder<TSocket, TReq> {
+    asServer(_serverName: string): EngineBuilder<TSocket, TReq> {
+        // Configure the engine for server mode
+        this.networkMode = "server";
+        return this;
+    }
+
+    asClient(): EngineBuilder<TSocket, TReq> {
+        // Configure the engine for client mode
+        this.networkMode = "client";
+        return this;
+    }
+
+    withNetworkEndpoint(_endpoint: Endpoint<TSocket, TReq>, mode: EngineNetworkMode): EngineBuilder<TSocket, TReq> {
         // Configure the engine with a network endpoint
+
+        this.container.registerSingletonInstance<Endpoint<TSocket, TReq>>(Endpoint<TSocket, TReq>, _endpoint);
         this.networkMode = mode;
         return this;
     }
@@ -101,7 +114,10 @@ export class EngineBuilder<TSocket, TReq> {
 
         this.container.registerSingleton(Engine<TSocket, TReq>, ctor);
         const engine = this.container.get(Engine<TSocket, TReq>) as TEngine;
+        engine.setNetworkMode(this.networkMode);
         engine.setIsDebug(this.useDebugLogging);
+
+
 
         return engine;
     }

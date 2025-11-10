@@ -1,4 +1,4 @@
-import { AbstractConstructor, Constructor } from "../utils";
+import { Constructor } from "../utils";
 import { Character } from "./character";
 import { Controller } from "./controller";
 import { PlayerState } from "./playerstate";
@@ -16,7 +16,7 @@ export abstract class GameMode {
         this.tick(deltaTime);
     }
 
-    tick(deltaTime: number): void {}
+    tick(_deltaTime: number): void {}
 
     public readonly _onGameStart = (): void => {
         

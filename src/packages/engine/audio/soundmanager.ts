@@ -25,7 +25,7 @@ export class SoundHandle {
 
         source.loop = loop;
 
-        source.start(0);
+        source.start(start);
     }
 }
 /**

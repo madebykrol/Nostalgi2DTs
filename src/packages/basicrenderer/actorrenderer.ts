@@ -1,4 +1,4 @@
-import { Actor, MeshComponent, PhysicsComponent, Quad, render } from "@repo/engine";
+import { Actor, MeshComponent, PhysicsComponent, Quad } from "@repo/engine";
 import { ActorRenderer } from "../engine/rendering/renderer";
 import { Camera } from "../engine/camera/Camera";
 import { VertexShader } from "../engine/rendering/vertex";

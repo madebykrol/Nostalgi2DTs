@@ -1,6 +1,6 @@
 
 import { BoundingVolume, CircleCollisionShapeDescriptor, CollisionShapeDescriptor, PolygonCollisionShapeDescriptor } from "../engine/physics";
-import { Actor, CollisionComponent } from "../engine/world";
+import { CollisionComponent } from "../engine/world";
 import { Vector2, Vertex2 } from "../engine/math";
 import { Vec2, Body, Fixture, Circle, Polygon } from "planck";
 

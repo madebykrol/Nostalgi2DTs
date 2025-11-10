@@ -6,7 +6,6 @@ import { Url, TimerManager, Constructor, Container } from "./utils";
 import { Vector2 } from "./math";
 import { Endpoint } from "./network/endpoint";
 import { InputManager } from "./input/inputmanager";
-import { listRendererForActor } from "./actorRegistroy";
 import { ActorRenderer } from "./rendering";
 import { GameMode } from "./game/gameMode";
 
@@ -17,6 +16,7 @@ class RootObject extends BaseObject {
 export type EngineNetworkMode = "client" | "server" | "singleplayer";
 
 export class Engine<TSocket, TReq> {
+
     afterRenderCallbacks: Map<string, (() => void)> = new Map();
     currentGameMode: GameMode | undefined;
 
@@ -65,6 +65,10 @@ export class Engine<TSocket, TReq> {
         protected netEndpoint: Endpoint<TSocket, TReq> | undefined,
         protected networkMode: EngineNetworkMode = "singleplayer", 
         protected container: Container) {
+    }
+
+    setNetworkMode(networkMode: EngineNetworkMode): void {
+        this.networkMode = networkMode;
     }
 
     setCurrentCamera(camera: Camera): void {
@@ -305,7 +309,7 @@ export class Engine<TSocket, TReq> {
             this.rendererCache.set(ctor, renderer);
         }
         if (renderer) {
-            const rendered = renderer.render(actor, this.currentCamera, gl, this.debugMeshes);
+            renderer.render(actor, this.currentCamera, gl, this.debugMeshes);
         }
     }
 

@@ -1,4 +1,4 @@
-import { actor, Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container } from "@repo/engine";
+import { Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container } from "@repo/engine";
 import { Parser, TiledMap, type TiledObject, TiledObjectLayer } from "./parser";
 
 export interface TileMapActorOptions {
@@ -14,7 +14,6 @@ export interface TileMapActorOptions {
     }) => Actor | Actor[] | null | undefined;
 }
 
-@actor()
 export class TileMapObjectActor extends Actor {
     constructor(
         public readonly objectData: TiledObject,
@@ -25,7 +24,6 @@ export class TileMapObjectActor extends Actor {
     }
 }
 
-@actor()
 export class WaterActor extends Actor {
     constructor() {
         super();
@@ -33,7 +31,6 @@ export class WaterActor extends Actor {
     }
 }
 
-@actor()
 export class WallActor extends Actor {
     private readonly collisionComponent: PolygonCollisionComponent;
 
@@ -54,7 +51,6 @@ export class WallActor extends Actor {
     }
 }
 
-@actor()
 export class TileMapActor extends Actor {
     private mapData: TiledMap | null = null;
     private objectActorsCreated = false;
@@ -246,7 +242,7 @@ export class TileMapActor extends Actor {
         console.log("Creating actors for layer:", layer.name);
         const scale = this.getWorldUnitsPerPixel();
 
-        layer.objects.forEach((object, index) => {
+        layer.objects.forEach((object, _index) => {
             let actorsToAdd: Actor[] = [];
             try {
                 if(object.properties.Type) {

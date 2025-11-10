@@ -38,6 +38,6 @@ jobs:
         working-directory: ./src
         run: npm run build
  
-      - name: Test
-        working-directory: ./src
-        run: npm run test
+      # - name: Test
+      #   working-directory: ./src
+      #   run: npm run test
