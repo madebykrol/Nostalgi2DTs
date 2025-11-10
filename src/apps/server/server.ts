@@ -304,9 +304,16 @@ class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
   private networkTick(): void {
     // Broadcast all actor updates
     const updates = this.replicationManager.getActorUpdates();
-    if (updates.updates.length > 0 && this.netEndpoint instanceof Server) {
-      this.netEndpoint.broadcastActorUpdates(updates);
+    if (updates.updates.length > 0) {
+      const endpoint = this.getEndpoint();
+      if (endpoint && endpoint instanceof Server) {
+        endpoint.broadcastActorUpdates(updates);
+      }
     }
+  }
+
+  private getEndpoint(): Endpoint<WebSocket, http.IncomingMessage> | undefined {
+    return this.netEndpoint;
   }
 
   // Override spawnActor to register actors for replication
