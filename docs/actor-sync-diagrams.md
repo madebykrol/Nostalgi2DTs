@@ -110,7 +110,7 @@ Time: T=0                    T=16ms                  T=32ms
                         Target: (1,0)            Target: (2,0)
 ```
 
-## Data Flow - Client Actor Update (Player-Owned)
+## Data Flow - Client Actor Update (Input-Based)
 
 ```
 ┌───────────┐                              ┌────────────┐
@@ -120,35 +120,42 @@ Time: T=0                    T=16ms                  T=32ms
 │ (Owned)   │                              │   Actor    │
 └─────┬─────┘                              └─────┬──────┘
       │                                          │
-      │ 1. Input received (WASD)                 │
-      │    Update locally (optimistic)           │
-      │    pos: (5, 10) -> (6, 10)              │
+      │ 1. Input captured (WASD press)           │
+      │    Store in input buffer                 │
       │                                          │
-      │ 2. Send update to server                 │
+      │ 2. Predict movement locally              │
+      │    Apply input to actor                  │
+      │    pos: (5, 10) -> (6, 10)              │
+      │    (instant feedback)                    │
+      │                                          │
+      │ 3. Send input batch to server            │
       ├─────────────────────────────────────────>│
-      │    client:actor:update                   │
+      │    client:input                          │
       │    {                                     │
       │      actorId: "player_123",             │
-      │      ownerId: "client1",                │ 3. Validate ownership
-      │      state: {pos: (6,10)},              │    ✓ possessedBy matches
-      │      sequence: 42                       │
-      │    }                                     │ 4. Apply update
-      │                                          │    pos: (6, 10)
+      │      ownerId: "client1",                │ 4. Validate ownership
+      │      sequence: 42,                      │    ✓ possessedBy matches
+      │      inputs: [                          │
+      │        {keys: ["w"], deltaTime: 0.016}  │ 5. Replay inputs
+      │      ]                                   │    Apply same logic as client
+      │    }                                     │    pos: (5, 10) -> (6, 10)
       │                                          │
-      │ 5. Send ACK                              │ 6. Broadcast to others
+      │                                          │ 6. Broadcast to ALL
+      │ 7. Receive authoritative state           │    (including sender)
       │<─────────────────────────────────────────┤────────────┐
-      │    ack: { sequence: 42 }                 │            │
-      │                                          │            ▼
-      │                                          │      ┌──────────┐
-      │                                          │      │ Client 2 │
-      │                                          │      │          │
+      │    actor:update                          │            │
+      │    {                                     │            ▼
+      │      sequence: 42,                       │      ┌──────────┐
+      │      position: {x: 6, y: 10}             │      │ Client 2 │
+      │    }                                     │      │          │
       │                                          │      │ Remote   │
-      │                                          │      │ Actor    │
-      │                                          │      │ (Client1)│
-      │                                          │      └────┬─────┘
-      │                                          │           │
-      │                                          │           │ 7. Apply update
-      │                                          │           │    pos: (6, 10)
+      │ 8. Reconcile                             │      │ Actor    │
+      │    Compare predicted vs server           │      │ (Client1)│
+      │    If match: continue                    │      └────┬─────┘
+      │    If mismatch:                          │           │
+      │      - Snap to server state              │           │ 9. Apply update
+      │      - Replay remaining inputs           │           │    pos: (6, 10)
+      │                                          │           │    (interpolate)
       ▼                                          ▼           ▼
 ```
 
@@ -192,7 +199,7 @@ Time: T=0                    T=16ms                  T=32ms
      │ Periodic actor:update (30-120 Hz)              │
      │<───────────────────────────────────────────────┤
      │                                                │
-     │ client:actor:update (for owned actors)         │
+     │ client:input (for owned actors)                │
      ├───────────────────────────────────────────────>│
      │                                                │
      ▼                                                ▼
@@ -256,29 +263,32 @@ Server Tick (30 Hz example)
 └─ Tick 4 (T=100ms)
    └─> ...
 
-Client Tick (60 Hz example)
+Client Tick (60 Hz example) - Input-Based
 │
 ├─ Frame 1 (T=0ms)
-│  └─> Process input
-│      └─> Update owned actor
-│      └─> Send: client:actor:update
+│  └─> Capture input (W pressed)
+│      └─> Apply input locally (predict)
+│      └─> Buffer input
+│      └─> Send: client:input
 │
 ├─ Frame 2 (T=16ms)
-│  └─> Process input
-│      └─> Update owned actor
+│  └─> Capture input (W still pressed)
+│      └─> Apply input locally (predict)
 │      └─> Receive: actor:update (server)
+│          └─> Reconcile owned actor
 │          └─> Apply to remote actors
 │
 ├─ Frame 3 (T=33ms)
-│  └─> Process input
-│      └─> Update owned actor
-│      └─> Send: client:actor:update
+│  └─> Capture input (W, A pressed)
+│      └─> Apply input locally (predict)
+│      └─> Buffer input
+│      └─> Send: client:input
 │
 └─ Frame 4 (T=50ms)
    └─> ...
 ```
 
-## State Reconciliation
+## State Reconciliation (Input-Based)
 
 ```
 Client-Side Prediction with Server Reconciliation
@@ -288,18 +298,20 @@ T0    T1    T2    T3    T4    T5
 │     │     │     │     │     │
 ├─────┼─────┼─────┼─────┼─────┤
 │     │     │     │     │     │
-│  Input   Input   │   Server
-│   W     W,A      │    ACK
-│ (pred)  (pred)   │   (T2)
-│                  │     │
-│   ┌──────────────┘     │
-│   │ Reconcile:         │
-│   │ • Server pos != client pos
-│   │ • Replay inputs T2-T4
-│   └──────────────────> │
-│                        │
-                    Corrected
-                    position
+│  Input   Input   Input  Server    Input
+│   W      W,A      D     Update    A,D
+│ (pred)  (pred)  (pred)  (seq:T2) (pred)
+│  Seq:1   Seq:2   Seq:3    │      Seq:4
+│                           │
+│   ┌───────────────────────┘
+│   │ Reconciliation:
+│   │ 1. Receive state for Seq:2
+│   │ 2. Compare with predicted state at T2
+│   │ 3. Server pos != predicted pos (mismatch!)
+│   │ 4. Snap to server state
+│   │ 5. Replay inputs Seq:3, Seq:4
+│   └──────────────────────────> Corrected
+│                                position
 
 Server sees:
 T0    T1    T2    T3    T4    T5

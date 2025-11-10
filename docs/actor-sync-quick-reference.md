@@ -8,7 +8,10 @@ Quick reference guide for implementing actor synchronization in Nostalgi2D.
 |---------|-------------|
 | **Server-Owned Actor** | Actor with `possessedBy = null`, controlled by server |
 | **Client-Owned Actor** | Actor with `possessedBy = Controller`, controlled by client |
-| **Replication** | Syncing actor state from server to clients |
+| **Input-Based Replication** | Client sends input commands, not state |
+| **Server Replay** | Server replays inputs to compute authoritative state |
+| **Client Prediction** | Client simulates locally using inputs for instant feedback |
+| **Reconciliation** | Client corrects state when server disagrees |
 | **Authority** | Server is the authoritative source of truth |
 
 ## Message Types Quick Reference
@@ -19,9 +22,8 @@ Quick reference guide for implementing actor synchronization in Nostalgi2D.
 |--------------|--------------|---------|
 | `world:snapshot` | Client connects | Full world state |
 | `actor:spawn` | New actor created | Notify clients to spawn actor |
-| `actor:update` | Periodic (30-120Hz) | Sync actor state changes |
+| `actor:update` | Periodic (30-120Hz) | Sync actor state changes (ALL actors) |
 | `actor:despawn` | Actor removed | Notify clients to remove actor |
-| `ack` | Client update received | Acknowledge client update |
 | `error` | Validation fails | Notify client of error |
 
 ### Client → Server
@@ -29,7 +31,7 @@ Quick reference guide for implementing actor synchronization in Nostalgi2D.
 | Message Type | When to Send | Purpose |
 |--------------|--------------|---------|
 | `client:ready` | Connection established | Request world state |
-| `client:actor:update` | Actor state changes | Update owned actor |
+| `client:input` | Input captured | Send input batch for owned actor |
 
 ## Rules
 
@@ -37,15 +39,17 @@ Quick reference guide for implementing actor synchronization in Nostalgi2D.
 
 - ✅ Server sends updates for ALL replicated actors
 - ✅ Server sends spawn/despawn messages for ALL actors
-- ✅ Client sends updates for OWNED actors only
-- ✅ Client applies updates for NON-OWNED actors
+- ✅ Client sends **input batches** for OWNED actors only
+- ✅ Client applies updates for NON-OWNED actors with interpolation
+- ✅ Client predicts locally for OWNED actors
+- ✅ Client reconciles when server state differs
 
 ### ❌ Not Allowed
 
-- ❌ Client sends updates for server-owned actors
-- ❌ Client sends updates for other players' actors
+- ❌ Client sends inputs for server-owned actors
+- ❌ Client sends inputs for other players' actors
 - ❌ Client sends spawn/despawn messages
-- ❌ Client applies updates for owned actors (already updated locally)
+- ❌ Client sends direct state updates (use inputs instead)
 
 ## Implementation Checklist
 
@@ -194,7 +198,137 @@ function sendUpdates() {
 }
 ```
 
-### Pattern: Validate Client Update (Server)
+### Pattern: Send Input Batch (Client)
+
+```typescript
+// Client captures and sends inputs
+function captureAndSendInput(actor: Actor, deltaTime: number) {
+  // 1. Capture current input state
+  const input = {
+    timestamp: performance.now(),
+    deltaTime: deltaTime,
+    keys: {
+      pressed: getCurrentPressedKeys(),
+      released: []
+    }
+  };
+  
+  // 2. Apply input locally (prediction)
+  applyInputToActor(actor, input);
+  
+  // 3. Buffer input
+  inputBuffer.push(input);
+  
+  // 4. Send batch periodically
+  if (shouldSendInput()) {
+    clientSequence++;
+    
+    // Store predicted state
+    inputHistory.set(clientSequence, {
+      input: inputBuffer[inputBuffer.length - 1],
+      predictedState: {
+        position: actor.getPosition(),
+        rotation: actor.getRotation()
+      }
+    });
+    
+    socket.send({
+      type: "client:input",
+      sequence: clientSequence,
+      actorId: actorId,
+      inputs: inputBuffer
+    });
+    
+    inputBuffer = [];
+  }
+}
+```
+
+### Pattern: Server Input Replay
+
+```typescript
+function handleClientInput(session: Session, msg: any) {
+  const actor = replicatedActors.get(msg.actorId);
+  
+  // 1. Validate actor exists
+  if (!actor) {
+    sendError(session, "UNKNOWN_ACTOR");
+    return;
+  }
+  
+  // 2. Validate ownership (CRITICAL!)
+  if (actor.possessedBy?.id !== session.id) {
+    sendError(session, "INVALID_OWNERSHIP");
+    return;
+  }
+  
+  // 3. Validate inputs
+  if (!isValidInput(msg.inputs)) {
+    sendError(session, "INVALID_INPUT");
+    return;
+  }
+  
+  // 4. Replay inputs (using same logic as client)
+  for (const input of msg.inputs) {
+    applyInputToActor(actor, input);
+  }
+  
+  // 5. Broadcast authoritative state to ALL clients
+  broadcast({
+    type: "actor:update",
+    updates: [{
+      actorId: msg.actorId,
+      sequence: msg.sequence,
+      position: actor.getPosition(),
+      rotation: actor.getRotation()
+    }]
+  });
+}
+```
+
+### Pattern: Client Reconciliation
+
+```typescript
+function handleServerUpdate(update: any) {
+  if (!isOwnedByMe(update.actorId)) {
+    // Not my actor, just apply with interpolation
+    applyRemoteUpdate(update);
+    return;
+  }
+  
+  // My actor - reconcile with prediction
+  const predicted = inputHistory.get(update.sequence);
+  if (!predicted) {
+    // No history, just accept
+    actor.setPosition(update.position);
+    return;
+  }
+  
+  // Compare predicted vs server state
+  const error = Vector2.distance(
+    predicted.predictedState.position,
+    update.position
+  );
+  
+  if (error > THRESHOLD) {
+    // Mismatch - reconcile
+    // 1. Snap to server state
+    actor.setPosition(update.position);
+    actor.setRotation(update.rotation);
+    
+    // 2. Replay inputs after this sequence
+    const toReplay = getInputsAfter(update.sequence);
+    for (const input of toReplay) {
+      applyInputToActor(actor, input);
+    }
+  }
+  
+  // Clean up old history
+  removeInputsUpTo(update.sequence);
+}
+```
+
+### Pattern: Validate Client Input (Server)
 
 ```typescript
 function handleClientUpdate(session: Session, msg: any) {

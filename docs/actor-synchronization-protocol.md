@@ -1,8 +1,8 @@
 # Actor Synchronization Protocol
 
-**Version:** 1.0 (Draft)  
-**Date:** 2025-11-05  
-**Status:** Initial Draft
+**Version:** 2.0 (Draft)  
+**Date:** 2025-11-10  
+**Status:** Revised Draft - Input-Based Replication
 
 ## Overview
 
@@ -21,9 +21,10 @@ This document defines the network protocol for synchronizing actors between the 
 
 1. **Server Authority**: The server is the authoritative source for all actor state
 2. **Unidirectional Server Broadcast**: Server actors are only sent FROM server TO clients (never the reverse)
-3. **Client Ownership**: Clients can only send synchronization data for actors they own
-4. **Optimistic Updates**: Clients may update their owned actors locally and send updates to the server
-5. **Server Reconciliation**: The server validates and reconciles client updates with its authoritative state
+3. **Input-Based Replication**: For client-owned actors, clients send **input batches** instead of state updates
+4. **Server Simulation**: The server replays client inputs to compute authoritative state
+5. **Client Prediction**: Clients simulate locally using inputs for immediate feedback
+6. **State Reconciliation**: Server sends authoritative state back; clients verify and correct if different
 
 ## Actor Ownership Model
 
@@ -35,10 +36,12 @@ This document defines the network protocol for synchronizing actors between the 
 
 ### Client-Owned Actors
 - Possessed by a player's controller (identified by `Actor.possessedBy`)
-- Client sends state updates to the server
-- Server validates and broadcasts to other clients
-- Only the owning client can send updates
-- Examples: player characters, player-spawned projectiles
+- Client sends **input batches** to the server, not state directly
+- Server replays inputs to compute authoritative state
+- Server broadcasts authoritative state to all clients
+- Client verifies received state and corrects local simulation if different
+- Only the owning client can send inputs
+- Examples: player characters, player-controlled vehicles
 
 ## Message Types
 
@@ -124,27 +127,32 @@ Sent when a client first connects or needs a full state refresh.
 
 ### 2. Client-to-Server Messages
 
-#### 2.1. Owned Actor State Update (`client:actor:update`)
+#### 2.1. Input Batch (`client:input`)
 
-Sent by clients to update their owned actor state.
+Sent by clients to update their owned actor using input commands.
 
 ```typescript
 {
-  type: "client:actor:update",
-  clientTimestamp: number,  // Client's local timestamp
+  type: "client:input",
+  clientTimestamp: number,  // Client's local timestamp when input was captured
   sequence: number,         // Client sequence number for reconciliation
   actorId: string,
   ownerId: string,         // Must match the client's controller ID
-  state: {
-    position: { x: number, y: number },
-    rotation: number,
-    // Additional changed properties
-    deltaState?: Record<string, any>
-  },
-  inputs?: {               // Optional input state that led to this update
-    keys: string[],
-    mousePosition?: { x: number, y: number }
-  }
+  inputs: Array<{
+    timestamp: number,     // When this input occurred (client time)
+    deltaTime: number,     // Time since last input
+    keys: {                // Keyboard state
+      pressed: string[],   // Keys currently pressed (e.g., ["w", "a", "d"])
+      released: string[],  // Keys released this frame
+    },
+    mouse?: {              // Optional mouse input
+      position: { x: number, y: number },
+      buttons: number,     // Bitmask of pressed mouse buttons
+      deltaX?: number,     // Mouse movement delta
+      deltaY?: number
+    },
+    actions?: string[]     // Optional high-level actions (e.g., ["jump", "shoot"])
+  }>
 }
 ```
 
@@ -241,31 +249,51 @@ Sent when a message is rejected or an error occurs.
    └─> Send ack (optional, for reliability)
 ```
 
-### Actor Update Flow (Client-Owned)
+### Actor Update Flow (Client-Owned) - Input-Based
 
 ```
-1. Client updates owned actor locally
-   └─> Based on local input
-   └─> Optimistic update immediately
+1. Client captures input
+   └─> Keyboard, mouse, or controller input
+   └─> Store in local input buffer with timestamp
 
-2. Client sends to server: client:actor:update
+2. Client predicts movement locally
+   └─> Apply input to owned actor immediately
+   └─> Store predicted state with sequence number
+   └─> Provides instant feedback
+
+3. Client sends input batch to server: client:input
    └─> actorId: owned actor ID
    └─> ownerId: client's controller ID
    └─> sequence: client's sequence number
-   └─> Include input state for replay
+   └─> inputs: array of input events since last send
+   └─> Send every network tick or when input changes
 
-3. Server validates update
+4. Server validates input batch
    ├─> Check: client owns this actor (possessedBy matches)
-   ├─> Check: sequence number is valid
-   └─> Apply or reject update
+   ├─> Check: sequence number is valid (monotonically increasing)
+   └─> Reject if validation fails
 
-4. Server broadcasts to OTHER clients: actor:update
+5. Server replays inputs
+   └─> Apply each input to actor in order
+   └─> Compute new authoritative state
+   └─> Uses same physics/logic as client
+
+6. Server broadcasts to ALL clients: actor:update
    └─> Authoritative state from server
-   └─> Other clients apply update
+   └─> Include sequence number for reconciliation
+   └─> All clients (including sender) receive update
 
-5. Server sends to owning client: ack
-   └─> Include server timestamp
-   └─> Client can reconcile with prediction
+7. Owning client performs reconciliation
+   └─> Compare server state with predicted state
+   └─> If different: 
+       ├─> Rewind to last confirmed state
+       ├─> Replay all inputs since sequence number
+       └─> Correct local state to match server
+   └─> If same: continue with current prediction
+
+8. Other clients apply state
+   └─> Interpolate between current and received state
+   └─> No reconciliation needed (they don't predict)
 ```
 
 ### Actor Despawn Flow
@@ -284,16 +312,17 @@ Sent when a message is rejected or an error occurs.
 
 ## Ownership Validation
 
-The server MUST validate all client update requests:
+The server MUST validate all client input requests:
 
 1. **Ownership Check**: Verify `ownerId` in message matches `Actor.possessedBy`
 2. **Sequence Check**: Ensure sequence numbers are monotonically increasing
-3. **Rate Limiting**: Prevent flooding with too many updates
-4. **Bounds Check**: Validate position and other values are within acceptable ranges
+3. **Rate Limiting**: Prevent flooding with too many input batches
+4. **Input Validation**: Verify inputs are reasonable (e.g., no impossible key combinations)
+5. **Timestamp Check**: Ensure timestamps are within acceptable range
 
 **Rejection Behavior:**
 - Send `error` message to client
-- Do NOT apply the update
+- Do NOT apply the inputs
 - Do NOT broadcast to other clients
 - Log the violation for potential anti-cheat
 
@@ -304,13 +333,17 @@ The server MUST validate all client update requests:
 - **Medium Priority Actors** (nearby NPCs): 30-60 Hz
 - **Low Priority Actors** (distant objects): 10-30 Hz
 
-### Client Update Rates
+### Client Input Rates
+- **Input Capture**: Every frame (60 Hz typical)
+- **Input Send Rate**: 30-60 Hz (batch multiple inputs if needed)
+- **Throttling**: Send immediately on input change, or at fixed rate
 - **Owned Actor Updates**: Send on input change or every 60-120 Hz
 - **Throttling**: Limit to prevent network saturation
 
 ### Bandwidth Optimization
-- **Delta Compression**: Only send changed fields
-- **Batching**: Combine multiple actor updates in single message
+- **Input Batching**: Combine multiple input frames in single message
+- **Delta Compression**: Only send changed input state
+- **State Batching**: Combine multiple actor updates in single message
 - **Culling**: Don't send updates for actors outside client's view
 - **Interest Management**: Prioritize nearby/relevant actors
 
@@ -322,25 +355,70 @@ The server MUST validate all client update requests:
 - **Ownership Mismatch**: Client receives ownership update for non-owned actor
   - Reject and log warning
 - **Desync Detected**: Client state diverges significantly from server
-  - Request full `world:snapshot`
+  - Can self-correct via reconciliation
+  - If persistent, request full `world:snapshot`
 
 ### Server Errors
-- **Invalid Ownership**: Client attempts to update non-owned actor
+- **Invalid Ownership**: Client attempts to send input for non-owned actor
   - Send `error` with code "INVALID_OWNERSHIP"
   - Potential kick for repeated violations
 - **Malformed Message**: Invalid JSON or missing required fields
   - Send `error` with code "MALFORMED_MESSAGE"
   - Close connection on repeated occurrences
+- **Invalid Input**: Input contains impossible or suspicious values
+  - Send `error` with code "INVALID_INPUT"
+  - Log for anti-cheat analysis
+
+## Input Replay and Reconciliation
+
+### Server Input Replay
+
+The server must maintain deterministic simulation:
+
+1. **Store Input History**: Keep recent inputs for each client actor
+2. **Apply Inputs in Order**: Process inputs by sequence number
+3. **Use Same Physics**: Apply identical movement/physics logic as client
+4. **Compute State**: Generate authoritative position, rotation, etc.
+5. **Broadcast Result**: Send state to all clients with sequence number
+
+### Client Reconciliation
+
+The owning client must reconcile predictions:
+
+1. **Receive Server State**: Get authoritative state with sequence number
+2. **Compare with Prediction**: Check local predicted state at that sequence
+3. **If Match**: Continue with current prediction (common case)
+4. **If Mismatch**:
+   - Snap to server state
+   - Discard inputs up to sequence number
+   - Replay remaining inputs from buffer
+   - Update visual state with corrected position
+
+### Input Buffer Management
+
+Clients must maintain input history:
+
+```typescript
+interface InputHistoryEntry {
+  sequence: number;
+  timestamp: number;
+  input: InputState;
+  predictedState: ActorState;
+}
+
+// Keep last N inputs (e.g., 1-2 seconds worth)
+const INPUT_HISTORY_SIZE = 120; // 2 seconds at 60 Hz
+```
 
 ## Future Enhancements
 
-This initial draft may be extended with:
+This revised draft may be extended with:
 
 1. **Component Replication**: Synchronize individual actor components
 2. **RPC System**: Remote procedure calls for actions/events
-3. **Snapshot Interpolation**: Smoother state updates
-4. **Server Reconciliation**: Server-side replay of client inputs
-5. **Network Prediction**: Client-side prediction for owned actors
+3. **Lag Compensation**: Server-side rewind for hit detection
+4. **Adaptive Send Rates**: Adjust input/state send rates based on network conditions
+5. **Input Compression**: Binary encoding for input data
 6. **Lag Compensation**: Handling of network latency
 7. **Bandwidth Budgets**: Dynamic quality based on connection
 8. **Compression**: Binary protocol for reduced bandwidth
@@ -356,18 +434,26 @@ For replication to work, actors must have:
 
 ### Server Implementation Checklist
 - [ ] Track all replicated actors
-- [ ] Implement update batching
-- [ ] Validate client ownership on every update
+- [ ] Implement state update batching
+- [ ] **Implement input replay system for client-owned actors**
+- [ ] **Maintain input history per client actor**
+- [ ] Validate client ownership on every input batch
+- [ ] **Use deterministic physics/simulation for input replay**
 - [ ] Broadcast server-owned actor updates
+- [ ] **Broadcast authoritative state for client-owned actors after input replay**
 - [ ] Handle client disconnection (despawn owned actors)
 - [ ] Implement snapshot generation for new clients
 
 ### Client Implementation Checklist
 - [ ] Handle world snapshot on connect
 - [ ] Instantiate actors from spawn messages
-- [ ] Apply server updates to non-owned actors
-- [ ] Send updates only for owned actors
-- [ ] Implement client-side prediction (optional)
+- [ ] Apply server updates to non-owned actors with interpolation
+- [ ] **Implement input capture and buffering**
+- [ ] **Send input batches for owned actors (not state)**
+- [ ] **Implement client-side prediction for owned actors**
+- [ ] **Maintain input history with predicted states**
+- [ ] **Implement state reconciliation when receiving server updates**
+- [ ] **Replay inputs after reconciliation if needed**
 - [ ] Handle actor despawn messages
 
 ## References
@@ -376,7 +462,10 @@ For replication to work, actors must have:
 - Actor Base Class: `src/packages/engine/world/actor.ts`
 - Network Endpoint: `src/packages/engine/network/endpoint.ts`
 - Server Implementation: `src/apps/server/server.ts`
+- Input Manager: `src/packages/engine/input/inputmanager.ts`
+- Controller: `src/packages/engine/game/controller.ts`
 
 ## Change Log
 
+- **2025-11-10**: Revised to use input-based replication with server replay and client reconciliation
 - **2025-11-05**: Initial draft created based on issue #35

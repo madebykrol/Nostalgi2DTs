@@ -156,15 +156,36 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage> {
 }
 ```
 
-### 4. Handling Client Updates
+### 4. Handling Client Input (Input-Based Replication)
 
 ```typescript
+interface InputState {
+  timestamp: number;
+  deltaTime: number;
+  keys: {
+    pressed: string[];
+    released: string[];
+  };
+  mouse?: {
+    position: { x: number; y: number };
+    buttons: number;
+  };
+}
+
+interface InputHistoryEntry {
+  sequence: number;
+  inputs: InputState[];
+}
+
 class Server extends Endpoint<WebSocket, http.IncomingMessage> {
-  handleClientActorUpdate(
+  private actorInputHistory: Map<string, InputHistoryEntry[]> = new Map();
+  private readonly INPUT_HISTORY_SIZE = 60; // Keep last 60 inputs
+  
+  handleClientInput(
     session: UserSession, 
     message: any
   ): void {
-    const { actorId, ownerId, state, sequence } = message;
+    const { actorId, ownerId, inputs, sequence } = message;
     
     // Validate ownership
     if (!this.validateOwnership(session, actorId, ownerId)) {
@@ -180,25 +201,127 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage> {
       return;
     }
     
-    // Validate and apply update
-    if (this.validateState(state)) {
-      actor.setPosition(new Vector2(state.position.x, state.position.y));
-      actor.setRotation(state.rotation);
+    // Validate sequence number
+    const lastSeq = this.actorSequences.get(actorId) || 0;
+    if (sequence <= lastSeq) {
+      // Out of order or duplicate, ignore
+      return;
+    }
+    
+    // Validate inputs
+    if (!this.validateInputs(inputs)) {
+      this.sendError(session, "INVALID_INPUT", 
+        `Invalid input data`);
+      return;
+    }
+    
+    // Store input history
+    this.storeInputHistory(actorId, sequence, inputs);
+    
+    // Replay inputs to compute authoritative state
+    this.replayInputs(actor, inputs);
+    
+    // Update sequence number
+    this.actorSequences.set(actorId, sequence);
+    
+    // Broadcast authoritative state to ALL clients (including sender)
+    this.broadcastToAll({
+      type: "actor:update",
+      timestamp: Date.now(),
+      updates: [{
+        actorId: actorId,
+        sequence: sequence,
+        position: {
+          x: actor.getPosition().x,
+          y: actor.getPosition().y
+        },
+        rotation: actor.getRotation()
+      }]
+    });
+  }
+  
+  private replayInputs(actor: Actor, inputs: InputState[]): void {
+    // Apply each input in order to compute new state
+    for (const input of inputs) {
+      this.applyInputToActor(actor, input);
+    }
+  }
+  
+  private applyInputToActor(actor: Actor, input: InputState): void {
+    // This should match the client's movement logic exactly
+    const speed = 5.0; // Movement speed
+    const currentPos = actor.getPosition();
+    let dx = 0;
+    let dy = 0;
+    
+    // Process keyboard input
+    if (input.keys.pressed.includes('w') || input.keys.pressed.includes('ArrowUp')) {
+      dy += speed * input.deltaTime;
+    }
+    if (input.keys.pressed.includes('s') || input.keys.pressed.includes('ArrowDown')) {
+      dy -= speed * input.deltaTime;
+    }
+    if (input.keys.pressed.includes('a') || input.keys.pressed.includes('ArrowLeft')) {
+      dx -= speed * input.deltaTime;
+    }
+    if (input.keys.pressed.includes('d') || input.keys.pressed.includes('ArrowRight')) {
+      dx += speed * input.deltaTime;
+    }
+    
+    // Apply movement
+    if (dx !== 0 || dy !== 0) {
+      const newPos = new Vector2(currentPos.x + dx, currentPos.y + dy);
+      actor.setPosition(newPos);
+    }
+    
+    // Process mouse input for rotation
+    if (input.mouse) {
+      const angle = Math.atan2(
+        input.mouse.position.y - currentPos.y,
+        input.mouse.position.x - currentPos.x
+      );
+      actor.setRotation(angle);
+    }
+  }
+  
+  private validateInputs(inputs: InputState[]): boolean {
+    // Validate input array is reasonable
+    if (!Array.isArray(inputs) || inputs.length > 10) {
+      return false; // Too many inputs in one batch
+    }
+    
+    for (const input of inputs) {
+      // Validate deltaTime is reasonable
+      if (input.deltaTime < 0 || input.deltaTime > 1.0) {
+        return false;
+      }
       
-      // Broadcast to OTHER clients
-      this.broadcastToOthers(session, {
-        type: "actor:update",
-        timestamp: Date.now(),
-        updates: [{
-          actorId: actorId,
-          sequence: sequence,
-          position: state.position,
-          rotation: state.rotation
-        }]
-      });
-      
-      // Send acknowledgment to sender
-      this.sendAck(session, sequence);
+      // Validate keys are reasonable
+      if (!Array.isArray(input.keys.pressed) || 
+          input.keys.pressed.length > 10) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  private storeInputHistory(
+    actorId: string, 
+    sequence: number, 
+    inputs: InputState[]
+  ): void {
+    let history = this.actorInputHistory.get(actorId);
+    if (!history) {
+      history = [];
+      this.actorInputHistory.set(actorId, history);
+    }
+    
+    history.push({ sequence, inputs });
+    
+    // Keep only recent history
+    if (history.length > this.INPUT_HISTORY_SIZE) {
+      history.shift();
     }
   }
   
@@ -461,51 +584,243 @@ function lerp(a: number, b: number, t: number): number {
 }
 ```
 
-### 3. Sending Owned Actor Updates
+### 3. Sending Input Batches (Input-Based Replication)
 
 ```typescript
+interface InputState {
+  timestamp: number;
+  deltaTime: number;
+  keys: {
+    pressed: string[];
+    released: string[];
+  };
+  mouse?: {
+    position: { x: number; y: number };
+    buttons: number;
+  };
+}
+
+interface PredictedState {
+  sequence: number;
+  position: Vector2;
+  rotation: number;
+}
+
 class Client {
   private ownedActor: Actor | null = null;
   private clientSequence: number = 0;
-  private updateThrottle: number = 1000 / 60; // 60 Hz
-  private lastUpdateTime: number = 0;
+  private inputSendRate: number = 1000 / 60; // 60 Hz
+  private lastSendTime: number = 0;
   
-  setOwnedActor(actor: Actor): void {
+  // Input history for reconciliation
+  private inputHistory: Map<number, {
+    input: InputState;
+    predictedState: PredictedState;
+  }> = new Map();
+  
+  // Current input buffer (accumulated since last send)
+  private currentInputBuffer: InputState[] = [];
+  
+  // Currently pressed keys
+  private pressedKeys: Set<string> = new Set();
+  
+  setOwnedActor(actor: Actor, actorId: string): void {
     this.ownedActor = actor;
+    this.setupInputHandlers();
   }
   
-  sendOwnedActorUpdate(actorId: string): void {
+  private setupInputHandlers(): void {
+    // Capture keyboard input
+    window.addEventListener('keydown', (e) => {
+      if (!this.pressedKeys.has(e.key)) {
+        this.pressedKeys.add(e.key);
+      }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+      this.pressedKeys.delete(e.key);
+    });
+  }
+  
+  // Called every frame to capture input
+  captureInput(deltaTime: number): void {
     if (!this.ownedActor) return;
     
-    const now = performance.now();
-    if (now - this.lastUpdateTime < this.updateThrottle) {
-      return; // Throttle updates
-    }
-    
-    this.lastUpdateTime = now;
-    this.clientSequence++;
-    
-    const updateMessage = {
-      type: "client:actor:update",
-      clientTimestamp: Date.now(),
-      sequence: this.clientSequence,
-      actorId: actorId,
-      ownerId: this.getLocalPlayerId(),
-      state: {
-        position: {
-          x: this.ownedActor.getPosition().x,
-          y: this.ownedActor.getPosition().y
-        },
-        rotation: this.ownedActor.getRotation()
-      }
+    const input: InputState = {
+      timestamp: performance.now(),
+      deltaTime: deltaTime,
+      keys: {
+        pressed: Array.from(this.pressedKeys),
+        released: []
+      },
+      mouse: this.getMouseState()
     };
     
-    this.socket.send(JSON.stringify(updateMessage));
+    // Apply input locally (client prediction)
+    this.applyInputToActor(this.ownedActor, input);
+    
+    // Store in buffer
+    this.currentInputBuffer.push(input);
+    
+    // Try to send if it's time
+    this.trySendInputBatch();
+  }
+  
+  private applyInputToActor(actor: Actor, input: InputState): void {
+    // This must match the server's movement logic exactly
+    const speed = 5.0;
+    const currentPos = actor.getPosition();
+    let dx = 0;
+    let dy = 0;
+    
+    if (input.keys.pressed.includes('w') || input.keys.pressed.includes('ArrowUp')) {
+      dy += speed * input.deltaTime;
+    }
+    if (input.keys.pressed.includes('s') || input.keys.pressed.includes('ArrowDown')) {
+      dy -= speed * input.deltaTime;
+    }
+    if (input.keys.pressed.includes('a') || input.keys.pressed.includes('ArrowLeft')) {
+      dx -= speed * input.deltaTime;
+    }
+    if (input.keys.pressed.includes('d') || input.keys.pressed.includes('ArrowRight')) {
+      dx += speed * input.deltaTime;
+    }
+    
+    if (dx !== 0 || dy !== 0) {
+      const newPos = new Vector2(currentPos.x + dx, currentPos.y + dy);
+      actor.setPosition(newPos);
+    }
+    
+    if (input.mouse) {
+      const angle = Math.atan2(
+        input.mouse.position.y - currentPos.y,
+        input.mouse.position.x - currentPos.x
+      );
+      actor.setRotation(angle);
+    }
+  }
+  
+  private trySendInputBatch(): void {
+    const now = performance.now();
+    
+    // Send if enough time has passed or buffer is getting full
+    if (now - this.lastSendTime < this.inputSendRate && 
+        this.currentInputBuffer.length < 5) {
+      return;
+    }
+    
+    if (this.currentInputBuffer.length === 0) {
+      return;
+    }
+    
+    this.lastSendTime = now;
+    this.clientSequence++;
+    
+    // Store current state for reconciliation
+    this.inputHistory.set(this.clientSequence, {
+      input: this.currentInputBuffer[this.currentInputBuffer.length - 1],
+      predictedState: {
+        sequence: this.clientSequence,
+        position: this.ownedActor!.getPosition(),
+        rotation: this.ownedActor!.getRotation()
+      }
+    });
+    
+    // Keep only recent history (last 2 seconds worth)
+    if (this.inputHistory.size > 120) {
+      const oldestKey = Math.min(...this.inputHistory.keys());
+      this.inputHistory.delete(oldestKey);
+    }
+    
+    // Send input batch
+    const inputMessage = {
+      type: "client:input",
+      clientTimestamp: Date.now(),
+      sequence: this.clientSequence,
+      actorId: this.getActorId(),
+      ownerId: this.getLocalPlayerId(),
+      inputs: this.currentInputBuffer
+    };
+    
+    this.socket.send(JSON.stringify(inputMessage));
+    
+    // Clear buffer
+    this.currentInputBuffer = [];
+  }
+  
+  // Called when receiving server state update
+  handleServerStateUpdate(update: any): void {
+    if (!this.ownedActor) return;
+    if (!this.isOwnedByMe(update.actorId)) return;
+    
+    const serverSequence = update.sequence;
+    const serverPosition = new Vector2(update.position.x, update.position.y);
+    const serverRotation = update.rotation;
+    
+    // Get our predicted state at that sequence
+    const predicted = this.inputHistory.get(serverSequence);
+    
+    if (!predicted) {
+      // We don't have history for this sequence, just accept server state
+      this.ownedActor.setPosition(serverPosition);
+      this.ownedActor.setRotation(serverRotation);
+      return;
+    }
+    
+    // Compare with prediction
+    const positionError = Vector2.distance(
+      predicted.predictedState.position,
+      serverPosition
+    );
+    
+    const RECONCILIATION_THRESHOLD = 0.1; // 0.1 units
+    
+    if (positionError > RECONCILIATION_THRESHOLD) {
+      console.log(`Reconciliation needed: error ${positionError}`);
+      
+      // Server disagrees, reconcile
+      this.ownedActor.setPosition(serverPosition);
+      this.ownedActor.setRotation(serverRotation);
+      
+      // Replay inputs after this sequence
+      const inputsToReplay = Array.from(this.inputHistory.entries())
+        .filter(([seq, _]) => seq > serverSequence)
+        .sort(([a, _], [b, __]) => a - b);
+      
+      for (const [seq, data] of inputsToReplay) {
+        this.applyInputToActor(this.ownedActor, data.input);
+        // Update predicted state
+        data.predictedState.position = this.ownedActor.getPosition();
+        data.predictedState.rotation = this.ownedActor.getRotation();
+      }
+    }
+    
+    // Clean up old history
+    for (const [seq, _] of this.inputHistory.entries()) {
+      if (seq <= serverSequence) {
+        this.inputHistory.delete(seq);
+      }
+    }
+  }
+  
+  private getMouseState(): { position: { x: number; y: number }; buttons: number } | undefined {
+    // Implement based on your input system
+    return undefined;
+  }
+  
+  private getActorId(): string {
+    // Return the actor ID
+    return "actor_id";
   }
   
   private getLocalPlayerId(): string {
     const localPlayer = engine.getLocalPlayerState();
     return localPlayer?.playerId ?? "";
+  }
+  
+  private isOwnedByMe(actorId: string): boolean {
+    // Check if this actor is owned by local player
+    return true;
   }
 }
 ```
