@@ -1,4 +1,4 @@
-import { Mesh } from "./Mesh";
+import { Mesh } from "./mesh";
 
 
 export class Quad extends Mesh {
