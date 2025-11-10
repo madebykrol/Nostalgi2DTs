@@ -1,7 +1,17 @@
 import http from "http";
 
 
-import { Actor, CollisionComponent, Controller, createBoinkSound, Engine, GainChannel, InputManager, PhysicsComponent, SoundHandle, SoundManager, Vector2 } from "@repo/engine";
+import { 
+  Actor,
+  Controller,
+  createBoinkSound,
+  Engine,
+  GainChannel,
+  InputManager,
+  PhysicsComponent,
+  SoundHandle,
+  SoundManager,
+  Vector2 } from "@repo/engine";
 import { inject, injectable } from 'inversify';
 import { DemoActor } from "@repo/example";
 
@@ -10,7 +20,7 @@ export class PlayerController extends Controller {
 
   private boink: SoundHandle | null = null;
   
-  private lastMousePosition: Vector2 = new Vector2(0, 0);
+  public lastMousePosition: Vector2 = new Vector2(0, 0);
   private lastMouseDownPosition: Vector2 = new Vector2(0, 0);
   private lastMouseUpPosition: Vector2 = new Vector2(0, 0);
   private mouseMoveDelta: Vector2 = new Vector2(0, 0);
@@ -24,27 +34,26 @@ export class PlayerController extends Controller {
     inputManager.on("arrowdown:down", () => this.moveDown());
     inputManager.on("arrowleft:down", () => this.moveLeft());
     inputManager.on("arrowright:down", () => this.moveRight());
-    inputManager.on("mouse:up", (data: {screenX : number, screenY: number, worldX: number, worldY: number}, modifiers: any) => {
+    inputManager.on("mouse:up", (data: {screenX : number, screenY: number, worldX: number, worldY: number}, _modifiers: any) => {
       console.log("Mouse up at world position:", data.worldX, data.worldY);
       this.lastMouseUpPosition = new Vector2(data.worldX, data.worldY);
       this.mouseMoveDelta = new Vector2(this.lastMouseUpPosition.x - this.lastMouseDownPosition.x, this.lastMouseUpPosition.y - this.lastMouseDownPosition.y);
       console.log("Mouse move delta since mouse down:", this.mouseMoveDelta);
     });
 
-    inputManager.on("wheel:tap:shift", (data: {deltaX: number, deltaY: number}, modifiers: any) => {
+    inputManager.on("wheel:tap:shift", (data: {deltaX: number, deltaY: number}, _modifiers: any) => {
       this.zoomCamera(data.deltaY);
     });
 
-    inputManager.on("mouseMove", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, modifiers: any) => {
+    inputManager.on("mouseMove", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
       this.lastMousePosition = new Vector2(data.worldX, data.worldY);
     });
 
-    inputManager.on("mouseUp", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, modifiers: any) => {
+    inputManager.on("mouseUp", (_data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
       
     });
 
-    inputManager.on("mouse:down", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, modifiers: any) => {
-
+    inputManager.on("mouse:down", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
       const hitActors = engine.aabbCast(new Vector2(data.worldX, data.worldY), true, true, Actor);
       this.lastMouseDownPosition = new Vector2(data.worldX, data.worldY);
       console.log("Mouse down at world position:", data.worldX, data.worldY);
@@ -74,7 +83,7 @@ export class PlayerController extends Controller {
     });
   }
 
-  tick(deltaTime: number): void {
+  tick(_deltaTime: number): void {
     this.engine.getCurrentCamera()?.setPosition(this.possessedActor?.getPosition() || new Vector2(0, 0));
   }
 

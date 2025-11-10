@@ -94,10 +94,10 @@ export class DefaultInputManager extends InputManager {
 }
 
 export class ClientEndpoint extends Endpoint<WebSocket, http.IncomingMessage> {
-  send(command: string, data: any): void {
+  send(_command: string, _data: any): void {
     throw new Error("Method not implemented.");
   }
-  connect(onConnection: (socket: WebSocket, req: http.IncomingMessage) => void): Promise<void> {
+  connect(_onConnection: (socket: WebSocket, req: http.IncomingMessage) => void): Promise<void> {
     throw new Error("Method not implemented.");
   }
   disconnect(): Promise<void> {

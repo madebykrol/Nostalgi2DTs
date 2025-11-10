@@ -14,14 +14,6 @@ export {GameInstance, Controller, PlayerState} from "./game";
 export {InputManager} from "./input";
 
 
-export {actor} from "./actorRegistroy";
-export {isRegistered} from "./actorRegistroy";
-export {listTypes} from "./actorRegistroy";
-export {render} from "./actorRegistroy";
-export {listRendererForActor} from "./actorRegistroy";
-export {listRenderers} from "./actorRegistroy";
-
-
 export { VertexShader } from "./rendering";
 export { FragmentShader } from "./rendering";
 export { ActorRenderer } from "./rendering";

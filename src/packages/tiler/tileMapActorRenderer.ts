@@ -1,4 +1,3 @@
-import { render } from "@repo/engine";
 import { TileMapActor, TiledMap, TiledTileLayer, TiledTilesetReference } from "@repo/tiler";
 import { ActorRenderer } from "../engine/rendering/renderer";
 import { Camera } from "../engine/camera/Camera";
@@ -24,7 +23,6 @@ interface TextureRecord {
     promise: Promise<void> | null;
 }
 
-@render(TileMapActor)
 export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
     private program: WebGLProgram | null = null;
     private uniformLocations: {

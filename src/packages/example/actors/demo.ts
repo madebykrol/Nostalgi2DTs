@@ -1,7 +1,6 @@
-import { actor, Actor, CircleCollisionComponent, CollisionComponent, PhysicsComponent } from "@repo/engine";
+import { Actor, CircleCollisionComponent, PhysicsComponent } from "@repo/engine";
 import { PolygonCollisionComponent } from "../../engine/world/circleCollisionComponent";
 
-@actor()
 export class BombActor extends Actor {
     tick(_deltaTime: number): void {
         
@@ -21,7 +20,6 @@ export class BombActor extends Actor {
 }
 
 
-@actor()
 export class DemoActor extends Actor {
     
     constructor() {

@@ -32,6 +32,6 @@ export abstract class Controller {
 
 
     // User-overrideable tick method
-    tick(deltaTime: number): void {}
+    tick(_deltaTime: number): void {}
 }
 
