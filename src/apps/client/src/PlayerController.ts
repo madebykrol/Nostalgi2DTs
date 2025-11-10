@@ -15,36 +15,24 @@ export class PlayerController extends Controller {
   private lastMouseUpPosition: Vector2 = new Vector2(0, 0);
   private mouseMoveDelta: Vector2 = new Vector2(0, 0);
 
-  constructor(@inject(InputManager) inputManager: InputManager, @inject(Engine) engine: Engine<WebSocket, http.IncomingMessage>, @inject(SoundManager) soundManager: SoundManager) {
+
+  constructor(@inject(InputManager) inputManager: InputManager, @inject(Engine) protected engine: Engine<WebSocket, http.IncomingMessage>, @inject(SoundManager) soundManager: SoundManager) {
     super(inputManager);
 
 
-    inputManager.on("keyDown", (key: string, modifiers: any) => {
+    inputManager.on("arrowup:down", () => this.moveUp());
+    inputManager.on("arrowdown:down", () => this.moveDown());
+    inputManager.on("arrowleft:down", () => this.moveLeft());
+    inputManager.on("arrowright:down", () => this.moveRight());
+    inputManager.on("mouse:up", (data: {screenX : number, screenY: number, worldX: number, worldY: number}, modifiers: any) => {
+      console.log("Mouse up at world position:", data.worldX, data.worldY);
+      this.lastMouseUpPosition = new Vector2(data.worldX, data.worldY);
+      this.mouseMoveDelta = new Vector2(this.lastMouseUpPosition.x - this.lastMouseDownPosition.x, this.lastMouseUpPosition.y - this.lastMouseDownPosition.y);
+      console.log("Mouse move delta since mouse down:", this.mouseMoveDelta);
+    });
 
-      const physicsComponent = this.possessedActor?.getComponentsOfType<PhysicsComponent>(PhysicsComponent)[0];
-      console.log("PhysicsComponent:", physicsComponent);
-
-      if (key === "ArrowLeft") {
-          console.log("Moving left", this.possessedActor);
-          // demoActor!.setPosition(new Vector2(cameraPos.x - 1, cameraPos.y));        
-      } else if (key === "ArrowRight") {
-
-          console.log("Moving right", this.possessedActor);
-          physicsComponent?.addImpulse(new Vector2(10, 0));
-        
-      } else if (key === "ArrowUp") {
-          // demoActor!.setPosition(new Vector2(cameraPos.x, cameraPos.y + 1));
-          const currentZoom = engine.getCurrentCamera()?.getZoom() ?? 1;
-          engine.getCurrentCamera()?.setZoom(currentZoom+0.1);
-        
-      } else if (key === "ArrowDown") {
-
-          // Handle ArrowDown key press
-          // demoActor!.setPosition(new Vector2(cameraPos.x, cameraPos.y - 1));
-          const currentZoom = engine.getCurrentCamera()?.getZoom() ?? 1;
-          engine.getCurrentCamera()?.setZoom(currentZoom-0.1);
-        
-      }
+    inputManager.on("wheel:tap:shift", (data: {deltaX: number, deltaY: number}, modifiers: any) => {
+      this.zoomCamera(data.deltaY);
     });
 
     inputManager.on("mouseMove", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, modifiers: any) => {
@@ -52,13 +40,10 @@ export class PlayerController extends Controller {
     });
 
     inputManager.on("mouseUp", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, modifiers: any) => {
-      console.log("Mouse up at world position:", data.worldX, data.worldY);
-      this.lastMouseUpPosition = new Vector2(data.worldX, data.worldY);
-      this.mouseMoveDelta = new Vector2(this.lastMouseUpPosition.x - this.lastMouseDownPosition.x, this.lastMouseUpPosition.y - this.lastMouseDownPosition.y);
-      console.log("Mouse move delta since mouse down:", this.mouseMoveDelta);
+      
     });
 
-    inputManager.on("mouseDown", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, modifiers: any) => {
+    inputManager.on("mouse:down", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, modifiers: any) => {
 
       const hitActors = engine.aabbCast(new Vector2(data.worldX, data.worldY), true, true, Actor);
       this.lastMouseDownPosition = new Vector2(data.worldX, data.worldY);
@@ -90,6 +75,31 @@ export class PlayerController extends Controller {
   }
 
   tick(deltaTime: number): void {
+    this.engine.getCurrentCamera()?.setPosition(this.possessedActor?.getPosition() || new Vector2(0, 0));
+  }
 
+   protected moveLeft(): void {
+    const physicsComponent = this.possessedActor?.getComponentsOfType<PhysicsComponent>(PhysicsComponent)[0];      
+    physicsComponent?.addImpulse(new Vector2(-10, 0));
+  }
+
+  protected moveRight(): void {
+    const physicsComponent = this.possessedActor?.getComponentsOfType<PhysicsComponent>(PhysicsComponent)[0];
+    physicsComponent?.addImpulse(new Vector2(10, 0));
+  }
+
+  protected moveUp(): void {
+    const physicsComponent = this.possessedActor?.getComponentsOfType<PhysicsComponent>(PhysicsComponent)[0];
+    physicsComponent?.addImpulse(new Vector2(0, 10));
+  }
+
+  protected moveDown(): void {
+    const physicsComponent = this.possessedActor?.getComponentsOfType<PhysicsComponent>(PhysicsComponent)[0];
+    physicsComponent?.addImpulse(new Vector2(0, -10));
+  }
+
+  protected zoomCamera(zoomDelta: number): void {
+    const currentZoom = this.engine.getCurrentCamera()?.getZoom() ?? 1;
+    this.engine.getCurrentCamera()?.setZoom(currentZoom - zoomDelta * 0.001);
   }
 }

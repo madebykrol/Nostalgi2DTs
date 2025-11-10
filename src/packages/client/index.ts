@@ -13,11 +13,10 @@ export class DefaultInputManager extends InputManager {
     super();
     // Handle keyboard input
     window.addEventListener("keydown", (event) => {
-      
-      this.emit("keyDown", event.key, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
+      this.emit(this.generateEvent(event.key, "down", { ctrl: event.ctrlKey, shift: event.shiftKey, alt: event.altKey }), event.key, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
     });
     window.addEventListener("keyup", (event) => {
-      this.emit("keyUp", event, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
+      this.emit(this.generateEvent(event.key, "up", { ctrl: event.ctrlKey, shift: event.shiftKey, alt: event.altKey }), event.key, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
     });
     window.addEventListener("mousemove", (event: MouseEvent) => {
 
@@ -25,8 +24,7 @@ export class DefaultInputManager extends InputManager {
         return;
 
       const { x, y } = this.calculateMousePosition(event);
-
-      this.emit("mouseMove", {screenX : x, screenY: y, worldX: x, worldY: y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey });
+      this.emit(this.generateEvent("mouse", "move", { ctrl: event.ctrlKey, shift: event.shiftKey, alt: event.altKey }), {screenX : x, screenY: y, worldX: x, worldY: y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
     });
 
     window.addEventListener("mousedown", (event) => {
@@ -37,8 +35,7 @@ export class DefaultInputManager extends InputManager {
 
       const worldPosition = this.getWorldPosition(x, y, width, height);
 
-
-      this.emit("mouseDown", {screenX : x, screenY: y, worldX: worldPosition?.x ?? x, worldY: worldPosition?.y ?? y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
+      this.emit(this.generateEvent("mouse", "down", { ctrl: event.ctrlKey, shift: event.shiftKey, alt: event.altKey }), {screenX : x, screenY: y, worldX: worldPosition?.x ?? x, worldY: worldPosition?.y ?? y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
     });
 
     window.addEventListener("mouseup", (event) => {
@@ -48,15 +45,18 @@ export class DefaultInputManager extends InputManager {
 
       const { x, y, width, height } = this.calculateMousePosition(event);
       const worldPosition = this.getWorldPosition(x, y, width, height);
-      this.emit("mouseUp", {screenX : x, screenY: y, worldX: worldPosition?.x ?? x, worldY: worldPosition?.y ?? y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
+
+      this.emit(this.generateEvent("mouse", "up", { ctrl: event.ctrlKey, shift: event.shiftKey, alt: event.altKey }), {screenX : x, screenY: y, worldX: worldPosition?.x ?? x, worldY: worldPosition?.y ?? y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
     });
     window.addEventListener("wheel", (event) => {
 
        if(!this.checkGameScreen(event))
         return;
 
+       console.log("Wheel event detected:", event);
+
       const { x, y } = this.calculateMousePosition(event);
-      this.emit("mouseWheel", {screenX : x, screenY: y, worldX: x, worldY: y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
+      this.emit(this.generateEvent("wheel", "tap", { ctrl: event.ctrlKey, shift: event.shiftKey, alt: event.altKey }), { deltaX: event.deltaX, deltaY: event.deltaY, screenX : x, screenY: y, worldX: x, worldY: y}, { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey});
     });
     window.addEventListener("contextmenu", (event) => {
       event.preventDefault();

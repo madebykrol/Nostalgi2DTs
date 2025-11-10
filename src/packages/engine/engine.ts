@@ -17,6 +17,7 @@ class RootObject extends BaseObject {
 export type EngineNetworkMode = "client" | "server" | "singleplayer";
 
 export class Engine<TSocket, TReq> {
+
     afterRenderCallbacks: Map<string, (() => void)> = new Map();
     currentGameMode: GameMode | undefined;
 
@@ -65,6 +66,10 @@ export class Engine<TSocket, TReq> {
         protected netEndpoint: Endpoint<TSocket, TReq> | undefined,
         protected networkMode: EngineNetworkMode = "singleplayer", 
         protected container: Container) {
+    }
+
+    setNetworkMode(networkMode: EngineNetworkMode): void {
+        this.networkMode = networkMode;
     }
 
     setCurrentCamera(camera: Camera): void {

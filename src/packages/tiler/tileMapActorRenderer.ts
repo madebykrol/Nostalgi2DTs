@@ -262,10 +262,14 @@ export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
                 const texWidth = tileset.image.width || tileset.tileWidth * tileset.columns;
                 const texHeight = tileset.image.height || tileset.tileHeight * Math.ceil(tileset.tileCount / tileset.columns);
 
-                let u0 = (tileColumn * tileset.tileWidth) / texWidth;
-                let v0 = (tileRow * tileset.tileHeight) / texHeight;
-                let u1 = ((tileColumn + 1) * tileset.tileWidth) / texWidth;
-                let v1 = ((tileRow + 1) * tileset.tileHeight) / texHeight;
+                // Add small epsilon to prevent texture bleeding between tiles
+                const epsilon =1;
+  
+
+                let u0 = (tileColumn * tileset.tileWidth + epsilon) / texWidth;
+                let v0 = (tileRow * tileset.tileHeight + epsilon) / texHeight;
+                let u1 = ((tileColumn + 1) * tileset.tileWidth - epsilon) / texWidth;
+                let v1 = ((tileRow + 1) * tileset.tileHeight - epsilon) / texHeight;
 
                 if (decoded.flipH) {
                     [u0, u1] = [u1, u0];

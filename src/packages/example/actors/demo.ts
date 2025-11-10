@@ -30,7 +30,7 @@ export class DemoActor extends Actor {
         const physics = this.addComponent(new PhysicsComponent());
         physics.setSimulationState(true, "dynamic");
 
-        const collisionComponent = new CircleCollisionComponent(1);
+        const collisionComponent = new CircleCollisionComponent(0.5);
         
         this.addComponent(collisionComponent);
     }

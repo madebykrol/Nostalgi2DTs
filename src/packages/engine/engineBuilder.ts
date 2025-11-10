@@ -58,9 +58,21 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-    asLocalSinglePlayer(playerName: string, playerId: string): EngineBuilder<TSocket, TReq> {
+    asSinglePlayer(playerName: string, playerId: string): EngineBuilder<TSocket, TReq> {
         // Configure the engine for local single-player mode
         this.networkMode = "singleplayer";
+        return this;
+    }
+
+    asServer(serverName: string): EngineBuilder<TSocket, TReq> {
+        // Configure the engine for server mode
+        this.networkMode = "server";
+        return this;
+    }
+
+    asClient(): EngineBuilder<TSocket, TReq> {
+        // Configure the engine for client mode
+        this.networkMode = "client";
         return this;
     }
 
@@ -101,7 +113,10 @@ export class EngineBuilder<TSocket, TReq> {
 
         this.container.registerSingleton(Engine<TSocket, TReq>, ctor);
         const engine = this.container.get(Engine<TSocket, TReq>) as TEngine;
+        engine.setNetworkMode(this.networkMode);
         engine.setIsDebug(this.useDebugLogging);
+
+
 
         return engine;
     }

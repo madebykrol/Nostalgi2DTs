@@ -65,7 +65,7 @@ const App = () => {
     .withActor(WallActor, WallActorRenderer)
     .withPlayerController(PlayerController)
     .withDebugLogging()
-    .asLocalSinglePlayer("LocalPlayer", "local_player");
+    .asSinglePlayer("LocalPlayer", "local_player");
 
   const e = builder.build(ClientEngine);
   e.startup();
