@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/typescript-config/react-library.json",
+  "extends": "@repo/typescript-config/vite.json",
   "include": ["."],
   "exclude": ["node_modules", "dist"],
   "compilerOptions": {
@@ -8,7 +8,10 @@
     "module": "esnext",
     "target": "esnext",
     // "moduleResolution": "Node",
+    
     "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "strict": true,
     "skipLibCheck": true
   }

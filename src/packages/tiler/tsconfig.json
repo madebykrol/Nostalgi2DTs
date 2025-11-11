@@ -1,8 +1,9 @@
 {
-  "extends": "@repo/typescript-config/react-library.json",
+  "extends": "@repo/typescript-config/vite.json",
   "include": ["."],
   "exclude": ["node_modules"],
   "compilerOptions": {
-    "lib": ["DOM", "ESNext"]
+    "lib": ["DOM", "ESNext"],
+    "experimentalDecorators": true
   }
 }

@@ -1,10 +1,10 @@
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 
-import { Actor, Container, Engine, EngineBuilder, inject, Level, Url, Vector2, World } from "@repo/engine";
+import { Actor, Constructor, Container, Engine, EngineBuilder, inject, Vector2, World } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { Endpoint, ServerReplicationManager, ClientInputMessage } from "../../packages/engine/network";
-import { DemoActor } from "@repo/example";
+import { DemoActor, GrasslandsMap } from "@repo/example";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -262,7 +262,7 @@ class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
       this.handleClientInput(sessionId, message);
     });
 
-    endpoint.onMessage<any>("client:ready", (sessionId, message) => {
+    endpoint.onMessage<any>("client:ready", (sessionId, _message) => {
       console.log(`Client ${sessionId} is ready`);
       // TODO: Send world snapshot
     });
@@ -310,14 +310,25 @@ class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
   }
 
   // Override spawnActor to register actors for replication
-  async spawnActor(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
-    await super.spawnActor(actor, parent, position);
+  async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
+    await super.spawnActorInstance(actor, parent, position);
     
     // Register for replication if needed
     if (actor.shouldReplicate) {
-      const actorId = `actor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const actorId = actor.getId();
       this.replicationManager.registerActor(actor, actorId);
     }
+  }
+
+  async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent?: Actor, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {
+    const actor = await super.spawnActor(ctor, parent, position, properties);
+    // Additional logic if needed
+
+    if (actor.shouldReplicate) {
+      const actorId = actor.getId();
+      this.replicationManager.registerActor(actor, actorId);
+    }
+    return actor;
   }
 }
 
@@ -332,7 +343,7 @@ builder
 const engine = builder.build(ServerEngine);
 
 engine.startup();
-const level = new Level();
+const level = new GrasslandsMap(builder.container);
 const demoActor = new DemoActor();
 
 demoActor.addChild(new DemoActor());
