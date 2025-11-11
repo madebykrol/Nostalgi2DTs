@@ -7,7 +7,8 @@ export abstract class Endpoint<TSocket,TReq> {
     }
 
     abstract send(command: string, data: any): void;
-    onMessage<T>(_command: string, _callback: (data:T) => void): void {}
+    
+    onMessage<T>(_messageType: string, _callback: (sessionId: string, data: T) => void): void {}
 
 
     // callback when a new connection is established

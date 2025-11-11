@@ -10,7 +10,7 @@ export * from "./camera";
 export * from "./audio";
 export * from "./network";
 export { EngineBuilder } from "./engineBuilder";
-export {GameInstance, Controller, PlayerState} from "./game";
+export {GameInstance, Controller, PlayerState, GameMode} from "./game";
 export {InputManager} from "./input";
 
 

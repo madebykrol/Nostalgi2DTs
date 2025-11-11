@@ -5,29 +5,16 @@ import "./style.css";
 import {BaseActorRenderer, Canvas} from "@repo/basicrenderer"
 import { Header, Counter, EngineContext } from "@repo/ui";
 import { 
-  Level,
-  Vector2,
-  Actor, 
-  PolygonCollisionComponent, 
-  ActorRenderer, 
-  PhysicsComponent, 
-  Vertex2,   
+  Vector2, 
   EngineBuilder, 
   SoundManager,
-  Camera,
   OrthoCamera,
-  Container,
-  Constructor,
   PlayerState
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
-import { BombActor, DemoActor } from "@repo/example";
-import { Parser, TiledPoint, TileMapActor, TileMapActorRenderer, type TileMapActorOptions }from "@repo/tiler";
-import { TiledObjectLayer } from "@repo/tiler";
-import { unmanaged } from 'inversify';
-import { PlayerController } from "./PlayerController";
+import { BombActor, DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor, GrasslandsMap, PlayerController, WallActor, WallActorRenderer } from "@repo/example";
+import { TileMapActorRenderer }from "@repo/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
-import { GameMode } from "../../../packages/engine/game/gameMode";
 const App = () => {
 
   const ws = useRef<WebSocket>(null);
@@ -59,7 +46,7 @@ const App = () => {
     .withActor(GameTileMapActor, TileMapActorRenderer)
     .withActor(BombActor)
     .withActor(WallActor, WallActorRenderer)
-    .withPlayerController(PlayerController)
+    .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
     .withDebugLogging()
     .asSinglePlayer("LocalPlayer", "local_player");
 
@@ -140,154 +127,3 @@ const App = () => {
 )};
 
 createRoot(document.getElementById("app")!).render(<App />);
-
-class ExampleTopDownRPGGameMode extends GameMode {
-  start(): void {
-    throw new Error("Method not implemented.");
-  }
-  stop(): void {
-    throw new Error("Method not implemented.");
-  }
-  playerControllerType: typeof PlayerController = PlayerController;
-
-}
-
-class GrasslandsMap extends Level {
-
-  private tileMapActor: GameTileMapActor;
-  private container: Container;
-  constructor(container: Container) {
-    super();
-
-    this.name = "Grasslands";
-    this.tileMapActor = new GameTileMapActor("/Nostalgi2DTs/client/grasslands.tmx", new Parser(), container);
-
-    this.container = container;
-
-    this.addActor(this.tileMapActor);
-    // const mapCenter = tileMapActor.getWorldCenter();
-    // tileMapActor.setPosition(mapCenter);
-  }
-
-  // get
-  getGravity(): Vector2 {
-    return new Vector2(
-      this.tileMapActor.getMap()?.properties?.GravityX as number ?? 0,
-      this.tileMapActor.getMap()?.properties?.GravityY as number ?? 0
-    );
-  }
-
-  getGameMode(): Constructor<GameMode> | undefined {
-    console.log(this.tileMapActor.getMap()?.properties?.GameMode);
-    return this.container.getTypeForIdentifier(this.tileMapActor.getMap()?.properties?.GameMode as  string) as Constructor<GameMode> | undefined;
-  }
-}
-
-class GameTileMapActor extends TileMapActor {
-  constructor(@unmanaged() mapUrl: string, parser: Parser = new Parser(), container: Container, options: TileMapActorOptions = {}) {
-    super(mapUrl, parser, container, options);
-  }
-
-  protected handleLayer(layer: TiledObjectLayer): boolean {
-      const layerName = layer.name?.toLowerCase?.() ?? "";
-      const typeProperty = layer.properties ? layer.properties["Type"] : undefined;
-
-      console.log(layerName, typeProperty);
-      const layerType = typeof typeProperty === "string"
-          ? typeProperty.toLowerCase()
-          : "";
-
-      if (layerName.includes("wall") || layerType === "walls") {
-          console.log("Handling walls for layer:", layer.name);
-          this.handleWalls(layer);
-          return true;
-      }
-      return true;
-  }
-
-  private handleWalls(layer: TiledObjectLayer): void {
-      if (!layer.visible || !layer.objects.length) {
-          return;
-      }
-
-      const scale = this.getWorldUnitsPerPixel();
-      const translation = this.getRenderTranslation();
-
-      console.log("Processing walls for layer:", layer.name);
-
-      layer.objects.forEach((object, _index) => {
-          if (!object.visible) {
-              return;
-          }
-
-          const polygon = object.polygon;
-          let vertices: Vertex2[] = [];
-
-          if (polygon && polygon.length >= 3) {
-            vertices = this.handlePolygonWall(polygon, scale, object.rotation ?? 0);
-          }
-
-          else {
-            vertices = object.width && object.height ? [
-              { x: 0, y: 0 },
-              { x: object.width * scale, y: 0 },
-              { x: object.width * scale, y: -object.height * scale },
-              { x: 0, y: -object.height * scale }
-            ] : [];
-          }
-
-          const wallActor = this.container.get<WallActor>(WallActor);
-          wallActor.applyProperties({ vertices: vertices });
-
-          wallActor.initialize();
-
-          const posX = (object.x + (layer.offsetX ?? 0)) * scale;
-          const posY = -((object.y + (layer.offsetY ?? 0)) * scale);
-          const worldPosition = new Vector2(posX + translation.x, posY + translation.y);
-          wallActor.setPosition(worldPosition);
-
-          this.addChild(wallActor);
-      });
-  }
-
-  private handlePolygonWall(polygon: TiledPoint[], scale: number, rotation: number): { x: number; y: number }[] {
-    const rotationRadians = -(rotation * (Math.PI / 180));
-    const cos = Math.cos(rotationRadians);
-    const sin = Math.sin(rotationRadians);
-
-    return polygon.map((point) => {
-        const scaledX = point.x * scale;
-        const scaledY = -point.y * scale;
-        return {
-            x: scaledX * cos - scaledY * sin,
-            y: scaledX * sin + scaledY * cos
-        };
-    });
-  }
-}
-
-class WallActor extends Actor {
-
-  vertices: Vertex2[] | undefined;
-
-  constructor(){
-    super();
-  }
-
-  initialize(): void {
-    const physicsComponent = new PhysicsComponent();
-    physicsComponent.setSimulationState(true, "static");
-    this.addComponent(physicsComponent);
-
-    const collisionComponent = new PolygonCollisionComponent(this.vertices ? this.vertices : []);
-    this.addComponent(collisionComponent);
-  }
-  
-}
-
-class WallActorRenderer extends ActorRenderer<WallActor> {
-  render(_actor: WallActor, _camera: Camera, _gl: WebGL2RenderingContext, _debugPhysics?: boolean): boolean {
-    return true;
-  }
-
-}
