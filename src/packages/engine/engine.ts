@@ -435,7 +435,6 @@ export class Engine<TSocket, TReq> {
             // Handle client-side prediction and reconciliation
             for (const _actor of replicatingActors) {
                 // Handle client-side prediction and reconciliation
-                
             }
         }
 
@@ -502,7 +501,7 @@ export class Engine<TSocket, TReq> {
         await this.spawnLevelActors();
     }
 
-    async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent?: Actor, position?: Vector2, properties?: Record<string, any>): Promise<void> {
+    async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent?: Actor, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {
         if (!this.world) {
             throw new Error("No world loaded");
         }
@@ -527,6 +526,8 @@ export class Engine<TSocket, TReq> {
             await this.spawnActorInstance(child, actor);
         }
         actor.onSpawned();
+
+        return actor;
     }
 
      async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {

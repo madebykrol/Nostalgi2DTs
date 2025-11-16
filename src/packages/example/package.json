@@ -10,7 +10,8 @@
     "lint": "eslint \"**/*.ts\""
   },
   "dependencies": {
-    "@repo/engine": "*"
+    "@repo/engine": "*",
+    "@repo/tiler": "*"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

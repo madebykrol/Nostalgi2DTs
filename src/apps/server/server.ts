@@ -1,24 +1,10 @@
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 
-import { Actor, Container, Engine, EngineBuilder, inject, Level, Url, Vector2, World } from "@repo/engine";
+import { Actor, Constructor, Container, Engine, EngineBuilder, inject, Vector2, World } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
-import { Endpoint } from "../../packages/engine/network/endpoint";
-import { DemoActor } from "@repo/example";
-
-const stringify = (obj: any): string => {
-  var seen: any[] = [];
-
-  return JSON.stringify(obj, function(key, val) {
-    if (val != null && typeof val == "object") {
-          if (seen.indexOf(val) >= 0) {
-              return;
-          }
-          seen.push(val);
-    }
-    return val;
-});
-}
+import { Endpoint, ServerReplicationManager, ClientInputMessage } from "../../packages/engine/network";
+import { DemoActor, GrasslandsMap } from "@repo/example";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -27,7 +13,7 @@ class UserSession {
   public socket: WebSocket;
   public lastSeen: number;
   public playerActor: Actor | null = null;
-  // Lägg till mer session-relaterad data här
+  
   constructor(id: string, socket: WebSocket) {
     this.id = id;
     this.socket = socket;
@@ -36,23 +22,58 @@ class UserSession {
 }
 
 class Server extends Endpoint<WebSocket, http.IncomingMessage>{
-
-
   private wss: WebSocketServer | undefined;
   private webServer: http.Server | undefined;
+  private sessions: Map<string, UserSession> = new Map();
+  private messageHandlers: Map<string, (sessionId: string, data: any) => void> = new Map();
 
-  constructor(adress: string, port: number) {
-    super(adress, port);
+  constructor(address: string, port: number) {
+    super(address, port);
+  }
+
+  getSessions(): Map<string, UserSession> {
+    return this.sessions;
   }
 
   send(command: string, data: any): void {
-    throw new Error("Method not implemented.");
+    // Broadcast to all connected sessions
+    const message = JSON.stringify({ command, data });
+    this.sessions.forEach((session) => {
+      if (session.socket.readyState === WebSocket.OPEN) {
+        session.socket.send(message);
+      }
+    });
+  }
+
+  sendToSession(sessionId: string, message: any): void {
+    const session = this.sessions.get(sessionId);
+    if (session && session.socket.readyState === WebSocket.OPEN) {
+      session.socket.send(JSON.stringify(message));
+    }
+  }
+
+  broadcast(message: any): void {
+    const messageStr = JSON.stringify(message);
+    this.sessions.forEach((session) => {
+      if (session.socket.readyState === WebSocket.OPEN) {
+        session.socket.send(messageStr);
+      }
+    });
+  }
+
+  // Register a handler for a specific message type
+  onMessage<T>(messageType: string, callback: (sessionId: string, data: T) => void): void {
+    this.messageHandlers.set(messageType, callback as any);
   }
 
   cleanup(): void {
-    throw new Error("Method not implemented.");
+    if (this.wss) {
+      this.wss.close();
+    }
+    if (this.webServer) {
+      this.webServer.close();
+    }
   }
-
 
   async connect(callback: (socket: WebSocket, req: http.IncomingMessage) => void): Promise<void> {
     this.webServer = http.createServer((_req, res) => {
@@ -71,65 +92,57 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
 
     console.log("WebSocket server starting...");
    
-    this.wss.on("connection", callback);
-  }
-
-  disconnect(): Promise<void> {
-    throw new Error("Method not implemented.");
-  }
-
-  private sessions: Map<string, UserSession> = new Map();
-
-
-
-  protected physicsTickRate: number = 30; // ticks per second
-  protected snapshotRate: number = 30; // snapshots per second
-
-
-  snapshotTick() {
-    // console.log("Snapshot tick at", new Date().toISOString());
-    this.sessions.forEach((sess) => {
-      if (sess.socket.readyState === WebSocket.OPEN) {
-        sess.socket.send(`snapshot:${stringify(sess.lastSeen)}`);
-      }
+    this.wss.on("connection", (socket, req) => {
+      this.handleConnection(socket, req);
+      callback(socket, req);
     });
   }
 
-
-  onConnection(socket: WebSocket, req: http.IncomingMessage): void {
-
+  private handleConnection(socket: WebSocket, req: http.IncomingMessage): void {
     const params = new URL(req.url ?? "", "http://example.com/");
-    console.log(params);
-    const userId =  params.searchParams.get("userId") ?? "anonymous";
+    const userId = params.searchParams.get("userId") ?? "anonymous";
 
-    // Registrera state
-  const sess: UserSession = { id: userId, socket, lastSeen: Date.now(), playerActor: null };
+    // Register session
+    const sess: UserSession = { id: userId, socket, lastSeen: Date.now(), playerActor: null };
     this.sessions.set(sess.id, sess);
+    
+    console.log(`Client connected: ${sess.id}`);
 
     socket.on("message", (data) => {
-      console.log(`Meddelande från ${sess.id}:`, data.toString());
-      // Echo tillbaka
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(`echo:${data.toString()}`);
+      try {
+        const message = JSON.parse(data.toString());
+        const messageType = message.type;
+        
+        // Route to registered handler
+        const handler = this.messageHandlers.get(messageType);
+        if (handler) {
+          handler(sess.id, message);
+        } else {
+          console.log(`No handler for message type: ${messageType}`);
+        }
+      } catch (error) {
+        console.error(`Error parsing message from ${sess.id}:`, error);
       }
     });
 
     socket.on("pong", () => {
       sess.lastSeen = Date.now();
-      console.log(`Pong från ${sess.id}`);
     });
 
     socket.on("close", () => {
       this.sessions.delete(sess.id);
-      console.log(`Anslutning stängd: ${sess.id}`);
-      // Städa upp speldata om nödvändigt
+      console.log(`Connection closed: ${sess.id}`);
+      this.onDisconnection();
     });
 
     socket.on("error", (err) => {
-      console.error(`Fel på anslutning ${sess.id}:`, err);
+      console.error(`Error on connection ${sess.id}:`, err);
     });
   }
 
+  disconnect(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 // // Håll koll på aktiva klienter och hjärtslag
@@ -227,13 +240,95 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
 const server = new Server("localhost", PORT);
 
 class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
-  // Implement server-specific engine logic here
-  /**
-   *
-   */
+  private replicationManager: ServerReplicationManager;
+  private networkTickInterval: NodeJS.Timeout | null = null;
+  private networkTickRate = 60; // 60 Hz
+
   constructor(@inject(World)world: World, @inject(Endpoint<WebSocket, http.IncomingMessage>) endpoint: Endpoint<WebSocket, http.IncomingMessage> | undefined, @inject(Container)container: Container) {
     super(world, endpoint, "server", container);
     
+    this.replicationManager = new ServerReplicationManager();
+    this.setupNetworkHandlers();
+  }
+
+  private setupNetworkHandlers(): void {
+    const endpoint = this.netEndpoint;
+    if (!endpoint || !(endpoint instanceof Server)) {
+      return;
+    }
+
+    // Register message handlers using the Endpoint pattern
+    endpoint.onMessage<ClientInputMessage>("client:input", (sessionId, message) => {
+      this.handleClientInput(sessionId, message);
+    });
+
+    endpoint.onMessage<any>("client:ready", (sessionId, _message) => {
+      console.log(`Client ${sessionId} is ready`);
+      // TODO: Send world snapshot
+    });
+  }
+
+  private handleClientInput(sessionId: string, message: ClientInputMessage): void {
+    const result = this.replicationManager.processClientInput(message);
+    
+    if (!result.success) {
+      // Send error to client using endpoint
+      const endpoint = this.netEndpoint as Server;
+      endpoint.sendToSession(sessionId, {
+        type: "error",
+        code: result.error,
+        message: `Failed to process input: ${result.error}`
+      });
+    }
+  }
+
+  startup(): void {
+    super.startup();
+    
+    // Start network tick for broadcasting updates
+    this.networkTickInterval = setInterval(() => {
+      this.networkTick();
+    }, 1000 / this.networkTickRate);
+  }
+
+  shutdown(): void {
+    super.shutdown();
+    if (this.networkTickInterval) {
+      clearInterval(this.networkTickInterval);
+    }
+  }
+
+  private networkTick(): void {
+    // Broadcast all actor updates
+    const updates = this.replicationManager.getActorUpdates();
+    if (updates.updates.length > 0) {
+      const endpoint = this.netEndpoint;
+      if (endpoint && endpoint instanceof Server) {
+        endpoint.broadcast(updates);
+      }
+    }
+  }
+
+  // Override spawnActor to register actors for replication
+  async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
+    await super.spawnActorInstance(actor, parent, position);
+    
+    // Register for replication if needed
+    if (actor.shouldReplicate) {
+      const actorId = actor.getId();
+      this.replicationManager.registerActor(actor, actorId);
+    }
+  }
+
+  async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent?: Actor, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {
+    const actor = await super.spawnActor(ctor, parent, position, properties);
+    // Additional logic if needed
+
+    if (actor.shouldReplicate) {
+      const actorId = actor.getId();
+      this.replicationManager.registerActor(actor, actorId);
+    }
+    return actor;
   }
 }
 
@@ -248,7 +343,7 @@ builder
 const engine = builder.build(ServerEngine);
 
 engine.startup();
-const level = new Level();
+const level = new GrasslandsMap(builder.container);
 const demoActor = new DemoActor();
 
 demoActor.addChild(new DemoActor());
