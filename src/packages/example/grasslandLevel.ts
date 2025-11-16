@@ -6,7 +6,7 @@ export class GrasslandsMap extends Level {
 
   private tileMapActor: GameTileMapActor;
   private container: Container;
-  constructor(container: Container) {
+  constructor(container: Container, ) {
     super();
 
     this.name = "Grasslands";

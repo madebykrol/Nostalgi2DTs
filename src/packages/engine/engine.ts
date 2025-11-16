@@ -435,7 +435,6 @@ export class Engine<TSocket, TReq> {
             // Handle client-side prediction and reconciliation
             for (const _actor of replicatingActors) {
                 // Handle client-side prediction and reconciliation
-                
             }
         }
 

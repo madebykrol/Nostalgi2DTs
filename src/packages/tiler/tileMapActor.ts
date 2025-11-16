@@ -73,7 +73,7 @@ export class TileMapActor extends Actor {
         this.options = options;
         this.normalizedMapUrl = this.mapUrl.replace(/\\/g, "/");
         this.basePath = this.computeBasePath(this.normalizedMapUrl);
-        this.isRemote = this.isAbsoluteUrl(this.mapUrl);
+        this.isRemote = this.isRemoteUrl(this.mapUrl);
     }
 
     async onLoad(): Promise<void> {
@@ -192,7 +192,7 @@ export class TileMapActor extends Actor {
         return source.substring(0, slashIndex + 1);
     }
 
-    private isAbsoluteUrl(value: string): boolean {
+    private isRemoteUrl(value: string): boolean {
         try {
             const parsed = new URL(value);
             return parsed.protocol === "http:" || parsed.protocol === "https:";

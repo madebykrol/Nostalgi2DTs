@@ -1,13 +1,13 @@
 {
   "extends": "@repo/typescript-config/vite.json",
-  "include": ["."],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"],
   "compilerOptions": {
     "lib": ["DOM", "ESNext"],
     "outDir": "dist",
     "module": "esnext",
     "target": "esnext",
-    // "moduleResolution": "Node",
+    "noEmit": true,
     
     "esModuleInterop": true,
     "experimentalDecorators": true,
