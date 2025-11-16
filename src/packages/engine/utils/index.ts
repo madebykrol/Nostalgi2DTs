@@ -12,5 +12,5 @@ export const isServer = () =>
   !!process.versions &&
   !!process.versions.node;
 
-  const isBrowser = () =>
+export const isBrowser = () =>
   ![typeof window, typeof document].includes('undefined');
