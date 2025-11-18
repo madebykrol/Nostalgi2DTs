@@ -1,4 +1,4 @@
-import { Url } from "@repo/engine";
+import { ResourceManager, Url } from "@repo/engine";
 
 export type TiledMapOrientation = "orthogonal" | "isometric" | "staggered" | "hexagonal" | string;
 
@@ -89,14 +89,7 @@ export interface TiledMap {
 type XmlElement = Element;
 
 export class Parser {
-	constructor(
-		private readonly domParserFactory: () => DOMParser = () => {
-			if (typeof DOMParser === "undefined") {
-				throw new Error("DOMParser is not available in the current environment");
-			}
-			return new DOMParser();
-		}
-	) {}
+	constructor(private parser: DOMParser, private resourceManager: ResourceManager) {}
 
 	async parse(url: string): Promise<TiledMap> {
 		if (!url) {
@@ -104,8 +97,8 @@ export class Parser {
 		}
 
 		const xml = await this.loadSource(url);
-		const parser = this.domParserFactory();
-		const doc = parser.parseFromString(xml, "application/xml");
+		
+		const doc = this.parser.parseFromString(xml, "application/xml");
 
 		const mapElement = doc.querySelector("map");
 		if (!mapElement) {
@@ -140,41 +133,8 @@ export class Parser {
 	}
 
 	private async loadSource(target: string): Promise<string> {
-		if (Url.isValidUrl(target)) {
-			return this.fetchText(target);
-		}
 
-		if (target.startsWith("file://")) {
-			return this.readFileFromUrl(target);
-		}
-
-		if (typeof window !== "undefined") {
-			return this.fetchText(target);
-		}
-
-		return this.readFileFromDisk(target);
-	}
-
-	private async fetchText(target: string): Promise<string> {
-		const response = await fetch(target);
-		if (!response.ok) {
-			throw new Error(`Failed to fetch TMX map from ${target}: ${response.status} ${response.statusText}`);
-		}
-		return response.text();
-	}
-
-	private async readFileFromUrl(fileUrl: string): Promise<string> {
-		const urlModule = await import("node:url");
-		const fs = await import("node:fs/promises");
-		const filePath = urlModule.fileURLToPath(fileUrl);
-		return fs.readFile(filePath, "utf-8");
-	}
-
-	private async readFileFromDisk(target: string): Promise<string> {
-		const fs = await import("node:fs/promises");
-		const path = await import("node:path");
-		const absolutePath = path.isAbsolute(target) ? target : path.resolve(process.cwd(), target);
-		return fs.readFile(absolutePath, "utf-8");
+		return this.resourceManager.loadResource(target);
 	}
 
 	private parseTilesets(mapElement: XmlElement): TiledTilesetReference[] {
