@@ -1,4 +1,4 @@
-import { ResourceManager, Url } from "@repo/engine";
+import { inject, ResourceManager, Url } from "@repo/engine";
 
 export type TiledMapOrientation = "orthogonal" | "isometric" | "staggered" | "hexagonal" | string;
 
@@ -89,12 +89,22 @@ export interface TiledMap {
 type XmlElement = Element;
 
 export class Parser {
-	constructor(private parser: DOMParser, private resourceManager: ResourceManager) {}
+
+	private parser: DOMParser;
+
+	constructor(@inject(ResourceManager) private resourceManager: ResourceManager) {
+		this.parser = new DOMParser();
+		console.log(resourceManager);
+	}
 
 	async parse(url: string): Promise<TiledMap> {
+
 		if (!url) {
 			throw new Error("A TMX url must be provided to the parser");
 		}
+
+		console.log("Parsing with parser:", this.parser);
+		console.log("Using resource manager:", this.resourceManager);
 
 		const xml = await this.loadSource(url);
 		
@@ -133,8 +143,9 @@ export class Parser {
 	}
 
 	private async loadSource(target: string): Promise<string> {
+		console.log(this.resourceManager)
 
-		return this.resourceManager.loadResource(target);
+		return await this.resourceManager.loadResource(target);
 	}
 
 	private parseTilesets(mapElement: XmlElement): TiledTilesetReference[] {

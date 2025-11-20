@@ -9,11 +9,13 @@ import {
   EngineBuilder, 
   SoundManager,
   OrthoCamera,
-  PlayerState
+  PlayerState,
+  DefaultResourceManager,
+  ResourceManager
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { BombActor, DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor, GrasslandsMap, PlayerController, WallActor, WallActorRenderer } from "@repo/example";
-import { TileMapActorRenderer }from "@repo/tiler";
+import { Parser, TileMapActorRenderer }from "@repo/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 const App = () => {
 
@@ -38,10 +40,12 @@ const App = () => {
   builder
     .withWorldInstance(new PlanckWorld())
     .withEndpointInstance(new ClientEndpoint("localhost", 3001))
+    .withService(Parser)
     .withDefaultRenderer(BaseActorRenderer)
     .withInputManager(DefaultInputManager)
     .withSoundManager(SoundManager)
     .withGameMode(ExampleTopDownRPGGameMode)
+    .withResourceManager(DefaultResourceManager)
     .withActor(DemoActor)
     .withActor(GameTileMapActor, TileMapActorRenderer)
     .withActor(BombActor)

@@ -14,8 +14,8 @@ export abstract class ResourceManager {
 export class DefaultResourceManager extends ResourceManager {
 
     
-
     async loadResource(path: string, noCache?: boolean): Promise<string> {
+		console.log(`Loading resource from path: ${path} (noCache: ${noCache})`);
         // Default implementation could be empty or throw an error
        if(isServer()) {
         console.log("Load from filesystem");
@@ -30,7 +30,7 @@ export class DefaultResourceManager extends ResourceManager {
     }
 
     private async fetchText(target: string): Promise<string> {
-		const response = await fetch(target);
+		const response = await fetch("public"+target);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch TMX map from ${target}: ${response.status} ${response.statusText}`);
 		}

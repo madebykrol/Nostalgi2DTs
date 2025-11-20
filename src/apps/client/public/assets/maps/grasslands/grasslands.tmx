@@ -7,13 +7,13 @@
   <property name="Type" value="GrassLandLevel"/>
  </properties>
  <tileset firstgid="1" name="Cliff_tileset" tilewidth="32" tileheight="32" tilecount="240" columns="15">
-  <image source="Whispers-of-avalon/Cliff_tileset.png" trans="000000" width="503" height="518"/>
+  <image source="Cliff_tileset.png" trans="000000" width="503" height="518"/>
  </tileset>
  <tileset firstgid="241" name="ground_tiles" tilewidth="32" tileheight="32" tilecount="441" columns="21">
-  <image source="Whispers-of-avalon/ground_tiles.png" trans="000000" width="672" height="701"/>
+  <image source="ground_tiles.png" trans="000000" width="672" height="701"/>
  </tileset>
- <tileset firstgid="682" name="object- layer" tilewidth="32" tileheight="32" tilecount="84" columns="14">
-  <image source="Whispers-of-avalon/object- layer.png" trans="000000" width="477" height="219"/>
+ <tileset firstgid="682" name="object-layer" tilewidth="32" tileheight="32" tilecount="84" columns="14">
+  <image source="object-layer.png" trans="000000" width="477" height="219"/>
   <tile id="10">
    <properties>
     <property name="type" value="chest"/>
@@ -26,7 +26,7 @@
   </tile>
  </tileset>
  <tileset firstgid="766" name="Extra_Unfinished4" tilewidth="32" tileheight="32" tilecount="1" columns="11">
-  <image source="Whispers-of-avalon/Extra_Unfinished4.png" trans="ffffff" width="360" height="266"/>
+  <image source="Extra_Unfinished4.png" trans="ffffff" width="360" height="266"/>
   <tile id="0">
    <objectgroup draworder="index" name="asd"/>
   </tile>

@@ -1,4 +1,4 @@
-import { Constructor, Container, GameMode, Level, Vector2 } from "@repo/engine";
+import { Constructor, Container, GameMode, Level, ResourceManager, Vector2 } from "@repo/engine";
 import { GameTileMapActor } from "./actors/gameTileMapActor";
 import { Parser } from "@repo/tiler";
 
@@ -10,7 +10,9 @@ export class GrasslandsMap extends Level {
     super();
 
     this.name = "Grasslands";
-    this.tileMapActor = new GameTileMapActor("/Nostalgi2DTs/client/grasslands.tmx", new Parser(), container);
+    this.tileMapActor = container.get<GameTileMapActor>(GameTileMapActor);
+    this.tileMapActor.setMapUrl("/assets/maps/grasslands/grasslands.tmx");
+
 
     this.container = container;
 

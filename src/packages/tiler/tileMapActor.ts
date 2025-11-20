@@ -55,22 +55,28 @@ export class TileMapActor extends Actor {
     private mapData: TiledMap | null = null;
     private objectActorsCreated = false;
     private worldUnitsPerPixel: number | null = null;
-    private readonly options: TileMapActorOptions;
-    private readonly normalizedMapUrl: string;
-    private readonly basePath: string;
-    private readonly isRemote: boolean;
+    private options: TileMapActorOptions;
+    private normalizedMapUrl: string | null = null;
+    private basePath: string | null = null;
+    private isRemote: boolean | null = null;
     private mapWorldSize: Vector2 | null = null;
     private renderTranslation: Vector2 = new Vector2(0, 0);
+    private mapUrl: string = "";
 
     constructor(
-        private readonly mapUrl: string,
-        private readonly parser: Parser = new Parser(),
+        private readonly parser: Parser,
         protected readonly container:Container,
         options: TileMapActorOptions = {}
     ) {
         super();
         this.shouldTick = false;
         this.options = options;
+
+        console.log(parser);
+    }
+
+    public setMapUrl(map: string): void {
+        this.mapUrl = map;
         this.normalizedMapUrl = this.mapUrl.replace(/\\/g, "/");
         this.basePath = this.computeBasePath(this.normalizedMapUrl);
         this.isRemote = this.isRemoteUrl(this.mapUrl);
