@@ -30,28 +30,30 @@ export class SoundActor extends Actor {
    * Called after the actor is spawned in the world
    */
   onSpawned(): void {
-    // Load the Boink sound
+    const audioContext = this.soundManager.getAudioContext();
+    if (!audioContext) return;
+
+    // Create the Boink sound buffer
+    const audioBuffer = createBoinkSound(audioContext);
+
+    // Load the sound handle for volume control
     this.soundHandle = this.soundManager.loadSoundFromBuffer(
       `boinkSound_${this.getId()}`, 
-      createBoinkSound(this.soundManager.getAudioContext()!), 
+      audioBuffer, 
       GainChannel.Effects
     );
     
     // Create and start playing the sound in a loop
     if (this.soundHandle) {
-      const audioContext = this.soundManager.getAudioContext();
-      if (audioContext) {
-        const audioBuffer = createBoinkSound(audioContext);
-        this.audioSource = audioContext.createBufferSource();
-        this.audioSource.buffer = audioBuffer;
-        this.audioSource.loop = true;
-        
-        // Connect to the sound handle's gain node for volume control
-        // Note: We access the private gain through the sound handle
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        this.audioSource.connect((this.soundHandle as any).gain);
-        this.audioSource.start(0);
-      }
+      this.audioSource = audioContext.createBufferSource();
+      this.audioSource.buffer = audioBuffer;
+      this.audioSource.loop = true;
+      
+      // Connect to the sound handle's gain node for volume control
+      // Note: We access the private gain through the sound handle
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.audioSource.connect((this.soundHandle as any).gain);
+      this.audioSource.start(0);
     }
   }
 
