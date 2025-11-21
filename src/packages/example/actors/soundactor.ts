@@ -14,6 +14,7 @@ import { inject, injectable } from 'inversify';
 @injectable()
 export class SoundActor extends Actor {
   private soundHandle: SoundHandle | null = null;
+  private audioSource: AudioBufferSourceNode | null = null;
   private maxDistance: number = 100; // Maximum distance at which sound is audible
   private minDistance: number = 5;   // Minimum distance for full volume
 
@@ -29,17 +30,28 @@ export class SoundActor extends Actor {
    * Called after the actor is spawned in the world
    */
   onSpawned(): void {
-    // Load and start playing the Boink sound
+    // Load the Boink sound
     this.soundHandle = this.soundManager.loadSoundFromBuffer(
       `boinkSound_${this.getId()}`, 
       createBoinkSound(this.soundManager.getAudioContext()!), 
       GainChannel.Effects
     );
     
-    // Start playing the sound in a loop
+    // Create and start playing the sound in a loop
     if (this.soundHandle) {
-      this.soundHandle.setVolume(1);
-      this.soundHandle.play(true, 0); // true = loop, 0 = start immediately
+      const audioContext = this.soundManager.getAudioContext();
+      if (audioContext) {
+        const audioBuffer = createBoinkSound(audioContext);
+        this.audioSource = audioContext.createBufferSource();
+        this.audioSource.buffer = audioBuffer;
+        this.audioSource.loop = true;
+        
+        // Connect to the sound handle's gain node for volume control
+        // Note: We access the private gain through the sound handle
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.audioSource.connect((this.soundHandle as any).gain);
+        this.audioSource.start(0);
+      }
     }
   }
 
@@ -65,7 +77,7 @@ export class SoundActor extends Actor {
       Math.pow(playerPosition.y - myPosition.y, 2)
     );
 
-    // Calculate volume based on distance (inverse square law with clamping)
+    // Calculate volume based on distance with linear falloff
     let volume = 0;
     if (distance <= this.minDistance) {
       volume = 1;
@@ -82,6 +94,17 @@ export class SoundActor extends Actor {
    * Called when the actor is despawned
    */
   onDespawned(): void {
+    // Stop the audio source to prevent audio leaks
+    if (this.audioSource) {
+      try {
+        this.audioSource.stop();
+      } catch (e) {
+        // Source may already be stopped, ignore error
+      }
+      this.audioSource.disconnect();
+      this.audioSource = null;
+    }
+    
     // Clean up sound resources
     this.soundHandle = null;
   }
