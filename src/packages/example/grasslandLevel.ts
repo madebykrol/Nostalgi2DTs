@@ -1,6 +1,5 @@
-import { Constructor, Container, GameMode, Level, ResourceManager, Vector2 } from "@repo/engine";
+import { Constructor, Container, GameMode, Level, Vector2 } from "@repo/engine";
 import { GameTileMapActor } from "./actors/gameTileMapActor";
-import { Parser } from "@repo/tiler";
 
 export class GrasslandsMap extends Level {
 
@@ -10,9 +9,11 @@ export class GrasslandsMap extends Level {
     super();
 
     this.name = "Grasslands";
-    this.tileMapActor = container.get<GameTileMapActor>(GameTileMapActor);
-    this.tileMapActor.setMapUrl("/assets/maps/grasslands/grasslands.tmx");
 
+    console.log(container);
+    this.tileMapActor = container.get(GameTileMapActor);
+    console.log(this.tileMapActor);
+    this.tileMapActor.setMapUrl("/assets/maps/grasslands/grasslands.tmx");
 
     this.container = container;
 

@@ -1,3 +1,5 @@
+
+import { DOMParser } from "@xmldom/xmldom";
 import http from "http";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -11,7 +13,6 @@ import {
   OrthoCamera,
   PlayerState,
   DefaultResourceManager,
-  ResourceManager
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { BombActor, DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor, GrasslandsMap, PlayerController, WallActor, WallActorRenderer } from "@repo/example";
@@ -40,6 +41,7 @@ const App = () => {
   builder
     .withWorldInstance(new PlanckWorld())
     .withEndpointInstance(new ClientEndpoint("localhost", 3001))
+    .withServiceInstance(DOMParser, new DOMParser())
     .withService(Parser)
     .withDefaultRenderer(BaseActorRenderer)
     .withInputManager(DefaultInputManager)

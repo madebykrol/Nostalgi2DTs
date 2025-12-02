@@ -47,7 +47,9 @@ export class DefaultResourceManager extends ResourceManager {
 	private async readFileFromDisk(target: string): Promise<string> {
 		const fs = await import("node:fs/promises");
 		const path = await import("node:path");
-		const absolutePath = path.isAbsolute(target) ? target : path.resolve(process.cwd(), target);
+		
+		const absolutePath = path.join(process.cwd(), target);
+
 		return fs.readFile(absolutePath, "utf-8");
 	}
 }

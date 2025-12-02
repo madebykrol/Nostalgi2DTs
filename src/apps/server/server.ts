@@ -1,10 +1,13 @@
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 
-import { Actor, Constructor, Container, Engine, EngineBuilder, inject, Vector2, World } from "@repo/engine";
+import { Actor, Constructor, Container, DefaultResourceManager, Engine, EngineBuilder, inject, Vector2, World } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { Endpoint, ServerReplicationManager, ClientInputMessage } from "../../packages/engine/network";
-import { DemoActor, GrasslandsMap } from "@repo/example";
+import { DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor, GrasslandsMap } from "@repo/example";
+import { Parser } from "../../packages/tiler/parser";
+
+import { DOMParser } from "@xmldom/xmldom";
 
 const PORT = Number(process.env.PORT ?? 3001);
 
@@ -337,6 +340,11 @@ builder
   .withWorldInstance(new PlanckWorld())
   .withEndpointInstance(server)
   .withActor(DemoActor)
+  .withServiceInstance(DOMParser, new DOMParser())
+  .withGameMode(ExampleTopDownRPGGameMode)
+  .withResourceManager(DefaultResourceManager)
+  .withService(Parser)
+  .withActor(GameTileMapActor)
   .withDebugLogging()
   .asServer("ServerEngine");
 

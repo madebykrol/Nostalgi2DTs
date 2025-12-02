@@ -53,12 +53,13 @@ export class InversifyContainer implements Container {
     }
 
     get<T>(ctor?: Constructor<T> | AbstractConstructor<T>): T {
-        try {
+      try {
         if (!ctor) {
-        return this.container.get<T>(Text.prototype.constructor);
+         return this.container.get<T>(Text.prototype.constructor);
         }
         return this.container.get(ctor);
       } catch (e) {
+        console.log(e);
         return null as T;
       }
     }
