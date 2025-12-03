@@ -5,6 +5,7 @@ export * from "./spatialGrid";
 export * from "./container";
 export * from "./inversifyContainer";
 export {inject, injectable, multiInject, optional, unmanaged} from "inversify";
+export * from "./resourcemanager";
 
 
 export const isServer = () =>

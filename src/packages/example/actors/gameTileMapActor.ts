@@ -1,10 +1,12 @@
-import { Container, unmanaged, Vector2, Vertex2 } from "@repo/engine";
+import { Container, inject, unmanaged, Vector2, Vertex2 } from "@repo/engine";
 import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, type TileMapActorOptions } from "@repo/tiler";
 import { WallActor } from "./wall";
 
 export class GameTileMapActor extends TileMapActor {
-  constructor(@unmanaged() mapUrl: string, parser: Parser = new Parser(), container: Container, options: TileMapActorOptions = {}) {
-    super(mapUrl, parser, container, options);
+  constructor(@inject(Parser) parser: Parser, @inject(Container) container: Container, @unmanaged() options: TileMapActorOptions = {}) {
+    super(parser, container, options);
+
+    console.log(parser);
   }
 
   protected handleLayer(layer: TiledObjectLayer): boolean {

@@ -1,6 +1,7 @@
 import { TileMapActor, TiledMap, TiledTileLayer, TiledTilesetReference } from "@repo/tiler";
 import { ActorRenderer } from "../engine/rendering/renderer";
 import { Camera } from "../engine/camera/Camera";
+import { inject, ResourceManager } from "../engine/utils";
 
 interface DrawCall {
     vao: WebGLVertexArrayObject | null;
@@ -36,6 +37,14 @@ export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
         opacity: null,
         texture: null
     };
+
+    /**
+     *
+     */
+    constructor(@inject(ResourceManager) private resourceManager: ResourceManager) {
+        super();
+        
+    }
     private caches = new WeakMap<TileMapActor, RenderCache>();
     private textureCache = new WeakMap<WebGL2RenderingContext, Map<string, TextureRecord>>();
     private loggedDiagonalWarning = false;
@@ -421,7 +430,7 @@ export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
     }
 
     private async loadTexture(gl: WebGL2RenderingContext, src: string): Promise<WebGLTexture> {
-        const image = await this.loadImage(src);
+        const image = await this.loadImage("public" + src);
         const texture = gl.createTexture();
         if (!texture) {
             throw new Error("Failed to create WebGL texture");

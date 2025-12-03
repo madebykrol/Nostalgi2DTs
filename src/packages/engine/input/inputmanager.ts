@@ -13,8 +13,6 @@ export abstract class InputManager {
     }
 
     protected generateEvent(event: string, trigger: 'up'|'down'|'hold'|'tap'|'move', modifiers: {ctrl: boolean, shift: boolean, alt: boolean}): string {
-        const eventString = `${event.toLocaleLowerCase()}:${trigger.toLocaleLowerCase()}${modifiers.ctrl ? ":ctrl" : ""}${modifiers.shift ? ":shift" : ""}${modifiers.alt ? ":alt" : ""}`;
-        console.log(eventString);
-        return eventString;
+        return `${event.toLocaleLowerCase()}:${trigger.toLocaleLowerCase()}${modifiers.ctrl ? ":ctrl" : ""}${modifiers.shift ? ":shift" : ""}${modifiers.alt ? ":alt" : ""}`;
     }
 }

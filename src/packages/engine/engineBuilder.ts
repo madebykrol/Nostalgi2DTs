@@ -2,10 +2,11 @@ import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
 import { Endpoint } from "./network";
 import { ActorRenderer } from "./rendering";
-import { Constructor, Container, InversifyContainer } from "./utils";
+import { Constructor, Container, InversifyContainer, ResourceManager } from "./utils";
 import { Actor, World } from "./world";
 import { InputManager } from "./input";
 import { GameMode } from "./game/gameMode";
+import { Controller } from "./game";
 
 export class EngineBuilder<TSocket, TReq> {
    
@@ -36,8 +37,13 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-    withPlayerController<TPlayerController>(ctor: Constructor<TPlayerController>): EngineBuilder<TSocket, TReq> {
+    withPlayerController<TPlayerController extends Controller>(ctor: Constructor<TPlayerController>): EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton<TPlayerController, TPlayerController>(ctor, ctor);
+        return this;
+    }
+
+    withResourceManager<TResourceManager extends ResourceManager>(ctor: Constructor<TResourceManager>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingleton<ResourceManager, TResourceManager>(ResourceManager, ctor);
         return this;
     }
 
@@ -49,6 +55,16 @@ export class EngineBuilder<TSocket, TReq> {
 
     withInputManager<T extends InputManager>(DefaultInputManager: Constructor<T>) : EngineBuilder<TSocket, TReq> {
         this.container.registerSingleton(InputManager, DefaultInputManager);
+        return this;
+    }
+
+    withService<TService>(ctor: Constructor<TService>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingleton(ctor, ctor);
+        return this;
+    }
+
+    withServiceInstance<TService>(ctor: Constructor<TService>, instance: TService): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingletonInstance<TService>(ctor, instance);
         return this;
     }
 
@@ -116,8 +132,6 @@ export class EngineBuilder<TSocket, TReq> {
         const engine = this.container.get(Engine<TSocket, TReq>) as TEngine;
         engine.setNetworkMode(this.networkMode);
         engine.setIsDebug(this.useDebugLogging);
-
-
 
         return engine;
     }

@@ -1,6 +1,8 @@
-import { Url } from "@repo/engine";
+import { inject, ResourceManager, Url } from "@repo/engine";
+import { DOMParser } from "@xmldom/xmldom";
 
 export type TiledMapOrientation = "orthogonal" | "isometric" | "staggered" | "hexagonal" | string;
+
 
 export interface TiledTileLayer {
 	id: number;
@@ -89,25 +91,25 @@ export interface TiledMap {
 type XmlElement = Element;
 
 export class Parser {
-	constructor(
-		private readonly domParserFactory: () => DOMParser = () => {
-			if (typeof DOMParser === "undefined") {
-				throw new Error("DOMParser is not available in the current environment");
-			}
-			return new DOMParser();
-		}
-	) {}
+
+	constructor(@inject(ResourceManager) private resourceManager: ResourceManager, @inject(DOMParser) private parser: DOMParser) {
+		console.log(resourceManager);
+	}
 
 	async parse(url: string): Promise<TiledMap> {
+
 		if (!url) {
 			throw new Error("A TMX url must be provided to the parser");
 		}
 
-		const xml = await this.loadSource(url);
-		const parser = this.domParserFactory();
-		const doc = parser.parseFromString(xml, "application/xml");
+		console.log("Parsing with parser:", this.parser);
+		console.log("Using resource manager:", this.resourceManager);
 
-		const mapElement = doc.querySelector("map");
+		const xml = await this.loadSource(url);
+		
+		const doc = this.parser.parseFromString(xml, "application/xml");
+
+		const mapElement = doc.getElementsByTagName("map")[0];
 		if (!mapElement) {
 			throw new Error("The provided TMX file does not contain a <map> element");
 		}
@@ -115,7 +117,7 @@ export class Parser {
 		const tilesets = this.parseTilesets(mapElement);
 		const tileLayers = this.parseTileLayers(mapElement);
 		const objectLayers = this.parseObjectLayers(mapElement);
-		const properties = this.parseProperties(mapElement.querySelector("properties"));
+		const properties = this.parseProperties(mapElement.getElementsByTagName("properties")[0]);
 
 		const width = this.getIntAttribute(mapElement, "width");
 		const height = this.getIntAttribute(mapElement, "height");
@@ -140,47 +142,13 @@ export class Parser {
 	}
 
 	private async loadSource(target: string): Promise<string> {
-		if (Url.isValidUrl(target)) {
-			return this.fetchText(target);
-		}
-
-		if (target.startsWith("file://")) {
-			return this.readFileFromUrl(target);
-		}
-
-		if (typeof window !== "undefined") {
-			return this.fetchText(target);
-		}
-
-		return this.readFileFromDisk(target);
-	}
-
-	private async fetchText(target: string): Promise<string> {
-		const response = await fetch(target);
-		if (!response.ok) {
-			throw new Error(`Failed to fetch TMX map from ${target}: ${response.status} ${response.statusText}`);
-		}
-		return response.text();
-	}
-
-	private async readFileFromUrl(fileUrl: string): Promise<string> {
-		const urlModule = await import("node:url");
-		const fs = await import("node:fs/promises");
-		const filePath = urlModule.fileURLToPath(fileUrl);
-		return fs.readFile(filePath, "utf-8");
-	}
-
-	private async readFileFromDisk(target: string): Promise<string> {
-		const fs = await import("node:fs/promises");
-		const path = await import("node:path");
-		const absolutePath = path.isAbsolute(target) ? target : path.resolve(process.cwd(), target);
-		return fs.readFile(absolutePath, "utf-8");
+		return await this.resourceManager.loadResource(target);
 	}
 
 	private parseTilesets(mapElement: XmlElement): TiledTilesetReference[] {
-		const tilesetElements = Array.from(mapElement.querySelectorAll("tileset"));
+		const tilesetElements = Array.from(mapElement.getElementsByTagName("tileset"));
 		return tilesetElements.map((tilesetEl) => {
-			const imageElement = tilesetEl.querySelector("image");
+			const imageElement = tilesetEl.getElementsByTagName("image")[0];
 			return {
 				firstGid: this.getIntAttribute(tilesetEl, "firstgid"),
 				name: tilesetEl.getAttribute("name") || "",
@@ -201,9 +169,9 @@ export class Parser {
 	}
 
 	private parseTileLayers(mapElement: XmlElement): TiledTileLayer[] {
-		const layerElements = Array.from(mapElement.querySelectorAll("layer"));
+		const layerElements = Array.from(mapElement.getElementsByTagName("layer"));
 		return layerElements.map((layerEl) => {
-			const dataElement = layerEl.querySelector("data");
+			const dataElement = layerEl.getElementsByTagName("data")[0];
 			const data = dataElement ? this.parseLayerData(dataElement) : [];
 			return {
 				id: this.getIntAttribute(layerEl, "id", this.getOptionalIntAttribute(layerEl, "id") ?? 0),
@@ -235,10 +203,10 @@ export class Parser {
 	}
 
 	private parseObjectLayers(mapElement: XmlElement): TiledObjectLayer[] {
-		const objectLayers = Array.from(mapElement.querySelectorAll("objectgroup"));
+		const objectLayers = Array.from(mapElement.getElementsByTagName("objectgroup"));
 		return objectLayers.map((layerEl) => {
-			const properties = this.parseProperties(layerEl.querySelector("properties"));
-			const objects = this.parseObjects(layerEl.querySelectorAll("object"));
+			const properties = this.parseProperties(layerEl.getElementsByTagName("properties")[0]);
+			const objects = this.parseObjects(layerEl.getElementsByTagName("object"));
 			return {
 				id: this.getOptionalIntAttribute(layerEl, "id") ?? 0,
 				name: layerEl.getAttribute("name") || "Unnamed Object Layer",
@@ -254,13 +222,13 @@ export class Parser {
 		});
 	}
 
-	private parseObjects(objectElements: NodeListOf<XmlElement>): TiledObject[] {
+	private parseObjects(objectElements: HTMLCollectionOf<XmlElement>): TiledObject[] {
 		return Array.from(objectElements).map((objectEl) => {
-			const properties = this.parseProperties(objectEl.querySelector("properties"));
-			const polygon = this.parsePoints(objectEl.querySelector("polygon"));
-			const polyline = this.parsePoints(objectEl.querySelector("polyline"));
-			const ellipse = !!objectEl.querySelector("ellipse");
-			const textElement = objectEl.querySelector("text");
+			const properties = this.parseProperties(objectEl.getElementsByTagName("properties")[0]);
+			const polygon = this.parsePoints(objectEl.getElementsByTagName("polygon")[0]);
+			const polyline = this.parsePoints(objectEl.getElementsByTagName("polyline")[0]);
+			const ellipse = !!objectEl.getElementsByTagName("ellipse")[0];
+			const textElement = objectEl.getElementsByTagName("text")[0];
 			const gidAttr = objectEl.getAttribute("gid");
 
 			return {
@@ -310,7 +278,7 @@ export class Parser {
 		}
 
 		const result: Record<string, unknown> = {};
-		const propertyElements = Array.from(propertiesElement.querySelectorAll("property"));
+		const propertyElements = Array.from(propertiesElement.getElementsByTagName("property"));
 		for (const propertyEl of propertyElements) {
 			const name = propertyEl.getAttribute("name");
 			if (!name) {
