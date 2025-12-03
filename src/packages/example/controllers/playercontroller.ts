@@ -42,11 +42,11 @@ export class PlayerController<TSocket, TRequest> extends Controller {
       this.zoomCamera(data.deltaY);
     });
 
-    inputManager.on("mouseMove", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
+    inputManager.on("mouse:move", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
       this.lastMousePosition = new Vector2(data.worldX, data.worldY);
     });
 
-    inputManager.on("mouseUp", (_data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
+    inputManager.on("mouse:up", (_data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
       
     });
 

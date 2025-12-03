@@ -25,6 +25,7 @@ export const Counter = () => {
           setLastMousePosition(controller.lastMousePosition);
         }
       }
+
     });
 
     return () => engine!.offAfterRender(afterRenderHandle);
