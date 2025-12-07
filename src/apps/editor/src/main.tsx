@@ -27,7 +27,7 @@ import {
 import { Parser, TileMapActorRenderer } from "@repo/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { Menu, Layers, Settings, FileEdit, Save, FolderOpen } from "lucide-react";
+import { FolderOpen, Save } from "lucide-react";
 
 // Neon color theme matching project site
 const theme = {
@@ -159,10 +159,10 @@ const App = () => {
           </div>
 
           <div className="flex items-center gap-1 ml-6">
-            <MenuButton icon={FileEdit} label="File" />
-            <MenuButton icon={Menu} label="Edit" />
-            <MenuButton icon={Layers} label="View" />
-            <MenuButton icon={Settings} label="Tools" />
+            <MenuButton label="File" />
+            <MenuButton label="Edit" />
+            <MenuButton label="View" />
+            <MenuButton label="Tools" />
           </div>
         </div>
 
@@ -251,7 +251,7 @@ const App = () => {
 };
 
 // Helper Components
-const MenuButton = ({ label }: { icon: React.ComponentType<{ className?: string }>; label: string }) => (
+const MenuButton = ({ label }: { label: string }) => (
   <button
     className="px-3 py-1.5 text-xs rounded-lg transition-all border border-transparent hover:border-cyan-400/30 hover:bg-cyan-400/10"
     style={{ color: theme.text }}

@@ -17,6 +17,7 @@
     "@repo/client": "*",
     "@repo/engine": "*",
     "@repo/example": "*",
+    "@repo/planckphysics": "*",
     "@repo/tiler": "*",
     "@repo/ui": "*",
     "@tailwindcss/vite": "^4.1.13",
