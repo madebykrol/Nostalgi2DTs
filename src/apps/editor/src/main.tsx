@@ -178,13 +178,23 @@ const App = () => {
           {/* Left Panel (1/5th) */}
           <Panel defaultSize={20} minSize={10} maxSize={30}>
             <div
-              className="h-full border-r overflow-y-auto"
+              className="h-full border-r overflow-y-auto relative"
               style={{
                 backgroundColor: theme.panel,
                 borderColor: "rgba(8, 247, 254, 0.2)",
               }}
             >
-              <div className="p-4">
+              {/* Retro grid overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none opacity-20"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
+                    "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
+                  backgroundSize: "36px 36px",
+                }}
+              />
+              <div className="p-4 relative z-10">
                 <h3
                   className="text-sm font-semibold mb-3"
                   style={{ color: theme.neon.cyan }}
@@ -206,8 +216,18 @@ const App = () => {
 
           {/* Center Panel (3/5th) - Engine Canvas */}
           <Panel defaultSize={60} minSize={40}>
-            <div className="h-full flex flex-col" style={{ backgroundColor: theme.bg }}>
-              <div className="flex-1 flex items-center justify-center">
+            <div className="h-full flex flex-col relative" style={{ backgroundColor: theme.bg }}>
+              {/* Retro grid overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none opacity-20"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
+                    "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
+                  backgroundSize: "36px 36px",
+                }}
+              />
+              <div className="flex-1 flex items-center justify-center relative z-10">
                 {engine && (
                   <EngineContext.Provider value={engine}>
                     <Canvas draw={draw} options={{ context: "webgl2" }} />
@@ -222,13 +242,23 @@ const App = () => {
           {/* Right Panel (1/5th) */}
           <Panel defaultSize={20} minSize={10} maxSize={30}>
             <div
-              className="h-full border-l overflow-y-auto"
+              className="h-full border-l overflow-y-auto relative"
               style={{
                 backgroundColor: theme.panel,
                 borderColor: "rgba(254, 83, 187, 0.2)",
               }}
             >
-              <div className="p-4">
+              {/* Retro grid overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none opacity-20"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
+                    "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
+                  backgroundSize: "36px 36px",
+                }}
+              />
+              <div className="p-4 relative z-10">
                 <h3
                   className="text-sm font-semibold mb-3"
                   style={{ color: theme.neon.magenta }}
