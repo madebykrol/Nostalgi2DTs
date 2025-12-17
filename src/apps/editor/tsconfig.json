@@ -5,8 +5,9 @@
     "emitDecoratorMetadata": true,
     "downlevelIteration": true,
     "target": "ES2015",
-    "outDir": "dist"
+    "outDir": "dist",
+    "sourceMap": true
   },
-  "include": ["src"],
+  "include": ["src", "../../packages/engine/editor/editor.ts"],
   "exclude": ["node_modules", "dist"]
 }

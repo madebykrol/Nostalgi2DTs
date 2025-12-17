@@ -6,9 +6,10 @@
   "main": "server.ts",
   "types": "server.d.ts",
   "scripts": {
-  "dev": "tsup --watch --onSuccess \"node  --enable-source-maps dist/server.js\"",
-  "build": "tsup",
-  "preview": "node dist/server.js",
+    "dev": "tsup --watch --onSuccess \"node --enable-source-maps dist/server.js\"",
+    "debug": "tsup --watch --onSuccess \"node --inspect=9229 --enable-source-maps dist/server.js\"",
+    "build": "tsup",
+    "preview": "node dist/server.js",
     "lint": "eslint \"**/*.ts\""
   },
   "dependencies": {

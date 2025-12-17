@@ -1,7 +1,6 @@
 import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
 import { Endpoint } from "./network";
-import { ActorRenderer } from "./rendering";
 import { Constructor, Container, InversifyContainer, ResourceManager } from "./utils";
 import { Actor, World } from "./world";
 import { InputManager } from "./input";
@@ -104,24 +103,13 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-    withDefaultRenderer(renderer: Constructor<ActorRenderer<Actor>>): EngineBuilder<TSocket, TReq> {
-      this.container.registerSelf(renderer, "BaseActorRenderer");
-      return this;
-    }
-
     withDebugLogging() : EngineBuilder<TSocket, TReq> {
       this.useDebugLogging = true;
       return this;
     }
 
-    withActor<TActor extends Actor>(ctor: Constructor<TActor>, renderer?: Constructor<ActorRenderer<TActor>>): EngineBuilder<TSocket, TReq> {
+    withActor<TActor extends Actor>(ctor: Constructor<TActor>): EngineBuilder<TSocket, TReq> {
         this.container.registerSelf<TActor>(ctor, ctor.name);
-
-        if (renderer) {
-            this.container.registerSelf(renderer, ctor.name + "Renderer");
-            this.container.get(ActorRenderer<TActor>);
-        }
-
         return this;
     }
 

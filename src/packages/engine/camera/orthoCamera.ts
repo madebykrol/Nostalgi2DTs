@@ -7,6 +7,9 @@ export class OrthoCamera extends Camera {
     protected position: Vector2;
     protected zoom: number;
     protected unitsPerScreenHeight: number; // Define how many world units fit in screen height
+    private referenceViewportHeight: number | null = null;
+    private currentViewportHeight: number | null = null;
+    private pixelScale: number = 1;
 
     private viewMatrix: Matrix3 = new Matrix3();
     private projectionMatrix: Matrix3 = new Matrix3();
@@ -30,18 +33,38 @@ export class OrthoCamera extends Camera {
         return this.zoom;
     }
 
+    setViewportSize(_width: number, height: number): void {
+        if (height <= 0) {
+            return;
+        }
+
+        if (this.referenceViewportHeight === null) {
+            this.referenceViewportHeight = height;
+        }
+
+        if (this.currentViewportHeight !== height) {
+            this.currentViewportHeight = height;
+            const reference = this.referenceViewportHeight || height;
+            this.pixelScale = reference === 0 ? 1 : height / reference;
+            this.needsUpdate = true;
+            this.frustum = undefined;
+        }
+    }
+
     setPosition(position: Vector2): void {
         if (!this.position.equals(position)) {
             this.position.copy(position);
             this.needsUpdate = true;
+            this.frustum = undefined;
         }
     }
 
     setZoom(zoom: number): void {
-        const clampedZoom = MathUtils.clamp(zoom, 1, 10);
+        const clampedZoom = MathUtils.clamp(zoom, 0.5, 10);
         if (this.zoom !== clampedZoom) {
             this.zoom = clampedZoom;
             this.needsUpdate = true;
+            this.frustum = undefined;
         }
     }
 
@@ -74,7 +97,7 @@ export class OrthoCamera extends Camera {
 
         if (!this.frustum) {
             const aspectRatio = this.lastAspectRatio;
-            const worldHeight = this.unitsPerScreenHeight / this.zoom;
+            const worldHeight = this.getScaledUnitsPerScreenHeight() / this.zoom;
             const worldWidth = worldHeight * aspectRatio;
 
             const halfWidth = worldWidth / 2;
@@ -89,7 +112,7 @@ export class OrthoCamera extends Camera {
             );
         } else {
             const aspectRatio = this.lastAspectRatio;
-            const worldHeight = this.unitsPerScreenHeight / this.zoom;
+            const worldHeight = this.getScaledUnitsPerScreenHeight() / this.zoom;
             const worldWidth = worldHeight * aspectRatio;
             const halfWidth = worldWidth / 2;
             const halfHeight = worldHeight / 2;
@@ -106,7 +129,7 @@ export class OrthoCamera extends Camera {
 
     private updateMatrices(aspectRatio: number): void {
         if (aspectRatio === 0) aspectRatio = 1; // safeguard
-        const worldHeight = this.unitsPerScreenHeight / this.zoom;
+        const worldHeight = this.getScaledUnitsPerScreenHeight() / this.zoom;
         const worldWidth = worldHeight * aspectRatio;
         const halfWidth = worldWidth / 2;
         const halfHeight = worldHeight / 2;
@@ -142,7 +165,7 @@ export class OrthoCamera extends Camera {
 
 
         // Calculate world dimensions
-        const worldHeight = this.unitsPerScreenHeight / this.zoom;
+        const worldHeight = this.getScaledUnitsPerScreenHeight() / this.zoom;
         const worldWidth = worldHeight * aspectRatio;
 
         // Convert NDC to world space relative to camera
@@ -160,7 +183,7 @@ export class OrthoCamera extends Camera {
         const aspectRatio = canvasWidth / canvasHeight;
 
         // Calculate world dimensions
-        const worldHeight = this.unitsPerScreenHeight / this.zoom;
+        const worldHeight = this.getScaledUnitsPerScreenHeight() / this.zoom;
         const worldWidth = worldHeight * aspectRatio;
 
         // Convert world position to relative position from camera
@@ -180,7 +203,7 @@ export class OrthoCamera extends Camera {
 
     getBounds(canvasWidth: number, canvasHeight: number): { min: Vector2; max: Vector2; } {
         const aspectRatio = canvasWidth / canvasHeight;
-        const worldHeight = this.unitsPerScreenHeight / this.zoom;
+        const worldHeight = this.getScaledUnitsPerScreenHeight() / this.zoom;
         const worldWidth = worldHeight * aspectRatio;
 
         const halfWidth = worldWidth / 2;
@@ -193,12 +216,22 @@ export class OrthoCamera extends Camera {
     }
 
     clone(): Camera {
-        return new OrthoCamera(this.position.clone(), this.zoom, this.unitsPerScreenHeight);
+        const cloned = new OrthoCamera(this.position.clone(), this.zoom, this.unitsPerScreenHeight);
+        cloned.referenceViewportHeight = this.referenceViewportHeight;
+        cloned.currentViewportHeight = this.currentViewportHeight;
+        cloned.pixelScale = this.pixelScale;
+        return cloned;
     }
 
     copyFrom(other: Camera): void {
         this.setPosition(other.getPosition());
         this.setZoom(other.getZoom());
+        if (other instanceof OrthoCamera) {
+            this.unitsPerScreenHeight = other.unitsPerScreenHeight;
+            this.referenceViewportHeight = other.referenceViewportHeight;
+            this.currentViewportHeight = other.currentViewportHeight;
+            this.pixelScale = other.pixelScale;
+        }
     }
 
     lerpTo(target: Camera, t: number): void {
@@ -216,5 +249,9 @@ export class OrthoCamera extends Camera {
 
     toString(): string {
         return `OrthoCamera(Position: ${this.position.toString()}, Zoom: ${this.zoom}, UnitsPerScreen: ${this.unitsPerScreenHeight})`;
+    }
+
+    private getScaledUnitsPerScreenHeight(): number {
+        return this.unitsPerScreenHeight * this.pixelScale;
     }
 }

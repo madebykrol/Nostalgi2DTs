@@ -21,63 +21,91 @@ export class PlayerController<TSocket, TRequest> extends Controller {
   private lastMouseDownPosition: Vector2 = new Vector2(0, 0);
   private lastMouseUpPosition: Vector2 = new Vector2(0, 0);
   private mouseMoveDelta: Vector2 = new Vector2(0, 0);
+  private readonly soundManager: SoundManager;
+  private isActive = false;
+
+  private readonly handleMoveUp = () => this.moveUp();
+  private readonly handleMoveDown = () => this.moveDown();
+  private readonly handleMoveLeft = () => this.moveLeft();
+  private readonly handleMoveRight = () => this.moveRight();
+  private readonly handleMouseUp = (data: {screenX : number, screenY: number, worldX: number, worldY: number}) => {
+    console.log("Mouse up at world position:", data.worldX, data.worldY);
+    this.lastMouseUpPosition = new Vector2(data.worldX, data.worldY);
+    this.mouseMoveDelta = new Vector2(this.lastMouseUpPosition.x - this.lastMouseDownPosition.x, this.lastMouseUpPosition.y - this.lastMouseDownPosition.y);
+    console.log("Mouse move delta since mouse down:", this.mouseMoveDelta);
+  };
+  private readonly handleMouseMove = (data: { screenX: number; screenY: number; worldX: number; worldY: number }) => {
+    this.lastMousePosition = new Vector2(data.worldX, data.worldY);
+  };
+  private readonly handleMouseDown = async (data: { screenX: number; screenY: number; worldX: number; worldY: number }) => {
+    const hitActors = this.engine.aabbCast(new Vector2(data.worldX, data.worldY), true, true, Actor);
+    this.lastMouseDownPosition = new Vector2(data.worldX, data.worldY);
+    console.log("Mouse down at world position:", data.worldX, data.worldY);
+
+    if (hitActors.length > 0) {
+      for (const actor of hitActors) {
+        console.log(`Clicked actor: ${actor.getId()}`);
+        actor.markForDespawn();
+      }
+      return;
+    }
+
+    await this.engine.spawnActor(DemoActor, undefined, new Vector2(data.worldX, data.worldY));
+
+    if(!this.boink) {
+      this.boink = this.soundManager.loadSoundFromBuffer("boinkSound", createBoinkSound(this.soundManager.getAudioContext()!), GainChannel.Effects);
+      this.boink?.setVolume(1);
+    }
+
+    this.soundManager.setMasterVolume(0.1);
+    this.soundManager.setEffectsVolume(1);
+
+    this.boink?.play(false, 0);
+  };
+  private readonly handleWheelWithShift = (data: {deltaX: number, deltaY: number}) => {
+    this.zoomCamera(data.deltaY);
+  };
 
 
   constructor(@inject(InputManager) inputManager: InputManager, @inject(Engine) protected engine: Engine<TSocket, TRequest>, @inject(SoundManager) soundManager: SoundManager) {
     super(inputManager);
+    this.soundManager = soundManager;
+  }
 
+  public override activate(): void {
+    if (this.isActive) {
+      return;
+    }
 
-    inputManager.on("arrowup:down", () => this.moveUp());
-    inputManager.on("arrowdown:down", () => this.moveDown());
-    inputManager.on("arrowleft:down", () => this.moveLeft());
-    inputManager.on("arrowright:down", () => this.moveRight());
-    inputManager.on("mouse:up", (data: {screenX : number, screenY: number, worldX: number, worldY: number}, _modifiers: any) => {
-      console.log("Mouse up at world position:", data.worldX, data.worldY);
-      this.lastMouseUpPosition = new Vector2(data.worldX, data.worldY);
-      this.mouseMoveDelta = new Vector2(this.lastMouseUpPosition.x - this.lastMouseDownPosition.x, this.lastMouseUpPosition.y - this.lastMouseDownPosition.y);
-      console.log("Mouse move delta since mouse down:", this.mouseMoveDelta);
-    });
+    const inputManager = this.getInputManager();
+    inputManager.on("arrowup:down", this.handleMoveUp);
+    inputManager.on("arrowdown:down", this.handleMoveDown);
+    inputManager.on("arrowleft:down", this.handleMoveLeft);
+    inputManager.on("arrowright:down", this.handleMoveRight);
+    inputManager.on("mouse:up", this.handleMouseUp);
+    inputManager.on("mouse:move", this.handleMouseMove);
+    inputManager.on("mouse:down", this.handleMouseDown);
+    inputManager.on("wheel:tap:shift", this.handleWheelWithShift);
 
-    inputManager.on("wheel:tap:shift", (data: {deltaX: number, deltaY: number}, _modifiers: any) => {
-      this.zoomCamera(data.deltaY);
-    });
+    this.isActive = true;
+  }
 
-    inputManager.on("mouse:move", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
-      this.lastMousePosition = new Vector2(data.worldX, data.worldY);
-    });
+  public override deactivate(): void {
+    if (!this.isActive) {
+      return;
+    }
 
-    inputManager.on("mouse:up", (_data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
-      
-    });
+    const inputManager = this.getInputManager();
+    inputManager.off("arrowup:down", this.handleMoveUp);
+    inputManager.off("arrowdown:down", this.handleMoveDown);
+    inputManager.off("arrowleft:down", this.handleMoveLeft);
+    inputManager.off("arrowright:down", this.handleMoveRight);
+    inputManager.off("mouse:up", this.handleMouseUp);
+    inputManager.off("mouse:move", this.handleMouseMove);
+    inputManager.off("mouse:down", this.handleMouseDown);
+    inputManager.off("wheel:tap:shift", this.handleWheelWithShift);
 
-    inputManager.on("mouse:down", (data: { screenX: number; screenY: number; worldX: number; worldY: number }, _modifiers: any) => {
-      const hitActors = engine.aabbCast(new Vector2(data.worldX, data.worldY), true, true, Actor);
-      this.lastMouseDownPosition = new Vector2(data.worldX, data.worldY);
-      console.log("Mouse down at world position:", data.worldX, data.worldY);
-
-      if (hitActors.length > 0) {
-        
-        for (const actor of hitActors) {
-          console.log(`Clicked actor: ${actor.getId()}`);
-          actor.isMarkedForDespawn = true;
-        }
-        return;
-      }
-
-      engine.spawnActor(DemoActor, undefined, new Vector2(data.worldX, data.worldY));
-
-      if(!this.boink) {
-        this.boink = soundManager.loadSoundFromBuffer("boinkSound", createBoinkSound(soundManager.getAudioContext()!), GainChannel.Effects);
-        this.boink?.setVolume(1)
-      }
-
-      soundManager.setMasterVolume(0.1)
-      soundManager.setEffectsVolume(1);
-
-      // Play the boink sound when spawning an actor
-      this.boink?.play(false, 0);
-      
-    });
+    this.isActive = false;
   }
 
   tick(_deltaTime: number): void {

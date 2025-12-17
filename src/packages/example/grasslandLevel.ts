@@ -1,4 +1,12 @@
-import { Constructor, Container, GameMode, Level, Vector2 } from "@repo/engine";
+import {
+  Constructor,
+  Container,
+  GameMode,
+  Level,
+  Vector2,
+  PostProcessingVolumeActor,
+  SphereWarpPostProcessMaterial
+} from "@repo/engine";
 import { GameTileMapActor } from "./actors/gameTileMapActor";
 
 export class GrasslandsMap extends Level {
@@ -18,6 +26,13 @@ export class GrasslandsMap extends Level {
     this.container = container;
 
     this.addActor(this.tileMapActor);
+
+    const sphereMaterial = new SphereWarpPostProcessMaterial();
+    const postVolume = new PostProcessingVolumeActor(sphereMaterial);
+    postVolume.setExtent(new Vector2(1000, 1000));
+    postVolume.setPosition(new Vector2(0, 0));
+    postVolume.layer = Number.MAX_SAFE_INTEGER; // ensure evaluated after world actors
+    this.addActor(postVolume);
     // const mapCenter = tileMapActor.getWorldCenter();
     // tileMapActor.setPosition(mapCenter);
   }

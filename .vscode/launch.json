@@ -1,0 +1,132 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach Server Debugger",
+      "type": "pwa-node",
+      "request": "attach",
+      "port": 9229,
+      "address": "localhost",
+      "restart": false,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "timeout": 60000,
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/src/apps/server/dist/**/*.js"]
+    },
+    {
+      "name": "Attach Editor Debugger",
+      "type": "pwa-node",
+      "request": "attach",
+      "port": 9230,
+      "address": "localhost",
+      "restart": false,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "timeout": 60000
+    },
+    {
+      "name": "Attach Client Debugger",
+      "type": "pwa-node",
+      "request": "attach",
+      "port": 9231,
+      "address": "localhost",
+      "restart": false,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "timeout": 60000
+    },
+    {
+      "name": "Attach Project Site Debugger",
+      "type": "pwa-node",
+      "request": "attach",
+      "port": 9232,
+      "address": "localhost",
+      "restart": false,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "timeout": 60000
+    },
+    {
+      "name": "Open Editor in Browser",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/src/",
+      "runtimeArgs": ["--auto-open-devtools-for-tabs"],
+      "sourceMaps": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/src/apps/editor/src/**",
+        "${workspaceFolder}/src/packages/**",
+        "!**/node_modules/**"
+      ],
+      "sourceMapPathOverrides": {
+        "*/src/*": "${workspaceFolder}/src/apps/editor/src/*",
+        "http://localhost:5173/src/*": "${workspaceFolder}/src/apps/editor/src/*"
+      }
+    },
+    {
+      "name": "Open Client in Browser",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5174",
+      "webRoot": "${workspaceFolder}/src/apps/client",
+      "runtimeArgs": ["--auto-open-devtools-for-tabs"],
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "http://localhost:5174/src/*": "${webRoot}/src/*",
+        "vite://src/*": "${webRoot}/src/*",
+        "http://localhost:5174/@fs/*": "${workspaceFolder}/src/*",
+        "vite://@fs/*": "${workspaceFolder}/src/*",
+        "/@fs/*": "${workspaceFolder}/src/*",
+        "vite://packages/*": "${workspaceFolder}/src/packages/*",
+        "http://localhost:5174/node_modules/@repo/*": "${workspaceFolder}/src/packages/*",
+        "vite://node_modules/@repo/*": "${workspaceFolder}/src/packages/*",
+        "webpack://*": "${workspaceFolder}/src/*"
+      }
+    },
+    {
+      "name": "Open Project Site in Browser",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5175",
+      "webRoot": "${workspaceFolder}/src/apps/projectsite",
+      "runtimeArgs": ["--auto-open-devtools-for-tabs"],
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "http://localhost:5175/src/*": "${webRoot}/src/*",
+        "vite://src/*": "${webRoot}/src/*",
+        "http://localhost:5175/@fs/*": "${workspaceFolder}/src/*",
+        "vite://@fs/*": "${workspaceFolder}/src/*",
+        "/@fs/*": "${workspaceFolder}/src/*",
+        "vite://packages/*": "${workspaceFolder}/src/packages/*",
+        "http://localhost:5175/node_modules/@repo/*": "${workspaceFolder}/src/packages/*",
+        "vite://node_modules/@repo/*": "${workspaceFolder}/src/packages/*",
+        "webpack://*": "${workspaceFolder}/src/*"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Server: Attach",
+      "configurations": ["Attach Server Debugger"]
+    },
+    {
+      "name": "Editor: Attach + Browser",
+      "configurations": [
+        "Attach Editor Debugger",
+        "Open Editor in Browser"
+      ]
+    },
+    {
+      "name": "Client: Attach + Browser",
+      "configurations": [
+        "Attach Client Debugger",
+        "Open Client in Browser"
+      ]
+    },
+    {
+      "name": "Project Site: Attach + Browser",
+      "configurations": [
+        "Attach Project Site Debugger",
+        "Open Project Site in Browser"
+      ]
+    }
+  ]
+}

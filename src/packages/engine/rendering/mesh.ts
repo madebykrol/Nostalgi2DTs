@@ -3,6 +3,7 @@ export abstract class Mesh {
     public vertices: Float32Array = new Float32Array();
     public indices: Uint16Array = new Uint16Array();
     public uvs: Float32Array = new Float32Array();
+    
 
     constructor() {
     }

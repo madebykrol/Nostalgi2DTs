@@ -1,7 +1,5 @@
 import { TileMapActor, TiledMap, TiledTileLayer, TiledTilesetReference } from "@repo/tiler";
-import { ActorRenderer } from "../engine/rendering/renderer";
-import { Camera } from "../engine/camera/Camera";
-import { inject, ResourceManager } from "../engine/utils";
+import { Material, MaterialRenderContext } from "@repo/engine";
 
 interface DrawCall {
     vao: WebGLVertexArrayObject | null;
@@ -24,7 +22,7 @@ interface TextureRecord {
     promise: Promise<void> | null;
 }
 
-export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
+export class TileMapMaterial extends Material {
     private program: WebGLProgram | null = null;
     private uniformLocations: {
         viewProj: WebGLUniformLocation | null;
@@ -41,21 +39,22 @@ export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
     /**
      *
      */
-    constructor(@inject(ResourceManager) private resourceManager: ResourceManager) {
-        super();
-        
-    }
     private caches = new WeakMap<TileMapActor, RenderCache>();
     private textureCache = new WeakMap<WebGL2RenderingContext, Map<string, TextureRecord>>();
     private loggedDiagonalWarning = false;
 
-    render(actor: TileMapActor, camera: Camera, gl: WebGL2RenderingContext): boolean {
+    public override render(context: MaterialRenderContext): boolean {
+        const actor = context.actor;
+        const camera = context.camera;
+        const gl = context.gl;
+        if (!(actor instanceof TileMapActor)) {
+            return false;
+        }
         const map = actor.getMap();
         if (!map) {
             return false;
         }
 
-        this.ensureProgram(gl);
         const cache = this.ensureCache(gl, actor, map);
         if (!cache) {
             return false;
@@ -63,7 +62,7 @@ export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
 
         gl.useProgram(this.program);
 
-        const aspect = gl.canvas.width / gl.canvas.height;
+        const aspect = gl.canvas.height === 0 ? 1 : gl.canvas.width / gl.canvas.height;
         const viewProjection = camera.getViewProjectionMatrix(aspect).elements as Float32Array;
         if (this.uniformLocations.viewProj) {
             gl.uniformMatrix3fv(this.uniformLocations.viewProj, false, viewProjection);
@@ -113,7 +112,7 @@ export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
         return true;
     }
 
-    private ensureProgram(gl: WebGL2RenderingContext): void {
+    public compile(gl: WebGL2RenderingContext): void {
         if (this.program) {
             return;
         }
@@ -239,7 +238,7 @@ export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
 
                 if (decoded.flipDiag) {
                     if (!this.loggedDiagonalWarning) {
-                        console.warn("TileMapActorRenderer: Diagonal tile flips are not currently supported.");
+                        console.warn("TileMapMaterial: Diagonal tile flips are not currently supported.");
                         this.loggedDiagonalWarning = true;
                     }
                     continue;
@@ -315,7 +314,7 @@ export class TileMapActorRenderer extends ActorRenderer<TileMapActor> {
                 }
 
                 if (group.vertices.length / 4 > 65535) {
-                    console.warn("TileMapActorRenderer: Layer has more than 65k vertices; skipping draw call.");
+                    console.warn("TileMapMaterial: Layer has more than 65k vertices; skipping draw call.");
                     continue;
                 }
 

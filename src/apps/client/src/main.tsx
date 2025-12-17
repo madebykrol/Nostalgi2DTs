@@ -4,7 +4,7 @@ import http from "http";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
-import {BaseActorRenderer, Canvas} from "@repo/basicrenderer"
+import { Canvas } from "@repo/basicrenderer"
 import { Header, Counter, EngineContext } from "@repo/ui";
 import { 
   Vector2, 
@@ -15,8 +15,8 @@ import {
   DefaultResourceManager,
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
-import { BombActor, DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor, GrasslandsMap, PlayerController, WallActor, WallActorRenderer } from "@repo/example";
-import { Parser, TileMapActorRenderer }from "@repo/tiler";
+import { BombActor, DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor, GrasslandsMap, PlayerController, WallActor } from "@repo/example";
+import { Parser }from "@repo/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 const App = () => {
 
@@ -43,21 +43,20 @@ const App = () => {
     .withEndpointInstance(new ClientEndpoint("localhost", 3001))
     .withServiceInstance(DOMParser, new DOMParser())
     .withService(Parser)
-    .withDefaultRenderer(BaseActorRenderer)
     .withInputManager(DefaultInputManager)
     .withSoundManager(SoundManager)
     .withGameMode(ExampleTopDownRPGGameMode)
     .withResourceManager(DefaultResourceManager)
     .withActor(DemoActor)
-    .withActor(GameTileMapActor, TileMapActorRenderer)
+    .withActor(GameTileMapActor)
     .withActor(BombActor)
-    .withActor(WallActor, WallActorRenderer)
+    .withActor(WallActor)
     .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
     .withDebugLogging()
     .asSinglePlayer("LocalPlayer", "local_player");
 
   const e = builder.build(ClientEngine);
-  e.startup();
+  e.run(false);
 
   // Log time to startup
   const endTime = performance.now();
@@ -109,6 +108,12 @@ const App = () => {
     };
   }, [engine, level]);
 
+  const compile = (gl: WebGL2RenderingContext | null) => {
+    if (gl) {
+      engine.compileMaterials(gl);
+    }
+  }
+
   const draw = (gl: WebGL2RenderingContext | null) => {
 
     engine.tick();
@@ -123,8 +128,8 @@ const App = () => {
   return (
   <div>
     <Header title="Rendered Engine" />
-    <div className="card">
-    <Canvas draw={draw} options={{ context: 'webgl2' }} />
+    <div className="card w-full h-full relative flex-1 bg-gray-800" style={{ width: "1500px", height: "100%" }}>
+    <Canvas compile={compile} draw={draw} options={{ context: 'webgl2' }} className="w-full h-full" style={{ width: "1500px", height: "100%" }}/>
     </div>
     <EngineContext.Provider value={engine}>
       <Counter />

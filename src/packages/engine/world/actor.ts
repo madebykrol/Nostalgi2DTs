@@ -34,14 +34,31 @@ export abstract class Actor extends BaseObject {
     // In server mode, this is the controller of the player owning this actor.
     possessedBy: Controller | null = null;
 
+    // If true, this actor will replicate over the network
     shouldReplicate: boolean = false;
-    layer: number = 0; // Rendering layer, higher layers are rendered on top of lower layers
-    isMarkedForDespawn: any;
+    
+    // Rendering layer, higher layers are rendered on top of lower layers
+    layer: number = 0; 
 
+    // If true, the actor will be hidden in-game (not rendered) but visible in editor collision still apply
+    isHiddenInGame: boolean = false;
+
+    // Position of the actor in world space
     private position:Vector2;
+
+    // Rotation of the actor in radians
     private rotation: number = 0; // in radians
+
+    // Reference to the world this actor belongs to
     private world: World | null = null;
+
+    // Internal flag to track if the actor is currently rendering
     private isRendering: boolean = false;
+
+        // Internal flag used to mark the actor for despawning by the engine
+    private isMarkedForDespawn: boolean = false;
+
+    public isSpawned: boolean = false;
 
     protected name: string|undefined = undefined;
 
@@ -93,7 +110,15 @@ export abstract class Actor extends BaseObject {
         
     }
 
-    setWorld(world: World): void {
+    markForDespawn(): void {
+        this.isMarkedForDespawn = true;
+    }
+
+    isMarkedForDespawned(): boolean {
+        return this.isMarkedForDespawn;
+    }
+
+    setWorld(world: World | null): void {
         this.world = world;
     }
 
