@@ -1,17 +1,10 @@
 import { DOMParser } from "@xmldom/xmldom";
 import http from "http";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent as ReactChangeEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
 import { BaseActorRenderer, Canvas } from "@repo/basicrenderer";
+import { ContainerContext } from "./ioc/ioc";
 import { EngineContext } from "@repo/ui";
 import {
   Vector2,
@@ -24,6 +17,7 @@ import {
   Actor,
   StringUtils,
   TranslationGizmoActor,
+  Container,
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import {
@@ -41,6 +35,17 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { FolderOpen, Play, Save, Square, Undo, Redo } from "lucide-react";
 import { EditorInputResponder } from "./editorInputResponder";
 import { Editor } from "../../../packages/engine/editor/editor";
+import { theme } from "./theme";
+import {
+  ModalHost,
+  ModalManager,
+  PropertyInspectorPanel,
+  PropertyInspectorRegistry,
+  SceneContextMenuRegistry,
+  SceneContextMenuSurface,
+  activateEditorPlugins,
+} from "./plugins/pluginSystem";
+import { loadEnabledEditorPlugins } from "./plugins/manifest";
 
 type ConsoleEntryType = "log" | "warn" | "error";
 
@@ -68,18 +73,6 @@ const formatConsoleArg = (arg: unknown): string => {
   }
 };
 
-// Neon color theme matching project site
-const theme = {
-  bg: "#070b14",
-  panel: "rgba(14, 20, 35, 0.9)",
-  text: "#e6f0ff",
-  neon: {
-    cyan: "#08f7fe",
-    magenta: "#fe53bb",
-    purple: "#9d4edd",
-  },
-};
-
 type SceneNode = {
   id: string;
   name: string;
@@ -87,10 +80,6 @@ type SceneNode = {
   children: SceneNode[];
 };
 
-type PropertyDragOptions = {
-  shiftKey: boolean;
-  altKey: boolean;
-};
 
 const areSceneNodesEqual = (a: SceneNode, b: SceneNode): boolean => {
   if (a.id !== b.id || a.name !== b.name) {
@@ -124,6 +113,12 @@ const App = () => {
   const editorInputRef = useRef<EditorInputResponder | null>(null);
   const logIdRef = useRef(0);
   const editorRef = useRef<Editor | null>(null);
+  const propertyInspectorRegistryRef = useRef(new PropertyInspectorRegistry());
+  const modalManagerRef = useRef(new ModalManager());
+  const sceneContextMenuRegistryRef = useRef(new SceneContextMenuRegistry());
+  const pluginCleanupRef = useRef<(() => void) | null>(null);
+  const containerRef = useRef<Container | null>(null);
+  const [container, setContainer] = useState<Container | null>(null);
 
   useEffect(() => {
     type ConsoleMethods = {
@@ -204,6 +199,7 @@ const App = () => {
       .withWorldInstance(new PlanckWorld())
       .withEndpointInstance(new ClientEndpoint("localhost", 3001))
       .withServiceInstance(DOMParser, new DOMParser())
+      .withService(Editor)
       .withService(Parser)
       .withInputManager(DefaultInputManager)
       .withSoundManager(SoundManager)
@@ -219,6 +215,8 @@ const App = () => {
       .asSinglePlayer("LocalPlayer", "local_player");
 
     const e = builder.build(ClientEngine);
+    containerRef.current = builder.container;
+    setContainer(builder.container);
 
     const inputManager = builder.container.get(InputManager);
     if (!inputManager) {
@@ -226,8 +224,42 @@ const App = () => {
     }
     inputManagerRef.current = inputManager;
 
-    editorRef.current = new Editor(e);
+    editorRef.current = builder.container.get(Editor);
     editorRef.current.initialize();
+
+    const propertyRegistry = propertyInspectorRegistryRef.current;
+    const modalManager = modalManagerRef.current;
+    const sceneContextMenuRegistry = sceneContextMenuRegistryRef.current;
+    propertyRegistry.clear();
+    sceneContextMenuRegistry.clear();
+    modalManager.clear();
+    pluginCleanupRef.current?.();
+    pluginCleanupRef.current = null;
+
+    let cancelled = false;
+
+    const loadPlugins = async () => {
+      try {
+        const activePlugins = await loadEnabledEditorPlugins();
+        if (cancelled || !editorRef.current) {
+          return;
+        }
+
+        pluginCleanupRef.current = activateEditorPlugins(
+          editorRef.current,
+          {
+            propertyInspectors: propertyRegistry,
+            modals: modalManager,
+            sceneContextMenu: sceneContextMenuRegistry,
+          },
+          activePlugins
+        );
+      } catch (error) {
+        console.error("Failed to activate editor UI plugins", error);
+      }
+    };
+
+    loadPlugins();
     // Log time to startup
     const endTime = performance.now();
     console.log(`Engine built in ${(endTime - startTime).toFixed(4)} ms`);
@@ -290,10 +322,19 @@ const App = () => {
     }
 
     return () => {
+      cancelled = true;
       editorInputRef.current?.dispose();
       editorInputRef.current = null;
+      pluginCleanupRef.current?.();
+      pluginCleanupRef.current = null;
+      propertyInspectorRegistryRef.current.clear();
+      sceneContextMenuRegistryRef.current.clear();
+      modalManagerRef.current.clear();
+      editorRef.current = null;
       e.offAfterRender(afterRenderId);
       engineRef.current = null;
+      containerRef.current = null;
+      setContainer(null);
     };
   }, [buildSceneGraph]);
 
@@ -350,207 +391,212 @@ const App = () => {
       : undefined;
 
   return (
-    <div
-      className="w-screen h-screen"
-      style={{
-        backgroundColor: theme.bg,
-        backgroundImage:
-          "radial-gradient(1200px 800px at -10% -20%, rgba(8, 247, 254, 0.08), transparent 60%)," +
-          "radial-gradient(1000px 700px at 120% 10%, rgba(254, 83, 187, 0.08), transparent 60%)," +
-          "radial-gradient(800px 600px at 50% 120%, rgba(157, 78, 221, 0.06), transparent 60%)",
-      }}
-    >
-      {/* Top Menu Bar */}
+    <ContainerContext.Provider value={container}>
+      {container ? (
       <div
-        className="h-12 flex items-center px-4 border-b"
+        className="w-screen h-screen"
         style={{
-          backgroundColor: theme.panel,
-          borderColor: "rgba(8, 247, 254, 0.2)",
+          backgroundColor: theme.bg,
+          backgroundImage:
+            "radial-gradient(1200px 800px at -10% -20%, rgba(8, 247, 254, 0.08), transparent 60%)," +
+            "radial-gradient(1000px 700px at 120% 10%, rgba(254, 83, 187, 0.08), transparent 60%)," +
+            "radial-gradient(800px 600px at 50% 120%, rgba(157, 78, 221, 0.06), transparent 60%)",
         }}
       >
-        <div className="flex items-center gap-3">
+        {/* Top Menu Bar */}
+        <div
+          className="h-12 flex items-center px-4 border-b"
+          style={{
+            backgroundColor: theme.panel,
+            borderColor: "rgba(8, 247, 254, 0.2)",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-6 w-6 rounded-lg bg-gradient-to-br from-cyan-400 via-fuchsia-500 to-violet-500"
+                style={{
+                  boxShadow: "0 0 16px 2px rgba(8, 247, 254, 0.4)",
+                }}
+              />
+              <span className="text-sm font-semibold" style={{ color: theme.text }}>
+                <span style={{ color: theme.neon.cyan }}>Nostalgi2D</span>
+                <span style={{ color: theme.neon.magenta }}> Editor</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1 ml-6">
+              <MenuButton label="File" />
+              <MenuButton label="Edit" />
+              <MenuButton label="View" />
+              <MenuButton label="Tools" />
+            </div>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center gap-3">
+            <ToolButton icon={Undo} label="" onClick={() => {}}/>
+            <ToolButton icon={Redo} label="" onClick={() => {}}/>
+            <ToolButton
+              icon={Play}
+              label=""
+              onClick={handlePlay}
+              disabled={!engine || isPlaying}
+              active={isPlaying}
+            />
+            <ToolButton
+              icon={Square}
+              label=""
+              onClick={handleStop}
+              disabled={!engine}
+              active={!isPlaying}
+            />
+          </div>
+
           <div className="flex items-center gap-2">
-            <div
-              className="h-6 w-6 rounded-lg bg-gradient-to-br from-cyan-400 via-fuchsia-500 to-violet-500"
-              style={{
-                boxShadow: "0 0 16px 2px rgba(8, 247, 254, 0.4)",
-              }}
-            />
-            <span className="text-sm font-semibold" style={{ color: theme.text }}>
-              <span style={{ color: theme.neon.cyan }}>Nostalgi2D</span>
-              <span style={{ color: theme.neon.magenta }}> Editor</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1 ml-6">
-            <MenuButton label="File" />
-            <MenuButton label="Edit" />
-            <MenuButton label="View" />
-            <MenuButton label="Tools" />
+            <IconButton icon={FolderOpen} tooltip="Open Map" />
+            <IconButton icon={Save} tooltip="Save Map" />
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center gap-3">
-          <ToolButton icon={Undo} label="" onClick={() => {}}/>
-          <ToolButton icon={Redo} label="" onClick={() => {}}/>
-          <ToolButton
-            icon={Play}
-            label=""
-            onClick={handlePlay}
-            disabled={!engine || isPlaying}
-            active={isPlaying}
-          />
-          <ToolButton
-            icon={Square}
-            label=""
-            onClick={handleStop}
-            disabled={!engine}
-            active={!isPlaying}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <IconButton icon={FolderOpen} tooltip="Open Map" />
-          <IconButton icon={Save} tooltip="Save Map" />
-        </div>
-      </div>
-
-      {/* Main Content Area with bottom console panel */}
-      <div className="h-[calc(100vh-3rem)]">
-        <PanelGroup direction="vertical">
-          <Panel defaultSize={85} minSize={55}>
-            <PanelGroup direction="horizontal">
-              {/* Left Panel (1/5th) */}
-              <Panel defaultSize={20} minSize={10} maxSize={30}>
-                <div
-                  className="h-full border-r overflow-hidden flex flex-col relative"
-                  style={{
-                    backgroundColor: theme.panel,
-                    borderColor: "rgba(8, 247, 254, 0.2)",
-                  }}
-                >
+        {/* Main Content Area with bottom console panel */}
+        <div className="h-[calc(100vh-3rem)]">
+          <PanelGroup direction="vertical">
+            <Panel defaultSize={85} minSize={55}>
+              <PanelGroup direction="horizontal">
+                {/* Left Panel (1/5th) */}
+                <Panel defaultSize={20} minSize={10} maxSize={30}>
                   <div
-                    className="absolute inset-0 pointer-events-none opacity-20"
+                    className="h-full border-r overflow-hidden flex flex-col relative"
                     style={{
-                      backgroundImage:
-                        "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
-                        "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
-                      backgroundSize: "36px 36px",
+                      backgroundColor: theme.panel,
+                      borderColor: "rgba(8, 247, 254, 0.2)",
                     }}
-                  />
-                  <div className="relative z-10">
-                    <div className="flex border-b text-xs uppercase tracking-wide" style={{ borderColor: "rgba(8, 247, 254, 0.3)" }}>
-                      <button
-                        className={`flex-1 py-2 transition-colors ${leftTab === "layers" ? "bg-black/30 text-cyan-300" : "text-slate-400"}`}
-                        onClick={() => setLeftTab("layers")}
-                        onMouseEnter={() => setHoveredTab("layers")}
-                        onMouseLeave={() => setHoveredTab(null)}
-                        style={getTabHighlightStyle("layers")}
-                      >
-                        Layers
-                      </button>
-                      <button
-                        className={`flex-1 py-2 transition-colors ${leftTab === "scene" ? "bg-black/30 text-pink-300" : "text-slate-400"}`}
-                        onClick={() => setLeftTab("scene")}
-                        onMouseEnter={() => setHoveredTab("scene")}
-                        onMouseLeave={() => setHoveredTab(null)}
-                        style={getTabHighlightStyle("scene")}
-                      >
-                        Scene
-                      </button>
-                    </div>
-                  </div>
-                  <div className="relative z-10 flex-1 overflow-y-auto p-4">
-                    {leftTab === "layers" ? (
-                      <div className="space-y-2">
-                        <LayerItem name="Background" active={false} />
-                        <LayerItem name="Terrain" active={false} />
-                        <LayerItem name="Objects" active={true} />
-                        <LayerItem name="Entities" active={false} />
-                        <LayerItem name="UI" active={false} />
+                  >
+                    <div
+                      className="absolute inset-0 pointer-events-none opacity-20"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
+                          "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
+                        backgroundSize: "36px 36px",
+                      }}
+                    />
+                    <div className="relative z-10">
+                      <div className="flex border-b text-xs uppercase tracking-wide" style={{ borderColor: "rgba(8, 247, 254, 0.3)" }}>
+                        <button
+                          className={`flex-1 py-2 transition-colors ${leftTab === "layers" ? "bg-black/30 text-cyan-300" : "text-slate-400"}`}
+                          onClick={() => setLeftTab("layers")}
+                          onMouseEnter={() => setHoveredTab("layers")}
+                          onMouseLeave={() => setHoveredTab(null)}
+                          style={getTabHighlightStyle("layers")}
+                        >
+                          Layers
+                        </button>
+                        <button
+                          className={`flex-1 py-2 transition-colors ${leftTab === "scene" ? "bg-black/30 text-pink-300" : "text-slate-400"}`}
+                          onClick={() => setLeftTab("scene")}
+                          onMouseEnter={() => setHoveredTab("scene")}
+                          onMouseLeave={() => setHoveredTab(null)}
+                          style={getTabHighlightStyle("scene")}
+                        >
+                          Scene
+                        </button>
                       </div>
-                    ) : (
-                      <SceneGraphTree nodes={sceneGraph} editor={editorRef.current} />
-                    )}
-                  </div>
-                </div>
-              </Panel>
-
-              <PanelResizeHandle className="w-1 hover:w-2 transition-all" style={{ backgroundColor: "rgba(8, 247, 254, 0.3)" }} />
-
-              {/* Center Panel (3/5th) - Engine Canvas */}
-              <Panel defaultSize={60} minSize={40}>
-                <div className="h-full flex flex-col relative" style={{ backgroundColor: theme.bg }}>
-                  {/* Retro grid overlay */}
-                  <div
-                    className="absolute inset-0 pointer-events-none opacity-20"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
-                        "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
-                      backgroundSize: "36px 36px",
-                    }}
-                  />
-                  <div className="flex-1 relative z-10">
-                    {engine && (
-                      <EngineContext.Provider value={engine}>
-                        <Canvas compile={compile} draw={draw} options={{ context: "webgl2" }} className="w-full h-full" />
-                      </EngineContext.Provider>
-                    )}
-                  </div>
-                </div>
-              </Panel>
-
-              <PanelResizeHandle className="w-1 hover:w-2 transition-all" style={{ backgroundColor: "rgba(254, 83, 187, 0.3)" }} />
-
-              {/* Right Panel (1/5th) */}
-              <Panel defaultSize={20} minSize={10} maxSize={30}>
-                <div
-                  className="h-full border-l overflow-y-auto relative"
-                  style={{
-                    backgroundColor: theme.panel,
-                    borderColor: "rgba(254, 83, 187, 0.2)",
-                  }}
-                >
-                  {/* Retro grid overlay */}
-                  <div
-                    className="absolute inset-0 pointer-events-none opacity-20"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
-                        "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
-                      backgroundSize: "36px 36px",
-                    }}
-                  />
-                  <div className="p-4 relative z-10">
-                    <h3
-                      className="text-sm font-semibold mb-3"
-                      style={{ color: theme.neon.magenta }}
-                    >
-                      Properties
-                    </h3>
-                    <ActorProperties editor={editorRef.current} />
-                    <div className="space-y-3">
+                    </div>
+                    <div className="relative z-10 flex-1 overflow-y-auto p-4">
+                      {leftTab === "layers" ? (
+                        <div className="space-y-2">
+                          <LayerItem name="Background" active={false} />
+                          <LayerItem name="Terrain" active={false} />
+                          <LayerItem name="Objects" active={true} />
+                          <LayerItem name="Entities" active={false} />
+                          <LayerItem name="UI" active={false} />
+                        </div>
+                      ) : (
+                        <SceneGraphTree nodes={sceneGraph} editor={editorRef.current} />
+                      )}
                     </div>
                   </div>
-                </div>
-              </Panel>
-            </PanelGroup>
-          </Panel>
+                </Panel>
 
-          <PanelResizeHandle className="h-1 hover:h-2 transition-all" style={{ backgroundColor: "rgba(8, 247, 254, 0.35)" }} />
+                <PanelResizeHandle className="w-1 hover:w-2 transition-all" style={{ backgroundColor: "rgba(8, 247, 254, 0.3)" }} />
 
-          <Panel defaultSize={15} minSize={10} maxSize={35}>
-            <ConsolePanel
-              logs={logs}
-              onClear={handleClearLogs}
-              autoScrollEnabled={autoScroll}
-              onToggleAutoScroll={() => setAutoScroll((previous) => !previous)}
-            />
-          </Panel>
-        </PanelGroup>
-      </div>
-    </div>
+                {/* Center Panel (3/5th) - Engine Canvas */}
+                <Panel defaultSize={60} minSize={40}>
+                  <div className="h-full flex flex-col relative" style={{ backgroundColor: theme.bg }}>
+                    {/* Retro grid overlay */}
+                    <div
+                      className="absolute inset-0 pointer-events-none opacity-20"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
+                          "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
+                        backgroundSize: "36px 36px",
+                      }}
+                    />
+                    <div className="flex-1 relative z-10">
+                      <SceneContextMenuSurface
+                        editor={editorRef.current}
+                        registry={sceneContextMenuRegistryRef.current}
+                      >
+                        {engine && (
+                          <EngineContext.Provider value={engine}>
+                            <Canvas compile={compile} draw={draw} options={{ context: "webgl2" }} className="w-full h-full" />
+                          </EngineContext.Provider>
+                        )}
+                      </SceneContextMenuSurface>
+                    </div>
+                  </div>
+                </Panel>
+
+                <PanelResizeHandle className="w-1 hover:w-2 transition-all" style={{ backgroundColor: "rgba(254, 83, 187, 0.3)" }} />
+
+                {/* Right Panel (1/5th) */}
+                <Panel defaultSize={20} minSize={10} maxSize={30}>
+                  <div
+                    className="h-full border-l overflow-y-auto relative"
+                    style={{
+                      backgroundColor: theme.panel,
+                      borderColor: "rgba(254, 83, 187, 0.2)",
+                    }}
+                  >
+                    {/* Retro grid overlay */}
+                    <div
+                      className="absolute inset-0 pointer-events-none opacity-20"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px)," +
+                          "linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
+                        backgroundSize: "36px 36px",
+                      }}
+                    />
+                    <div className="p-4 relative z-10">
+                        {/* <PropertyInspectorPanel /> */}
+                    </div>
+                  </div>
+                </Panel>
+              </PanelGroup>
+            </Panel>
+
+            <PanelResizeHandle className="h-1 hover:h-2 transition-all" style={{ backgroundColor: "rgba(8, 247, 254, 0.35)" }} />
+
+            <Panel defaultSize={15} minSize={10} maxSize={35}>
+              <ConsolePanel
+                logs={logs}
+                onClear={handleClearLogs}
+                autoScrollEnabled={autoScroll}
+                onToggleAutoScroll={() => setAutoScroll((previous) => !previous)}
+              />
+            </Panel>
+          </PanelGroup>
+        </div>
+        <ModalHost manager={modalManagerRef.current} />
+      </div>) : (
+        <div className="text-xs" style={{ color: theme.text }}>
+          Editor not initialized.
+        </div>
+      )}
+    </ContainerContext.Provider>
   );
 };
 
@@ -701,237 +747,6 @@ const ToolButton = ({
   </button>
 );
 
-const ActorProperties = ({ editor }: { editor: Editor | null }) => {
-  const [selectedActor, setSelectedActor] = useState<Actor | null>(null);
-  const [snapshot, setSnapshot] = useState<
-    | {
-        id: string;
-        type: string;
-        posX: string;
-        posY: string;
-        rotation: string;
-        scale: string;
-      }
-    | null
-  >(null);
-
-  const adjustForParent = useCallback((actor: Actor, nextWorld: Vector2): Vector2 => {
-    const parent = actor.getParent();
-    if (parent instanceof Actor) {
-      const parentWorld = parent.getPosition();
-      return new Vector2(nextWorld.x - parentWorld.x, nextWorld.y - parentWorld.y);
-    }
-    return nextWorld;
-  }, []);
-
-  const getPositionStep = useCallback((options: PropertyDragOptions) => {
-    if (options.shiftKey) {
-      return 1;
-    }
-    if (options.altKey) {
-      return 0.01;
-    }
-    return 0.1;
-  }, []);
-
-  const getRotationStep = useCallback((options: PropertyDragOptions) => {
-    if (options.shiftKey) {
-      return 5;
-    }
-    if (options.altKey) {
-      return 0.1;
-    }
-    return 1;
-  }, []);
-
-  const handlePositionXDrag = useCallback(
-    (deltaPixels: number, options: PropertyDragOptions) => {
-      const actor = selectedActor;
-      if (!actor || deltaPixels === 0) {
-        return;
-      }
-
-      const worldPosition = actor.getPosition();
-      const nextWorld = new Vector2(worldPosition.x + deltaPixels * getPositionStep(options), worldPosition.y);
-      actor.setPosition(adjustForParent(actor, nextWorld));
-    },
-    [adjustForParent, getPositionStep, selectedActor]
-  );
-
-  const handlePositionYDrag = useCallback(
-    (deltaPixels: number, options: PropertyDragOptions) => {
-      const actor = selectedActor;
-      if (!actor || deltaPixels === 0) {
-        return;
-      }
-
-      const worldPosition = actor.getPosition();
-      const nextWorld = new Vector2(worldPosition.x, worldPosition.y + deltaPixels * getPositionStep(options));
-      actor.setPosition(adjustForParent(actor, nextWorld));
-    },
-    [adjustForParent, getPositionStep, selectedActor]
-  );
-
-  const handleRotationDrag = useCallback(
-    (deltaPixels: number, options: PropertyDragOptions) => {
-      const actor = selectedActor;
-      if (!actor || deltaPixels === 0) {
-        return;
-      }
-
-      const radiansPerPixel = (getRotationStep(options) * Math.PI) / 180;
-      actor.setRotation(actor.getRotation() + deltaPixels * radiansPerPixel);
-    },
-    [getRotationStep, selectedActor]
-  );
-
-  const handlePositionXCommit = useCallback(
-    (nextValue: string) => {
-      const actor = selectedActor;
-      if (!actor) {
-        return false;
-      }
-
-      const parsed = Number.parseFloat(nextValue);
-      if (Number.isNaN(parsed)) {
-        return false;
-      }
-
-      const worldPosition = actor.getPosition();
-      const nextWorld = new Vector2(parsed, worldPosition.y);
-      actor.setPosition(adjustForParent(actor, nextWorld));
-      return true;
-    },
-    [adjustForParent, selectedActor]
-  );
-
-  const handlePositionYCommit = useCallback(
-    (nextValue: string) => {
-      const actor = selectedActor;
-      if (!actor) {
-        return false;
-      }
-
-      const parsed = Number.parseFloat(nextValue);
-      if (Number.isNaN(parsed)) {
-        return false;
-      }
-
-      const worldPosition = actor.getPosition();
-      const nextWorld = new Vector2(worldPosition.x, parsed);
-      actor.setPosition(adjustForParent(actor, nextWorld));
-      return true;
-    },
-    [adjustForParent, selectedActor]
-  );
-
-  const handleRotationCommit = useCallback(
-    (nextValue: string) => {
-      const actor = selectedActor;
-      if (!actor) {
-        return false;
-      }
-
-      const parsed = Number.parseFloat(nextValue);
-      if (Number.isNaN(parsed)) {
-        return false;
-      }
-
-      actor.setRotation((parsed * Math.PI) / 180);
-      return true;
-    },
-    [selectedActor]
-  );
-
-  useEffect(() => {
-    if (!editor) {
-      return;
-    }
-
-    const handleSelection = (actor: Actor | null) => {
-      setSelectedActor(actor ?? null);
-    };
-    editor.subscribe("actor:selected", handleSelection);
-
-    return () => {
-      editor.unsubscribe("actor:selected", handleSelection);
-    };
-  }, [editor]);
-
-  useEffect(() => {
-    if (!selectedActor) {
-      setSnapshot(null);
-      return;
-    }
-
-    let animationFrame = 0;
-
-    const updateSnapshot = () => {
-      const position = selectedActor.getPosition();
-      const rotationRadians = selectedActor.getRotation();
-      const rotationDegrees = (rotationRadians * 180) / Math.PI;
-
-      const nextSnapshot = {
-        id: selectedActor.getId(),
-        type: selectedActor.constructor?.name ?? "",
-        posX: position.x.toFixed(2),
-        posY: position.y.toFixed(2),
-        rotation: rotationDegrees.toFixed(2),
-        scale: "1.00, 1.00",
-      };
-
-      setSnapshot((previous) => {
-        if (
-          previous &&
-          previous.id === nextSnapshot.id &&
-          previous.posX === nextSnapshot.posX &&
-          previous.posY === nextSnapshot.posY &&
-          previous.rotation === nextSnapshot.rotation &&
-          previous.scale === nextSnapshot.scale &&
-          previous.type === nextSnapshot.type
-        ) {
-          return previous;
-        }
-        return nextSnapshot;
-      });
-
-      animationFrame = requestAnimationFrame(updateSnapshot);
-    };
-
-    updateSnapshot();
-
-    return () => {
-      cancelAnimationFrame(animationFrame);
-    };
-  }, [selectedActor]);
-
-  return (
-    <div className="space-y-3">
-      <PropertyRow label="Actor ID" value={snapshot?.id ?? ""} />
-      <PropertyRow label="Actor Type" value={snapshot?.type ?? ""} />
-      <PropertyRow
-        label="Position X"
-        value={snapshot?.posX ?? ""}
-        onDrag={handlePositionXDrag}
-        onCommit={handlePositionXCommit}
-      />
-      <PropertyRow
-        label="Position Y"
-        value={snapshot?.posY ?? ""}
-        onDrag={handlePositionYDrag}
-        onCommit={handlePositionYCommit}
-      />
-      <PropertyRow
-        label="Rotation (deg)"
-        value={snapshot?.rotation ?? ""}
-        onDrag={handleRotationDrag}
-        onCommit={handleRotationCommit}
-      />
-      <PropertyRow label="Scale" value={snapshot?.scale ?? ""} />
-    </div>
-  );
-};
-
 const SceneGraphTree = ({ nodes, depth = 0, editor }: { nodes: SceneNode[]; depth?: number; editor: Editor | null }) => {
   const [selectedActors, setSelectedActors] = useState<Set<Actor>>(new Set());
 
@@ -948,7 +763,7 @@ const SceneGraphTree = ({ nodes, depth = 0, editor }: { nodes: SceneNode[]; dept
 
     const handleSelection = () => {
       const snapshot = editor.getSelectedActors();
-      setSelectedActors(new Set(snapshot));
+      setSelectedActors(new Set<Actor>(snapshot));
     };
     editor.subscribe("actor:selected", handleSelection);
     handleSelection();
@@ -964,11 +779,13 @@ const SceneGraphTree = ({ nodes, depth = 0, editor }: { nodes: SceneNode[]; dept
         <div key={node.id}>
           <div
             className="flex items-center justify-between rounded-md border border-white/10 bg-black/30 px-2 py-1 text-xs"
+            
             style={{
               paddingLeft: depth * 12 + 8,
               color: theme.text,
               cursor: editor ? "pointer" : "default",
             }}
+
             onClick={(event) => {
               if (!editor) {
                 return;
@@ -994,9 +811,7 @@ const SceneGraphTree = ({ nodes, depth = 0, editor }: { nodes: SceneNode[]; dept
             <span>
               {node.name} {selectedActors.has(node.actor) && "(Selected)"}
             </span>
-            {node.children.length > 0 && (
-              <span className="text-[10px] text-slate-400">{node.children.length}</span>
-            )}
+            <span className="text-[10px] text-slate-400">...</span>
           </div>
           {node.children.length > 0 && <SceneGraphTree nodes={node.children} depth={depth + 1} editor={ editor } />}
         </div>
@@ -1019,180 +834,5 @@ const LayerItem = ({ name, active }: { name: string; active: boolean }) => (
     {name}
   </div>
 );
-
-const PropertyRow = ({
-  label,
-  value,
-  onDrag,
-  onCommit,
-}: {
-  label: string;
-  value: string;
-  onDrag?: (deltaPixels: number, options: PropertyDragOptions) => void;
-  onCommit?: (nextValue: string) => boolean;
-}) => {
-  const [draft, setDraft] = useState(value);
-  const [isEditing, setIsEditing] = useState(false);
-  const dragActiveRef = useRef(false);
-
-  useEffect(() => {
-    if (!isEditing) {
-      setDraft(value);
-    }
-  }, [value, isEditing]);
-
-  const commitDraft = () => {
-    if (!onCommit) {
-      return;
-    }
-    const success = onCommit(draft);
-    if (!success) {
-      setDraft(value);
-    }
-  };
-
-  const handleMouseDown = (event: ReactMouseEvent<HTMLInputElement>) => {
-    if (!onDrag || event.button !== 0) {
-      return;
-    }
-
-    const input = event.currentTarget;
-    const originalCursor = document.body.style.cursor;
-    const originalUserSelect = document.body.style.userSelect;
-    const startX = event.clientX;
-    let lastX = event.clientX;
-    let isDragging = false;
-
-    const beginDrag = (moveEvent: MouseEvent) => {
-      if (isDragging) {
-        return;
-      }
-      isDragging = true;
-      dragActiveRef.current = true;
-      setIsEditing(false);
-      input.blur();
-      document.body.style.cursor = "ew-resize";
-      document.body.style.userSelect = "none";
-      input.style.cursor = "ew-resize";
-      lastX = moveEvent.clientX;
-    };
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!isDragging) {
-        const deltaFromStart = moveEvent.clientX - startX;
-        if (Math.abs(deltaFromStart) < 2) {
-          return;
-        }
-        beginDrag(moveEvent);
-      }
-
-      if (!isDragging) {
-        return;
-      }
-
-      const delta = moveEvent.clientX - lastX;
-      if (delta !== 0) {
-        onDrag(delta, { shiftKey: moveEvent.shiftKey, altKey: moveEvent.altKey });
-        lastX = moveEvent.clientX;
-      }
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-
-      if (isDragging) {
-        document.body.style.cursor = originalCursor;
-        document.body.style.userSelect = originalUserSelect;
-        input.style.cursor = "";
-      }
-
-      dragActiveRef.current = false;
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  };
-
-  const handleChange = (event: ReactChangeEvent<HTMLInputElement>) => {
-    if (!onCommit) {
-      return;
-    }
-    setDraft(event.target.value);
-  };
-
-  const handleFocus = () => {
-    if (!onCommit) {
-      return;
-    }
-    setIsEditing(true);
-  };
-
-  const handleBlur = () => {
-    if (!onCommit) {
-      return;
-    }
-    if (dragActiveRef.current) {
-      dragActiveRef.current = false;
-      setIsEditing(false);
-      return;
-    }
-    if (isEditing) {
-      commitDraft();
-    }
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (!onCommit) {
-      return;
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      commitDraft();
-      setIsEditing(false);
-      (event.currentTarget as HTMLInputElement).blur();
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      setDraft(value);
-      setIsEditing(false);
-      (event.currentTarget as HTMLInputElement).blur();
-    }
-  };
-
-  const title = onCommit
-    ? onDrag
-      ? "Drag horizontally or enter a value"
-      : "Enter a value"
-    : onDrag
-      ? "Drag horizontally to adjust"
-      : undefined;
-
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs" style={{ color: theme.text }}>
-        {label}
-      </label>
-      <input
-        type="text"
-        value={onCommit ? draft : value}
-        className="px-2 py-1 text-xs rounded border bg-black/30 outline-none focus:border-magenta-400/50"
-        style={{
-          color: theme.text,
-          borderColor: "rgba(254, 83, 187, 0.2)",
-        }}
-        readOnly={!onCommit}
-        onMouseDown={onDrag ? handleMouseDown : undefined}
-        onChange={handleChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        inputMode="decimal"
-        title={title}
-      />
-    </div>
-  );
-};
 
 createRoot(document.getElementById("app")!).render(<App />);

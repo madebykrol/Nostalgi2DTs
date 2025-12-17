@@ -58,7 +58,9 @@
       ],
       "sourceMapPathOverrides": {
         "*/src/*": "${workspaceFolder}/src/apps/editor/src/*",
-        "http://localhost:5173/src/*": "${workspaceFolder}/src/apps/editor/src/*"
+        "http://localhost:5173/src/*": "${workspaceFolder}/src/apps/editor/src/*",
+        "http://localhost:5173/src/ioc/*": "${workspaceFolder}/src/apps/editor/src/ioc/*",
+        "http://localhost:5173/src/plugins/*": "${workspaceFolder}/src/apps/editor/src/plugins/*"
       }
     },
     {

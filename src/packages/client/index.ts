@@ -1,7 +1,7 @@
 import http from "http";
 
 import { Endpoint, Engine, Container, InputManager, World, Vector2 } from "@repo/engine";
-import { inject } from "inversify";
+import { inject, injectable } from "inversify";
 
 export class DefaultInputManager extends InputManager {
   private isAttached = false;
@@ -233,7 +233,7 @@ export class ClientEndpoint extends Endpoint<WebSocket, http.IncomingMessage> {
   }
 }
 
-
+@injectable()
 export class ClientEngine extends Engine<WebSocket, http.IncomingMessage> {
   // Implement client-specific engine logic here
   /**

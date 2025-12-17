@@ -1,4 +1,4 @@
-import { Actor } from "..";
+import { Actor } from "../world";
 
 export abstract class EditorActor extends Actor {
 

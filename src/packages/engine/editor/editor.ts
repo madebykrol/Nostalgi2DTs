@@ -1,27 +1,34 @@
-import { Actor, Engine, GizmoActor, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
+import { Actor, Engine, GizmoActor, inject, injectable, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
+import { EditorPluginManifestEntry } from "./";
 
 export type GizmoType = "translation" | "rotation" | "scaling";
 
 type SelectionController = {
     selectActors(actors: Actor[], focus?: Actor | null): void;
 };
+@injectable()
 
 export class Editor {
 
     private activeGizmoActor: GizmoActor | null = null;
     private selectionController: SelectionController | null = null;
     private currentSelection: Actor[] = [];
+    private editorPluginManifest: EditorPluginManifestEntry[] = [];
 
     eventListeners: Map<string, Set<Function>> = new Map();
 
     /**
      *
      */
-    constructor(private readonly engine: Engine<unknown, unknown>) {
+    constructor(@inject(Engine<unknown, unknown>) private readonly engine: Engine<unknown, unknown>) {
     }
 
     public emit(event: string, data: any): void {
         this.eventListeners.get(event.toLowerCase().trim())?.forEach((listener) => listener(data));
+    }
+
+    public registerPlugin(plugin: EditorPluginManifestEntry): void {
+        this.editorPluginManifest.push(plugin);
     }
 
     public subscribe(event: string, listener: Function): void {
@@ -105,19 +112,19 @@ export class Editor {
     }
 
     public selectActors(actors: Actor[], focus?: Actor | null): void {
-        const preferredFocus = focus ?? actors[0] ?? null;
+        const uniqueActors = Array.from(new Set(actors));
+        const preferredFocus = focus ?? uniqueActors[0] ?? null;
 
         if (!this.selectionController) {
-            if (actors.length === 0) {
+            if (uniqueActors.length === 0) {
                 this.hideGizmo();
             }
-            this.updateSelectionSnapshot(actors);
+            this.updateSelectionSnapshot(uniqueActors);
             this.emit("actor:selected", preferredFocus ?? null);
             return;
         }
 
-        this.selectionController.selectActors(actors, preferredFocus);
-        this.updateSelectionSnapshot(actors);
+        this.selectionController.selectActors(uniqueActors, preferredFocus);
     }
 
     private async spawnIfNeeded(actor: GizmoActor): Promise<void> {

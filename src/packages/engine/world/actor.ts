@@ -5,7 +5,7 @@ import { CollisionComponent } from "./collisioncomponent";
 import { Component } from "./component";
 import { World } from "./world";
 import { PhysicsComponent } from "../physics";
-import { EngineNetworkMode } from "../engine";
+import type { EngineNetworkMode } from "../engine";
 
 export abstract class Actor extends BaseObject {
     isOwnedBy<TController extends Controller>(controller: TController|null): boolean {

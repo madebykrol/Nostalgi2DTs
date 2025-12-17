@@ -1,4 +1,6 @@
-import { Actor, EngineNetworkMode, Vector2 } from "..";
+import { Actor } from "../world";
+import { Vector2 } from "../math";
+import type { EngineNetworkMode } from "../engine";
 import { EditorActor } from "./editorActor";
 import { GizmoHandle } from "./gizmoHandle";
 

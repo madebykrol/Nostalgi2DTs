@@ -11,3 +11,4 @@ export * from "./translationGizmoVertexShader";
 export * from "./rotationGizmoFragmentShader";
 export * from "./rotationGizmoVertexShader";
 export * from "./editor";
+export * from "./editorPluginManifestEntry"

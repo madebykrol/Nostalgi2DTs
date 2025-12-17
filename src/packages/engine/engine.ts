@@ -2,13 +2,13 @@ import { Frustum, Camera } from "./camera";
 import { Actor, World, BaseObject } from "./world";
 import { Level } from "./level";
 import { PlayerState, Controller } from "./game";
-import { Url, TimerManager, Constructor, Container } from "./utils";
+import { Url, TimerManager, Constructor, Container, injectable } from "./utils";
 import { Vector2 } from "./math";
 import { Endpoint } from "./network/endpoint";
 import { InputManager } from "./input/inputmanager";
 import { MeshComponent, PostProcessingVolumeActor, PostProcessMaterial } from "./rendering";
 import { GameMode } from "./game/gameMode";
-import { EditorActor, TranslationGizmoActor } from "./editor";
+import { EditorActor } from "./editor/editorActor";
 
 class RootObject extends BaseObject {
 
@@ -16,6 +16,7 @@ class RootObject extends BaseObject {
 
 export type EngineNetworkMode = "client" | "server" | "singleplayer";
 
+@injectable()
 export class Engine<TSocket, TReq> {
 
     afterRenderCallbacks: Map<string, (() => void)> = new Map();
