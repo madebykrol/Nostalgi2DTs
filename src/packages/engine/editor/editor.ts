@@ -1,10 +1,16 @@
-import { Actor, Constructor, Container, Engine, GizmoActor, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor, Vector2 } from "@repo/engine";
+import { Actor, Engine, GizmoActor, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
 
 export type GizmoType = "translation" | "rotation" | "scaling";
+
+type SelectionController = {
+    selectActors(actors: Actor[], focus?: Actor | null): void;
+};
 
 export class Editor {
 
     private activeGizmoActor: GizmoActor | null = null;
+    private selectionController: SelectionController | null = null;
+    private currentSelection: Actor[] = [];
 
     eventListeners: Map<string, Set<Function>> = new Map();
 
@@ -37,52 +43,82 @@ export class Editor {
         return this.activeGizmoActor;
     }
 
-    public async displayGizmo(selectedActors: Actor[], gizmo: GizmoActor): Promise<void> {
-
-        if (selectedActors.length === 0) {
-            return;
-        }
-
-        if (!this.activeGizmoActor)
-            return;
-
-        this.activeGizmoActor.setTargetActors(selectedActors);
-        await this.spawnIfNeeded(this.activeGizmoActor);
-    }      
-
     public hideGizmo(): void {
         if (!this.activeGizmoActor) {
             return;
         }
 
         this.engine.despawnActor(this.activeGizmoActor);
+        this.activeGizmoActor = null;
     }
 
     public async displayRotationGizmo(selectedActors: Actor[]): Promise<void> {
-        if (this.activeGizmoActor instanceof RotationGizmoActor && this.activeGizmoActor.isSpawned) {
+        if (selectedActors.length === 0) {
+            this.hideGizmo();
             return;
         }
 
-        this.activeGizmoActor = new RotationGizmoActor();
-        await this.spawnIfNeeded(this.activeGizmoActor);
+        const gizmo = await this.ensureGizmoInstance(RotationGizmoActor);
+        gizmo.setTargetActors(selectedActors);
     }
 
     public async displayTranslationGizmo(selectedActors: Actor[]): Promise<void> {
-        if (this.activeGizmoActor instanceof TranslationGizmoActor && this.activeGizmoActor.isSpawned) {
+        if (selectedActors.length === 0) {
+            this.hideGizmo();
             return;
-        }   
-        this.activeGizmoActor = new TranslationGizmoActor();
-        await this.spawnIfNeeded(this.activeGizmoActor);
+        }
+
+        const gizmo = await this.ensureGizmoInstance(TranslationGizmoActor);
+        gizmo.setTargetActors(selectedActors);
     }
 
     public async displayScalingGizmo(selectedActors: Actor[]): Promise<void> {
-        if (this.activeGizmoActor instanceof ScalingGizmoActor && this.activeGizmoActor.isSpawned) {
+        if (selectedActors.length === 0) {
+            this.hideGizmo();
             return;
         }
-        this.activeGizmoActor = new ScalingGizmoActor();
-        await this.spawnIfNeeded(this.activeGizmoActor);
+
+        const gizmo = await this.ensureGizmoInstance(ScalingGizmoActor);
+        gizmo.setTargetActors(selectedActors);
+    }
+    
+    public setCursor(cursor: string): void {
+        window.document.body.style.cursor = cursor;
     }
 
+    public registerSelectionController(controller: SelectionController): void {
+        this.selectionController = controller;
+    }
+
+    public unregisterSelectionController(controller: SelectionController): void {
+        if (this.selectionController === controller) {
+            this.selectionController = null;
+        }
+    }
+
+    public updateSelectionSnapshot(selection: Actor[]): void {
+        this.currentSelection = [...selection];
+    }
+
+    public getSelectedActors(): Actor[] {
+        return [...this.currentSelection];
+    }
+
+    public selectActors(actors: Actor[], focus?: Actor | null): void {
+        const preferredFocus = focus ?? actors[0] ?? null;
+
+        if (!this.selectionController) {
+            if (actors.length === 0) {
+                this.hideGizmo();
+            }
+            this.updateSelectionSnapshot(actors);
+            this.emit("actor:selected", preferredFocus ?? null);
+            return;
+        }
+
+        this.selectionController.selectActors(actors, preferredFocus);
+        this.updateSelectionSnapshot(actors);
+    }
 
     private async spawnIfNeeded(actor: GizmoActor): Promise<void> {
         if (actor.getWorld()) {
@@ -93,6 +129,19 @@ export class Editor {
             return;
 
         this.engine.spawnActorInstance(actor);
+    }
+
+    private async ensureGizmoInstance<T extends GizmoActor>(ctor: new () => T): Promise<T> {
+        if (!(this.activeGizmoActor instanceof ctor)) {
+            if (this.activeGizmoActor) {
+                this.engine.despawnActor(this.activeGizmoActor);
+            }
+            this.activeGizmoActor = new ctor();
+        }
+
+        const gizmo = this.activeGizmoActor as T;
+        await this.spawnIfNeeded(gizmo);
+        return gizmo;
     }
 
 }

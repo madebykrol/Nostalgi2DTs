@@ -83,6 +83,7 @@ const theme = {
 type SceneNode = {
   id: string;
   name: string;
+  actor: Actor;
   children: SceneNode[];
 };
 
@@ -183,6 +184,7 @@ const App = () => {
       return {
         id: actor.getId(),
         name: (actor as any).name ?? actor.constructor?.name ?? "Actor",
+        actor,
         children,
       };
     };
@@ -930,9 +932,8 @@ const ActorProperties = ({ editor }: { editor: Editor | null }) => {
   );
 };
 
-const SceneGraphTree = ({ nodes, depth = 0, editor }: { nodes: SceneNode[]; depth?: number, editor: Editor | null }) => {
-  
-  const [selectedActor, setSelectedActor] = useState<Actor | null>(null);
+const SceneGraphTree = ({ nodes, depth = 0, editor }: { nodes: SceneNode[]; depth?: number; editor: Editor | null }) => {
+  const [selectedActors, setSelectedActors] = useState<Set<Actor>>(new Set());
 
   if (!nodes.length) {
     return depth === 0 ? (
@@ -945,10 +946,12 @@ const SceneGraphTree = ({ nodes, depth = 0, editor }: { nodes: SceneNode[]; dept
       return;
     }
 
-    const handleSelection = (actor: Actor | null) => {
-      setSelectedActor(actor ?? null);
+    const handleSelection = () => {
+      const snapshot = editor.getSelectedActors();
+      setSelectedActors(new Set(snapshot));
     };
     editor.subscribe("actor:selected", handleSelection);
+    handleSelection();
 
     return () => {
       editor.unsubscribe("actor:selected", handleSelection);
@@ -964,9 +967,33 @@ const SceneGraphTree = ({ nodes, depth = 0, editor }: { nodes: SceneNode[]; dept
             style={{
               paddingLeft: depth * 12 + 8,
               color: theme.text,
+              cursor: editor ? "pointer" : "default",
+            }}
+            onClick={(event) => {
+              if (!editor) {
+                return;
+              }
+
+              const current = editor.getSelectedActors();
+
+              if (event.ctrlKey || event.metaKey) {
+                const nextSet = new Set(current);
+                if (nextSet.has(node.actor)) {
+                  nextSet.delete(node.actor);
+                } else {
+                  nextSet.add(node.actor);
+                }
+
+                const nextArray = Array.from(nextSet);
+                editor.selectActors(nextArray, nextArray[0] ?? null);
+              } else {
+                editor.selectActors([node.actor], node.actor);
+              }
             }}
           >
-            <span>{node.name} {selectedActor?.getId() === node.id && "(Selected)"}</span>
+            <span>
+              {node.name} {selectedActors.has(node.actor) && "(Selected)"}
+            </span>
             {node.children.length > 0 && (
               <span className="text-[10px] text-slate-400">{node.children.length}</span>
             )}

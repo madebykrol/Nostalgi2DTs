@@ -1,5 +1,6 @@
-import { Actor, EngineNetworkMode, GizmoType, Vector2 } from "..";
+import { Actor, EngineNetworkMode, Vector2 } from "..";
 import { EditorActor } from "./editorActor";
+import { GizmoHandle } from "./gizmoHandle";
 
 export abstract class GizmoActor extends EditorActor {
 
@@ -20,9 +21,11 @@ export abstract class GizmoActor extends EditorActor {
         this.setPosition(position);
     }
 
-    public abstract hitTest(worldPoint: Vector2, cameraZoom: number): GizmoType | null;
+    public getTargetActors(): Set<Actor> {
+        return this.targetActors;
+    }
 
-    public abstract handleGizmoManipulation(mousePosition: Vector2): void;
+    public abstract getHandle(worldPoint: Vector2, cameraZoom: number): GizmoHandle | null;
 
     private calculateGizmoPosition(selectedActors: Actor[]): Vector2 {
         if (selectedActors.length === 0) {

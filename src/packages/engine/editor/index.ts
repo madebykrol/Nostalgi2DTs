@@ -1,6 +1,7 @@
 export * from "./TranslationGizmoMaterial";
 export * from "./editorActor";
 export * from "./gizmoActor";
+export * from "./gizmoHandle";
 export * from "./rotationGizmoActor";
 export * from "./rotationGizmoMaterial";
 export * from "./scalingGizmoActor";
