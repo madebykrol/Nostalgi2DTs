@@ -2,7 +2,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     tailwindcss(),
     react({
@@ -13,8 +13,8 @@ export default defineConfig({
       },
     }),
   ],
-  base: "/",
+  base: command === 'build' ? "/Nostalgi2DTs/editor/" : "/",
   server: {
     port: 5173
   }
-});
+}));
