@@ -13,5 +13,5 @@ export default defineConfig({
       },
     }),
   ],
-  base: "/Nostalgi2DTs/projectsite/"
+  base: "/"
 });
