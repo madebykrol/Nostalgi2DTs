@@ -13,7 +13,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: "/Nostalgi2DTs/projectsite/",
+  base: "/",
   server: {
     port: 5175
   }
