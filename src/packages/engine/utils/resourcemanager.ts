@@ -30,7 +30,7 @@ export class DefaultResourceManager extends ResourceManager {
     }
 
     private async fetchText(target: string): Promise<string> {
-		const response = await fetch("public"+target);
+		const response = await fetch(target);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch TMX map from ${target}: ${response.status} ${response.statusText}`);
 		}
