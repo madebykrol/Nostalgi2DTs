@@ -1,57 +1,56 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Actor, Editor } from "@repo/engine";
+import { Editor } from "@repo/engine";
+import {
+  EditorUIPlugin,
+  EditorUIPluginContext,
+  ModalHandle,
+  ModalRenderer,
+  PanelDescriptor,
+  PanelLocation,
+  SceneContextMenuContext,
+  SceneContextMenuItemDescriptor,
+  SceneDragHandlerDescriptor,
+  ModalTriggerDescriptor,
+  ModalTriggerEventType,
+  ModalTriggerContextMap,
+  ComponentAssetStorage,
+  EditorComponentAssembler,
+} from "@repo/engine";
 import { theme } from "../theme";
-import { withInjection, type InjectedProps } from "../ioc/ioc";
 
 type RegistryListener = () => void;
 
-export type PropertyInspectorRenderProps = {
-  selection: Actor[];
-};
+type RegisteredPanel = PanelDescriptor & { order: number };
 
-export type PropertyInspectorDescriptor = {
-  id: string;
-  order?: number;
-  appliesTo?: (selection: Actor[]) => boolean;
-  render: (props: PropertyInspectorRenderProps) => ReactNode;
-};
-
-type RegisteredInspector = PropertyInspectorDescriptor & { order: number };
-
-export class PropertyInspectorRegistry {
-  private inspectors: RegisteredInspector[] = [];
+export class PanelRegistry {
+  private panels: RegisteredPanel[] = [];
   private listeners = new Set<RegistryListener>();
 
-  register(descriptor: PropertyInspectorDescriptor): () => void {
-    const entry: RegisteredInspector = { ...descriptor, order: descriptor.order ?? 0 };
-    this.inspectors.push(entry);
-    this.inspectors.sort((a, b) => a.order - b.order);
+  register(descriptor: PanelDescriptor): () => void {
+    const entry: RegisteredPanel = { ...descriptor, order: descriptor.order ?? 0 };
+    this.panels.push(entry);
+    this.panels.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
     this.emit();
 
     return () => {
-      const index = this.inspectors.indexOf(entry);
+      const index = this.panels.indexOf(entry);
       if (index !== -1) {
-        this.inspectors.splice(index, 1);
+        this.panels.splice(index, 1);
         this.emit();
       }
     };
   }
 
-  resolve(selection: Actor[]): RegisteredInspector | undefined {
-    for (const inspector of this.inspectors) {
-      if (!inspector.appliesTo || inspector.appliesTo(selection)) {
-        return inspector;
-      }
-    }
-    return undefined;
+  resolve(location: PanelLocation): RegisteredPanel[] {
+    return this.panels.filter((panel) => panel.location === location);
   }
 
   clear(): void {
-    if (this.inspectors.length === 0) {
+    if (this.panels.length === 0) {
       return;
     }
-    this.inspectors = [];
+    this.panels = [];
     this.emit();
   }
 
@@ -69,8 +68,163 @@ export class PropertyInspectorRegistry {
   }
 }
 
-export type ModalRenderer = (api: { close: () => void }) => ReactNode;
-export type ModalHandle = { close: () => void };
+type RegisteredSceneContextMenuItem = SceneContextMenuItemDescriptor & { order: number };
+
+export class SceneContextMenuRegistry {
+  private items: RegisteredSceneContextMenuItem[] = [];
+  private listeners = new Set<RegistryListener>();
+
+  register(descriptor: SceneContextMenuItemDescriptor): () => void {
+    const entry: RegisteredSceneContextMenuItem = { ...descriptor, order: descriptor.order ?? 0 };
+    this.items.push(entry);
+    this.items.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+    this.emit();
+
+    return () => {
+      const index = this.items.indexOf(entry);
+      if (index !== -1) {
+        this.items.splice(index, 1);
+        this.emit();
+      }
+    };
+  }
+
+  resolve(context: SceneContextMenuContext): RegisteredSceneContextMenuItem[] {
+    return this.items.filter((item) => (item.isVisible ? item.isVisible(context) : true));
+  }
+
+  clear(): void {
+    if (this.items.length === 0) {
+      return;
+    }
+    this.items = [];
+    this.emit();
+  }
+
+  subscribe(listener: RegistryListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emit(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
+}
+
+type RegisteredSceneDragHandler = SceneDragHandlerDescriptor & { order: number };
+
+export class SceneDragDropRegistry {
+  private handlers: RegisteredSceneDragHandler[] = [];
+  private listeners = new Set<RegistryListener>();
+
+  register(descriptor: SceneDragHandlerDescriptor): () => void {
+    const entry: RegisteredSceneDragHandler = { ...descriptor, order: descriptor.order ?? 0 };
+    this.handlers.push(entry);
+    this.handlers.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+    this.emit();
+
+    return () => {
+      const index = this.handlers.indexOf(entry);
+      if (index !== -1) {
+        this.handlers.splice(index, 1);
+        this.emit();
+      }
+    };
+  }
+
+  resolve(): RegisteredSceneDragHandler[] {
+    return [...this.handlers];
+  }
+
+  clear(): void {
+    if (this.handlers.length === 0) {
+      return;
+    }
+    this.handlers = [];
+    this.emit();
+  }
+
+  subscribe(listener: RegistryListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emit(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
+}
+
+type RegisteredModalTrigger = ModalTriggerDescriptor & { order: number };
+
+export class ModalTriggerRegistry {
+  private triggers = new Map<ModalTriggerEventType, RegisteredModalTrigger[]>();
+
+  register(descriptor: ModalTriggerDescriptor): () => void {
+    const entry: RegisteredModalTrigger = { ...descriptor, order: descriptor.order ?? 0 };
+    const existing = this.triggers.get(descriptor.event) ?? [];
+    existing.push(entry);
+    existing.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+    this.triggers.set(descriptor.event, existing);
+
+    return () => {
+      const collection = this.triggers.get(descriptor.event);
+      if (!collection) {
+        return;
+      }
+      const index = collection.indexOf(entry);
+      if (index !== -1) {
+        collection.splice(index, 1);
+      }
+      if (collection.length === 0) {
+        this.triggers.delete(descriptor.event);
+      }
+    };
+  }
+
+  clear(): void {
+    this.triggers.clear();
+  }
+
+  async dispatch<T extends ModalTriggerEventType>(
+    event: T,
+    context: ModalTriggerContextMap[T],
+    modalManager: ModalManager
+  ): Promise<boolean> {
+    const collection = this.triggers.get(event);
+    if (!collection || collection.length === 0) {
+      return false;
+    }
+
+    for (const trigger of collection) {
+      if (event === "toolbar.menu" && trigger.menuId) {
+        const allowedIds = Array.isArray(trigger.menuId) ? trigger.menuId : [trigger.menuId];
+        if (!allowedIds.includes((context as ModalTriggerContextMap["toolbar.menu"]).menuId)) {
+          continue;
+        }
+      }
+
+      if (trigger.isEnabled) {
+        const enabled = trigger.isEnabled(context as any);
+        if (enabled instanceof Promise ? !(await enabled) : !enabled) {
+          continue;
+        }
+      }
+
+      modalManager.open((api) => trigger.render(context as any, api));
+      return true;
+    }
+
+    return false;
+  }
+}
 
 type ModalEntry = { id: number; render: ModalRenderer };
 
@@ -123,193 +277,67 @@ export class ModalManager {
   }
 }
 
-export type SceneContextMenuContext = {
-  editor: Editor;
-  selection: Actor[];
-  clientX: number;
-  clientY: number;
-};
-
-export type SceneContextMenuItemDescriptor = {
-  id: string;
-  label: string;
-  order?: number;
-  isVisible?: (context: SceneContextMenuContext) => boolean;
-  isEnabled?: (context: SceneContextMenuContext) => boolean;
-  onSelect: (context: SceneContextMenuContext) => void;
-};
-
-type RegisteredSceneContextMenuItem = SceneContextMenuItemDescriptor & { order: number };
-
-export class SceneContextMenuRegistry {
-  private items: RegisteredSceneContextMenuItem[] = [];
-  private listeners = new Set<RegistryListener>();
-
-  register(descriptor: SceneContextMenuItemDescriptor): () => void {
-    const entry: RegisteredSceneContextMenuItem = { ...descriptor, order: descriptor.order ?? 0 };
-    this.items.push(entry);
-    this.items.sort((a, b) => a.order - b.order);
-    this.emit();
-
-    return () => {
-      const index = this.items.indexOf(entry);
-      if (index !== -1) {
-        this.items.splice(index, 1);
-        this.emit();
-      }
-    };
-  }
-
-  resolve(context: SceneContextMenuContext): RegisteredSceneContextMenuItem[] {
-    return this.items.filter((item) => !item.isVisible || item.isVisible(context));
-  }
-
-  clear(): void {
-    if (this.items.length === 0) {
-      return;
-    }
-    this.items = [];
-    this.emit();
-  }
-
-  subscribe(listener: RegistryListener): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
-  }
-
-  private emit(): void {
-    for (const listener of this.listeners) {
-      listener();
-    }
-  }
-}
-
-export type EditorUIPluginContext = {
-  editor: Editor;
-  propertyInspectors: {
-    register: (descriptor: PropertyInspectorDescriptor) => () => void;
-  };
-  modals: {
-    open: (render: ModalRenderer) => ModalHandle;
-  };
-  sceneContextMenu: {
-    registerItem: (descriptor: SceneContextMenuItemDescriptor) => () => void;
-  };
-};
-
-export type EditorUIPlugin = {
-  id: string;
-  activate: (context: EditorUIPluginContext) => void | (() => void);
-};
-
 export const activateEditorPlugins = (
   editor: Editor,
   registries: {
-    propertyInspectors: PropertyInspectorRegistry;
-    modals: ModalManager;
+    panels: PanelRegistry;
     sceneContextMenu: SceneContextMenuRegistry;
+    sceneDragDrop: SceneDragDropRegistry;
+    modalTriggers: ModalTriggerRegistry;
+    modals: ModalManager;
   },
-  plugins: EditorUIPlugin[]
+  plugins: EditorUIPlugin[],
+  services?: {
+    componentAssetStorage?: ComponentAssetStorage;
+    componentAssembler?: EditorComponentAssembler;
+  }
 ): (() => void) => {
   const context: EditorUIPluginContext = {
     editor,
-    propertyInspectors: {
-      register: (descriptor) => registries.propertyInspectors.register(descriptor),
-    },
-    modals: {
-      open: (render) => registries.modals.open(render),
+    panels: {
+      register: (descriptor) => registries.panels.register(descriptor),
     },
     sceneContextMenu: {
       registerItem: (descriptor) => registries.sceneContextMenu.register(descriptor),
     },
+    sceneDragDrop: {
+      register: (descriptor) => registries.sceneDragDrop.register(descriptor),
+    },
+    modalTriggers: {
+      register: (descriptor) => registries.modalTriggers.register(descriptor),
+    },
+    modals: {
+      open: (render) => registries.modals.open(render),
+    },
+    componentAssets: services?.componentAssetStorage,
+    componentAssembler: services?.componentAssembler,
   };
 
   const disposers = plugins.map((plugin) => {
-    const dispose = plugin.activate(context);
-    return typeof dispose === "function" ? dispose : () => {};
+    try {
+      const dispose = plugin.activate(context);
+      return typeof dispose === "function" ? dispose : () => {};
+    } catch (error) {
+      console.error(`Failed to activate plugin ${plugin.id}`, error);
+      return () => {};
+    }
   });
 
   return () => {
     for (const dispose of disposers) {
-      dispose();
+      try {
+        dispose();
+      } catch (error) {
+        console.error("Error during plugin disposal", error);
+      }
     }
-    registries.propertyInspectors.clear();
+    registries.panels.clear();
     registries.sceneContextMenu.clear();
+    registries.sceneDragDrop.clear();
+    registries.modalTriggers.clear();
     registries.modals.clear();
   };
 };
-
-type PropertyInspectorPanelDependencies = { editor: typeof Editor };
-type PropertyInspectorPanelProps = {
-  registry: PropertyInspectorRegistry;
-} & InjectedProps<PropertyInspectorPanelDependencies>;
-
-const PropertyInspectorPanelBase = ({ editor, registry }: PropertyInspectorPanelProps) => {
-  const [selection, setSelection] = useState<Actor[]>([]);
-  const [, setRevision] = useState(0);
-
-  useEffect(() => {
-    return registry.subscribe(() => {
-      setRevision((previous) => previous + 1);
-    });
-  }, [registry]);
-
-  useEffect(() => {
-    if (!editor) {
-      setSelection([]);
-      return;
-    }
-
-    const handleSelectionChange = () => {
-      setSelection(editor.getSelectedActors());
-    };
-
-    editor.subscribe("actor:selected", handleSelectionChange);
-    handleSelectionChange();
-
-    return () => {
-      editor.unsubscribe("actor:selected", handleSelectionChange);
-    };
-  }, [editor]);
-
-  let content: ReactNode;
-
-  if (!editor) {
-    content = (
-      <div className="text-xs" style={{ color: theme.text }}>
-        Editor not initialized.
-      </div>
-    );
-  } else if (selection.length === 0) {
-    content = (
-      <div className="text-xs" style={{ color: theme.text }}>
-        Select an actor to view its properties.
-      </div>
-    );
-  } else {
-    const inspector = registry.resolve(selection);
-
-    if (!inspector) {
-      content = (
-        <div className="text-xs" style={{ color: theme.text }}>
-          No property inspector available for this selection.
-        </div>
-      );
-    } else {
-      const selectionKey = selection.map((actor) => actor.getId()).join("|") || inspector.id;
-      content = <div key={`${inspector.id}:${selectionKey}`}>{inspector.render({ selection })}</div>;
-    }
-  }
-
-  return <div className="space-y-3">{content}</div>;
-
-};
-
-export const PropertyInspectorPanel = withInjection<PropertyInspectorPanelDependencies>({
-  editor: Editor,
-})(PropertyInspectorPanelBase);
 
 export const ModalHost = ({ manager }: { manager: ModalManager }) => {
   const [entries, setEntries] = useState(manager.snapshot());
@@ -439,10 +467,7 @@ export const SceneContextMenuSurface = ({
     <div ref={containerRef} className="relative h-full w-full">
       {children}
       {menuState && (
-        <div
-          className="pointer-events-none absolute inset-0 z-[1500]"
-          onContextMenu={(event) => event.preventDefault()}
-        >
+        <div className="pointer-events-none absolute inset-0 z-[1500]" onContextMenu={(event) => event.preventDefault()}>
           <div
             className="pointer-events-auto min-w-[200px] rounded-md border shadow-lg"
             style={{

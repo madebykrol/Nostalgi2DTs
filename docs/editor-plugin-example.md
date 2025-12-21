@@ -1,41 +1,40 @@
-# Editor Plugin Example
+# Editor UI Plugin Guide
 
-This guide walks through creating a minimal editor UI plugin that adds a custom property inspector panel. It assumes the editor already provides the IoC utilities (`withInjection`, `useInjectedDependencies`) and the plugin registry infrastructure found in `src/apps/editor/src/plugins/pluginSystem.tsx`.
+This walkthrough shows how to add a custom panel to the in-editor UI and hook into the shared registries for context menus and modals. The examples assume access to the IoC helpers (`withInjection`, `useInjectedDependencies`) and the plugin runtime in `src/apps/editor/src/plugins/pluginSystem.tsx`.
 
-## 1. Create the plugin file
+## 1. Create a plugin module
 
 Add a new file under `src/apps/editor/src/plugins`. For example:
 
 ```
-src/apps/editor/src/plugins/examplePropertiesPlugin.tsx
+src/apps/editor/src/plugins/selectionInfoPlugin.tsx
 ```
 
 Paste the following starter code:
 
 ```tsx
 import { useMemo } from "react";
-import type { Actor, Editor } from "@repo/engine";
-import type { EditorUIPlugin } from "./pluginSystem";
+import { Editor } from "@repo/engine";
+import { EditorUIPlugin } from "@repo/engine/editor/editorUIPlugin";
 import { withInjection } from "../ioc/ioc";
 
-// Component props resolve dependencies automatically via withInjection
-const ExampleInspectorBase = ({ editor }: { editor: Editor }) => {
+const SelectionPanelBase = ({ editor }: { editor: Editor }) => {
   const selection = editor.getSelectedActors();
-  const actorNames = useMemo(
+  const names = useMemo(
     () => selection.map((actor) => actor.constructor?.name ?? actor.getId()),
     [selection]
   );
 
   if (selection.length === 0) {
-    return <div className="text-xs">Select an actor to view examples</div>;
+    return <div className="text-xs">Select an actor to see details.</div>;
   }
 
   return (
     <div className="space-y-2 text-xs">
-      <div className="font-semibold">Example Inspector</div>
-      <div>Selection count: {selection.length}</div>
+      <div className="font-semibold">Selection</div>
+      <div>Actors: {selection.length}</div>
       <ul className="list-disc list-inside space-y-1">
-        {actorNames.map((name, index) => (
+        {names.map((name, index) => (
           <li key={index}>{name}</li>
         ))}
       </ul>
@@ -43,67 +42,96 @@ const ExampleInspectorBase = ({ editor }: { editor: Editor }) => {
   );
 };
 
-const ExampleInspector = withInjection({ editor: Editor })(ExampleInspectorBase);
+const SelectionPanel = withInjection({ editor: Editor })(SelectionPanelBase);
 
-const examplePropertiesPlugin: EditorUIPlugin = {
-  id: "example.properties",
-  activate: ({ propertyInspectors }) => {
-    // Register a property inspector that applies whenever actors are selected
-    const unregisterInspector = propertyInspectors.register({
-      id: "example.properties.panel",
-      order: 100,
-      appliesTo: (selection: Actor[]) => selection.length > 0,
-      render: () => <ExampleInspector />,
+const selectionInfoPlugin: EditorUIPlugin = {
+  id: "example.selection-info",
+  activate: ({ panels }) => {
+    const unregisterPanel = panels.register({
+      id: "example.selection-info.panel",
+      title: "Selection",
+      location: "left",
+      order: 200,
+      render: ({ editor }) => <SelectionPanel editor={editor} />,
     });
 
     return () => {
-      unregisterInspector();
+      unregisterPanel();
     };
   },
 };
 
-export default examplePropertiesPlugin;
+export default selectionInfoPlugin;
 ```
 
 Key points:
 
-- `withInjection({ editor: Editor })` resolves the `Editor` instance from the IoC container automatically. The exported component only needs props that aren’t injected.
-- The `activate` function returns a disposer to clean up the registration when the plugin unloads.
+- `EditorUIPlugin` now lives in `@repo/engine/editor/editorUIPlugin`, shared between the runtime and plugin authors.
+- `panels.register` takes an ID, title, `location` (`"left"` or `"right"`), optional sort `order`, and a `render` function that receives `{ editor }`.
+- The dispose function returned from `activate` must clean up every registry contribution.
 
-## 2. Register the plugin in the manifest
+## 2. Register the plugin entry
 
-Edit `src/apps/editor/src/plugins/manifest.ts` and add the entry so the plugin loader can discover it:
+Before plugins load, push an entry into the editor manifest using `editor.registerPlugin`. A convenient place is right after the editor resolves from the IoC container.
 
 ```ts
-export const editorPluginManifest: EditorPluginManifestEntry[] = [
-  {
-    id: "example.properties",
-    title: "Example Properties Panel",
-    description: "Demonstrates a simple inspector plugin.",
-    entrypoint: "./examplePropertiesPlugin",
+// src/apps/editor/src/registerBuiltInEditorPlugins.ts
+import { Editor } from "@repo/engine";
+
+export const registerBuiltInEditorPlugins = (editor: Editor) => {
+  editor.registerPlugin({
+    id: "example.selection-info",
+    title: "Selection Info",
+    description: "Shows basic data about the current selection.",
+    entrypoint: "./plugins/selectionInfoPlugin",
     enabled: true,
-  },
-];
+  });
+};
 ```
 
-Multiple plugins can be listed in this array. Toggle `enabled` to disable a plugin without removing it.
+Then call this helper once in the editor bootstrap (for example in `main.tsx`) before invoking `editor.loadEnabledEditorPlugins()`.
 
 ## 3. Rebuild or restart the editor
 
-1. Restart the development server (`npm run dev` or equivalent) if it was already running.
-2. Launch the editor application. The manifest loader dynamically imports the plugin module using the `entrypoint` path.
+1. Restart the development server (`npm run dev`, `npm run debug`, etc.) if it is already running.
+2. Launch the editor application so the manifest loader can dynamically import the new plugin module from the provided `entrypoint`.
 
-## 4. Verify the plugin
+## 4. Verify the panel
 
-- Select one or more actors in the scene.
-- The property panel should display “Example Inspector” along with the count and names of selected actors.
+- Select one or more actors in the scene view.
+- The left sidebar should display the new “Selection” tab with the actor count and names when active.
 
 ## 5. Extend the plugin
 
-From here you can:
+You can register additional contributions inside the same `activate` call:
 
-- Add modals via `context.modals.open`.
-- Contribute scene context menu items through `context.sceneContextMenu.registerItem`.
-- Resolve additional services by expanding the `withInjection` dependency map.
+```ts
+activate: ({ editor, panels, sceneContextMenu, modals }) => {
+  const disposers = [
+    panels.register({
+      id: "example.selection-info.panel",
+      title: "Selection",
+      location: "left",
+      render: ({ editor }) => <SelectionPanel editor={editor} />,
+    }),
+    sceneContextMenu.registerItem({
+      id: "example.selection.focus-camera",
+      label: "Focus Camera",
+      order: 50,
+      isVisible: ({ selection }) => selection.length > 0,
+      onSelect: ({ editor, selection }) => {
+        editor.selectActors(selection, selection[0] ?? null);
+      },
+    }),
+  ];
 
-Refer to `pluginSystem.tsx` for registry APIs and the IoC helper definitions in `src/apps/editor/src/ioc/ioc.ts`. This pattern keeps plugin components decoupled from manual prop wiring while still supporting full editor integration.
+  return () => {
+    disposers.forEach((dispose) => dispose());
+  };
+},
+```
+
+- `sceneContextMenu.registerItem` filters entries with optional `isVisible`/`isEnabled` callbacks and invokes `onSelect` when the user clicks the item.
+- `modals.open` shows a floating modal and returns a handle with `close()`; call it in response to UI events inside the registered panel or context menu item.
+
+This structure keeps editor extensions loosely coupled: panels, context menus, and modals can be registered independently while relying on the shared `EditorUIPluginContext` API.

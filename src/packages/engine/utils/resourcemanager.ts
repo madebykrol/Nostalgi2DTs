@@ -37,12 +37,12 @@ export class DefaultResourceManager extends ResourceManager {
 		return response.text();
 	}
 
-	private async readFileFromUrl(fileUrl: string): Promise<string> {
-		const urlModule = await import("node:url");
-		const fs = await import("node:fs/promises");
-		const filePath = urlModule.fileURLToPath(fileUrl);
-		return fs.readFile(filePath, "utf-8");
-	}
+	// private async readFileFromUrl(fileUrl: string): Promise<string> {
+	// 	const urlModule = await import("node:url");
+	// 	const fs = await import("node:fs/promises");
+	// 	const filePath = urlModule.fileURLToPath(fileUrl);
+	// 	return fs.readFile(filePath, "utf-8");
+	// }
 
 	private async readFileFromDisk(target: string): Promise<string> {
 		const fs = await import("node:fs/promises");

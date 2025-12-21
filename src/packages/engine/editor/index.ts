@@ -1,4 +1,4 @@
-export * from "./TranslationGizmoMaterial";
+export * from "./translationGizmoMaterial";
 export * from "./editorActor";
 export * from "./gizmoActor";
 export * from "./gizmoHandle";
@@ -12,3 +12,4 @@ export * from "./rotationGizmoFragmentShader";
 export * from "./rotationGizmoVertexShader";
 export * from "./editor";
 export * from "./editorPluginManifestEntry"
+export * from "./editorUIPlugin";

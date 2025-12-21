@@ -1,7 +1,7 @@
 export class StringUtils {
 
     public static cleanStringify(object:any) {
-       return JSON.stringify(object, (key, value) => {
+       return JSON.stringify(object, (_key, value) => {
             if (typeof value === 'object' && value !== null) {
                 if (value instanceof Array) {
                     return value.map(

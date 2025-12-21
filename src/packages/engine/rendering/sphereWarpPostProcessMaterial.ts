@@ -12,7 +12,7 @@ export class SphereWarpPostProcessMaterial extends PostProcessMaterial {
 
     private program: WebGLProgram | null = null;
     private vao: WebGLVertexArrayObject | null = null;
-    private positionBuffer: WebGLBuffer | null = null;
+    // private _positionBuffer: WebGLBuffer | null = null;
 
     private uSceneTexture: WebGLUniformLocation | null = null;
     private uOutlineWidth: WebGLUniformLocation | null = null;
@@ -281,7 +281,7 @@ export class SphereWarpPostProcessMaterial extends PostProcessMaterial {
 
         this.program = program;
         this.vao = vao;
-        this.positionBuffer = positionBuffer;
+        // this.positionBuffer = positionBuffer;
         this.uSceneTexture = gl.getUniformLocation(program, "u_sceneTexture");
         this.uOutlineWidth = gl.getUniformLocation(program, "u_outlineWidth");
         this.uOutlineIntensity = gl.getUniformLocation(program, "u_outlineIntensity");

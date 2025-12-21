@@ -3,7 +3,7 @@ import { Mesh, MeshComponent} from "../rendering";
 import { Actor } from "../world";
 import { GizmoActor } from "./gizmoActor";
 import { GizmoHandle } from "./gizmoHandle";
-import { TranslationGizmoMaterial } from "./TranslationGizmoMaterial";
+import { TranslationGizmoMaterial } from "./translationGizmoMaterial";
 
 
 class TranslationGizmoMesh extends Mesh {
@@ -56,7 +56,7 @@ export class TranslationXHandle extends TranslationHandle {
         super(gizmo);
     }
 
-    handleDrag(position: Vector2, delta: Vector2): void {
+    handleDrag(_position: Vector2, delta: Vector2): void {
         // Handle X axis translation manipulation logic here
 
         const offset = new Vector2(delta.x, 0);
@@ -70,7 +70,7 @@ export class TranslationYHandle extends TranslationHandle {
         super(gizmo);
     }
 
-    handleDrag(position: Vector2, delta: Vector2): void {
+    handleDrag(_position: Vector2, delta: Vector2): void {
         
         const offset = new Vector2(0, delta.y);
         this.translateActors(offset);
@@ -85,7 +85,7 @@ class TranslationPivotHandle extends TranslationHandle {
         super(gizmo);
     }
 
-    handleDrag(position: Vector2, delta: Vector2): void {
+    handleDrag(_position: Vector2, delta: Vector2): void {
         const offset = new Vector2(delta.x, delta.y);
         this.translateActors(offset);
     }

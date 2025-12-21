@@ -1,5 +1,5 @@
 import { Actor, Engine, GizmoActor, inject, injectable, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
-import { EditorPluginManifestEntry } from "./";
+import { EditorPluginManifestEntry, EditorUIPlugin } from "./";
 
 export type GizmoType = "translation" | "rotation" | "scaling";
 
@@ -30,6 +30,31 @@ export class Editor {
     public registerPlugin(plugin: EditorPluginManifestEntry): void {
         this.editorPluginManifest.push(plugin);
     }
+
+    public loadEnabledEditorPlugins = async (): Promise<EditorUIPlugin[]> => {
+        const entries = this.editorPluginManifest.filter((entry) => entry.enabled !== false);
+        const plugins: EditorUIPlugin[] = [];
+
+        for (const entry of entries) {
+            try {
+            const module = (await import(/* @vite-ignore */ entry.entrypoint)) as Record<string, EditorUIPlugin | undefined>;
+            const exportName = entry.exportName ?? "default";
+            const plugin = module[exportName];
+
+            if (!plugin) {
+                console.warn(`Editor plugin "${entry.id}" failed to load export "${exportName}" from ${entry.entrypoint}`);
+                continue;
+            }
+
+            plugins.push(plugin);
+            } catch (error) {
+            console.error(`Failed to load editor plugin module "${entry.id}" from ${entry.entrypoint}`, error);
+            }
+        }
+
+        return plugins;
+        };
+
 
     public subscribe(event: string, listener: Function): void {
         const key = event.toLowerCase().trim();

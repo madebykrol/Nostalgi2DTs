@@ -8,6 +8,6 @@
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": ["src", "../../packages/engine/editor/editor.ts"],
+  "include": ["src", "../../packages/engine/editor/editor.ts", "../../packages/tiler/tileMapEditorPlugin.tsx"],
   "exclude": ["node_modules", "dist"]
 }
