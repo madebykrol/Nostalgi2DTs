@@ -11,6 +11,10 @@
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "debug": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

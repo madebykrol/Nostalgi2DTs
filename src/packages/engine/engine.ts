@@ -2,12 +2,13 @@ import { Frustum, Camera } from "./camera";
 import { Actor, World, BaseObject } from "./world";
 import { Level } from "./level";
 import { PlayerState, Controller } from "./game";
-import { Url, TimerManager, Constructor, Container } from "./utils";
+import { Url, TimerManager, Constructor, Container, injectable } from "./utils";
 import { Vector2 } from "./math";
 import { Endpoint } from "./network/endpoint";
 import { InputManager } from "./input/inputmanager";
-import { ActorRenderer } from "./rendering";
+import { MeshComponent, PostProcessingVolumeActor, PostProcessMaterial } from "./rendering";
 import { GameMode } from "./game/gameMode";
+import { EditorActor } from "./editor/editorActor";
 
 class RootObject extends BaseObject {
 
@@ -15,10 +16,12 @@ class RootObject extends BaseObject {
 
 export type EngineNetworkMode = "client" | "server" | "singleplayer";
 
+@injectable()
 export class Engine<TSocket, TReq> {
 
     afterRenderCallbacks: Map<string, (() => void)> = new Map();
     currentGameMode: GameMode | undefined;
+    asEditor: boolean = false;
 
     onAfterRender(afterRenderHandle: (() => void)): string {
       // Add a callback to be called after rendering is complete
@@ -48,7 +51,13 @@ export class Engine<TSocket, TReq> {
 
     protected frameTimes: number[] = [];
     private frameId: number = 0; // increments every render pass
-    private rendererCache: Map<any, any> = new Map();
+    private postProcessTarget?: {
+        framebuffer: WebGLFramebuffer;
+        colorTexture: WebGLTexture;
+        depthBuffer: WebGLRenderbuffer;
+        width: number;
+        height: number;
+    };
     // private spatialGrid: SpatialGrid = new SpatialGrid(10);
     public debugMeshes: boolean = false; // show physics debug outlines
     public useDebugLogging: boolean = false;
@@ -63,7 +72,8 @@ export class Engine<TSocket, TReq> {
     constructor(
         protected world: World,
         protected netEndpoint: Endpoint<TSocket, TReq> | undefined,
-        protected networkMode: EngineNetworkMode = "singleplayer", 
+        protected networkMode: EngineNetworkMode = "singleplayer",
+
         protected container: Container) {
     }
 
@@ -79,11 +89,12 @@ export class Engine<TSocket, TReq> {
         return this.currentCamera;
     }
 
-    protected setControllerTypeForPlayer<T extends Controller>(
-        controllerCtor: Constructor<T> | null
-    ): void {
-        console.log("Setting controller type for player");
-        this.controllerTypeForPlayer = controllerCtor;
+    getRootActors(): Actor[] {
+        return this.rootObject.getChildrenOfType(Actor);
+    }
+
+    getWorld(): World {
+        return this.world;
     }
 
     setIsDebug(enabled: boolean): void {
@@ -154,110 +165,44 @@ export class Engine<TSocket, TReq> {
         return null;
     }
 
-    startup(): void {
-        if (this.networkMode === "server") {
-            this.netEndpoint?.connect((_socket: any, req: any) => {
-                console.log(`New connection: ${req.socket.remoteAddress}`);
+    public compileMaterials(gl: WebGL2RenderingContext): void {
+        // Compile all materials in the engine
+        const actors = this.getFlattenedActors();
+
+        actors.forEach(actor => {
+            actor.getComponentsOfType(MeshComponent).forEach(component => {
+                component.getMaterial().compile(gl);
             });
-
-            this.netEndpoint?.onMessage<any>("input", (data) => {
-                console.log("Received player input:", data);
-            });
-
-                    // Start server timers
-            this.timerManager.setTimer(() => {
-                this.handleNetworkTick();
-            }, 1000 / this.netTickRate, true); // 60 Hz server tick);
-        }
-
-        // Initialize all renderers
-        // const renderers = listRenderers()
-    }
-
-    public addPlayer(player: PlayerState): void {
-        this.players.push(player);
-        if(this.controllerTypeForPlayer)
-            player.setController(this.container.get(this.controllerTypeForPlayer));
-    }
-
-    protected handleNetworkTick(): void {
-
-    }
-
-    shutdown(): void { this.netEndpoint?.disconnect(); }
-
-    callServerRpc<T>(name: string, ...args: any[]): T | null {
-        const rpc = this.serverRpcs.get(name);
-        if (rpc) {
-            return rpc(...args) as T;
-        }
-
-        return null;
-    }
-
-    private getActorsFlattened(actor: BaseObject): Actor[] {
-        const actors: Actor[] = [];
-
-        for (const child of actor.getChildrenOfType(Actor)) {
-            actors.push(child);
-            const children = this.getActorsFlattened(child);
-
-            if (children.length === 0) continue;
-
-            actors.push(...children);
-        }
-        return actors;
-    }
-
-    // Should be called once every "frame" to progress the world
-    // If you calculate deltaTime yourself, you can pass it in as an argument
-    tick(): void {
-        const now = performance.now();
-
-        if(this.lastTickTime === 0){
-            this.lastTickTime = now;
-        }
-    
-        this.deltaTime = (now - this.lastTickTime) / 1000; // seconds
-        this.lastTickTime = now;
-
-        this.tickTimerManager(this.deltaTime);
-
-        this.players.forEach(player => {
-            player.getController()?._tick(this.deltaTime);
         });
-        this.tickActorsAndWorld(this.deltaTime);
+    }
 
-        // Update spatial partition (simple: reinsert/move all for now; can optimize with dirty flags later)
-        // if (this.spatialEnabled) {
-        //     const actors = this.rootObject.getChildrenOfType(Actor);
-        //     for (const a of actors) {
-        //         this.spatialGrid.update(a); // update handles insert/move
-        //     }
-        // }
+    run(asEditor: boolean = false): void {
 
-        // server
-        if (this.networkMode === "server") {
-            this.serverTick(this.deltaTime);
-        } else if (this.networkMode === "client") {
-            this.clientTick(this.deltaTime);
+        this.asEditor = asEditor;
+        this.ensureInputManager();
+        this.configurePlayerControllers();
+
+        if (!this.asEditor) {
+            if (this.networkMode === "server") {
+                this.netEndpoint?.connect((_socket: any, req: any) => {
+                    console.log(`New connection: ${req.socket.remoteAddress}`);
+                });
+
+                this.netEndpoint?.onMessage<any>("input", (data) => {
+                    console.log("Received player input:", data);
+                });
+
+                // Start server timers
+                this.timerManager.setTimer(() => {
+                    this.handleNetworkTick();
+                }, 1000 / this.netTickRate, true); // 60 Hz server tick);
+            }
         } else {
-            this.singlePlayerTick(this.deltaTime);
+            console.log("Running in editor mode");
         }
     }
 
-    private getFlattenedActors() : Actor[] {
-        const actors: Actor[] = [];
-
-        for (const child of this.rootObject.getChildrenOfType(Actor)) {
-            actors.push(child);
-            const children = this.getActorsFlattened(child);
-            if (children.length === 0) continue;
-            actors.push(...children);
-        }
-        return actors;
-    }
-
+    
     // this is called to render the current state of the world
     // Should be called as often as possible usualy after every tick
     render(gl: WebGL2RenderingContext): void {
@@ -268,13 +213,46 @@ export class Engine<TSocket, TReq> {
         const sortedActors = actors.sort((a, b) => a.layer - b.layer);
 
         const camera = this.currentCamera;
+        const canvasWidth = gl.canvas.width || 1;
+        const canvasHeight = gl.canvas.height || 1;
+
         let frustum: Frustum | undefined;
         if (camera) {
-            const canvasWidth = gl.canvas.width || 1;
-            const canvasHeight = gl.canvas.height || 1;
+            camera.setViewportSize(canvasWidth, canvasHeight);
             const aspectRatio = canvasHeight === 0 ? 1 : canvasWidth / canvasHeight;
             camera.getViewProjectionMatrix(aspectRatio);
             frustum = camera.getFrustum();
+        }
+
+        const postProcessComponents: MeshComponent[] = [];
+        if (camera) {
+            for (const actor of sortedActors) {
+                const meshComponents = actor.getComponentsOfType(MeshComponent);
+                for (const component of meshComponents) {
+                    if (component.getRenderPass() !== "postprocess") {
+                        continue;
+                    }
+                    if (!this.shouldApplyPostProcess(component, camera)) {
+                        continue;
+                    }
+                    postProcessComponents.push(component);
+                }
+            }
+        }
+
+        const usePostProcess = postProcessComponents.length > 0 && !!camera;
+        let postProcessTarget = undefined as typeof this.postProcessTarget;
+
+        if (usePostProcess && camera) {
+            postProcessTarget = this.ensurePostProcessTarget(gl, canvasWidth, canvasHeight);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, postProcessTarget.framebuffer);
+        } else {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+        gl.viewport(0, 0, canvasWidth, canvasHeight);
+
+        if (usePostProcess) {
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         }
 
         // Loop actors: frustum cull and render main pass immediately
@@ -282,64 +260,56 @@ export class Engine<TSocket, TReq> {
             const shouldRender = !frustum || this.world.checkWithinBounds(actor, frustum);
             if (shouldRender) {
                 actor.setIsRendering(true);
-                this.renderActor(actor, gl);
+                this.renderActor(actor, gl, camera);
             } else {
                 actor.setIsRendering(false);
             }
         }
 
-        // Second pass: draw debug overlays on top so they always appear above main pass
-        if (this.debugMeshes && this.currentCamera) {
-            const wasDepthEnabled = gl.isEnabled(gl.DEPTH_TEST);
+        if (usePostProcess && postProcessTarget && camera) {
+            const wasDepthEnabledForForward = gl.isEnabled(gl.DEPTH_TEST);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, canvasWidth, canvasHeight);
+            if (wasDepthEnabledForForward) {
+                gl.disable(gl.DEPTH_TEST);
+            }
+
+            const sceneSize = { width: canvasWidth, height: canvasHeight };
+            for (const component of postProcessComponents) {
+                const material = component.getMaterial();
+                if (material instanceof PostProcessMaterial) {
+                    material.prepare(gl, camera, sortedActors, sceneSize);
+                }
+                component.renderPostProcess(gl, camera, postProcessTarget.colorTexture, sceneSize);
+            }
+
+            if (wasDepthEnabledForForward) {
+                gl.enable(gl.DEPTH_TEST);
+            }
+        }
+
+        const cameraForOverlays = camera;
+        const hasCameraForOverlays = !!cameraForOverlays;
+        const shouldRenderDebug = this.debugMeshes && hasCameraForOverlays;
+        let depthDisabled = false;
+        const wasDepthEnabled = gl.isEnabled(gl.DEPTH_TEST);
+
+        if (shouldRenderDebug && cameraForOverlays) {
             gl.disable(gl.DEPTH_TEST);
+            depthDisabled = true;
             for (const actor of actors) {
-                this.renderActorDebug(actor, gl);
-            }
-            if (wasDepthEnabled) gl.enable(gl.DEPTH_TEST);
-        }
-    }
-
-    private renderActor(actor: Actor, gl: WebGL2RenderingContext): void {
-        const ctor = Object.getPrototypeOf(actor).constructor;
-        let renderer = this.rendererCache.get(ctor);
-
-
-        if (!renderer) {
-            renderer = this.getRendererForActor(actor);
-            this.rendererCache.set(ctor, renderer);
-        }
-        if (renderer) {
-            renderer.render(actor, this.currentCamera, gl, this.debugMeshes);
-        }
-    }
-
-    private getRendererForActor<TActor extends Actor>(actor: TActor): ActorRenderer<TActor> | null {
-        const ctor = Object.getPrototypeOf(actor).constructor;
-        let renderer = this.rendererCache.get(ctor);
-        if (!renderer) {
-            renderer = this.container.getByIdentifier<ActorRenderer<TActor>>(ctor.name + "Renderer");
-        }
-        if(!renderer) {
-            renderer = this.container.getByIdentifier<ActorRenderer<TActor>>("BaseActorRenderer");
-        }
-        return renderer;
-    }
-
-
-    private renderActorDebug(actor: Actor, gl: WebGL2RenderingContext, skipChildren?: boolean): void {
-        const renderer = this.getRendererForActor(actor);
-
-        if (!renderer) {
-            return;
-        }
-
-        renderer.renderDebug?.(actor, this.currentCamera!, gl);
-
-        if (!skipChildren) {
-            for (const child of actor.getChildrenOfType(Actor)) {
-                this.renderActorDebug(child, gl);
+                this.renderActorDebug(actor, gl, cameraForOverlays);
             }
         }
+
+        if (depthDisabled && wasDepthEnabled) {
+            gl.enable(gl.DEPTH_TEST);
+        }
+    }
+
+    public addPlayer(player: PlayerState): void {
+        this.players.push(player);
+        this.configurePlayerControllers();
     }
 
     public getFPS(): number {
@@ -374,99 +344,24 @@ export class Engine<TSocket, TReq> {
         }
     }
 
-    private singlePlayerTick(_deltaTime: number): void {
-        // Tick UI
-    }
+    shutdown(): void { this.netEndpoint?.disconnect(); }
 
-    private clientTick(_deltaTime: number): void {
-        // Tick UI
-        // Despawn actors that are have status of killed
-        const actors = this.getActorsFlattened(this.rootObject);
-        for (const actor of actors) {
-            if (actor.isMarkedForDespawn) {
-                this.despawnActor(actor);
-                // this.world?.despawnActor(actor);
-            }
+    callServerRpc<T>(name: string, ...args: any[]): T | null {
+        const rpc = this.serverRpcs.get(name);
+        if (rpc) {
+            return rpc(...args) as T;
         }
 
+        return null;
     }
 
-    private despawnActor(actor: Actor): void {
-        for (const child of actor.getChildrenOfType(Actor)) {
-            this.despawnActor(child);
-        }
-        actor.onDespawned();
-        actor.getParent()?.removeChild(actor);
-        this.world?.despawnActor(actor);
-    }
-
-    private serverTick(_deltaTime: number): void {
-
-    }
-
-    private tickTimerManager(_deltaTime: number): void {
-        this.timerManager.tick();
-    }
-
-    public getActorsCount(): number {
-        const flattenedActors = this.getActorsFlattened(this.rootObject);
-        return flattenedActors.length;
-    }
-
-    private tickActorsAndWorld(_deltaTime: number): void {
-
-        const flattenedActors = this.getActorsFlattened(this.rootObject);
-        const tickingActors = flattenedActors
-            .filter(a => a.shouldTick) || [];
-
-        tickingActors
-            .filter(a => a.tickGroup === "default")
-            .forEach(actor => actor._tick(this.deltaTime, this.networkMode));
-
-        this.world?._tick(1/120); // Physics tick at a fixed rate of 120Hz
-
-        tickingActors
-            .filter(a => a.tickGroup === "post-physics")
-            .forEach(actor => actor._tick(this.deltaTime, this.networkMode));
-
-        const replicatingActors = flattenedActors.filter(a => a.shouldReplicate) || [];
-
-        if (this.networkMode === "server") {
-            // Handle client-side prediction and reconciliation
-            for (const _actor of replicatingActors) {
-                // Handle client-side prediction and reconciliation
-            }
-        }
-
-        if(this.networkMode === "client") {
-            
-        }
-    }
-
-    getCurrentLevel(): Level | undefined {
-        return this.currentMap;
-    }
-
-    async loadLevelObject(level: Level): Promise<void> {
-        if (!level) {
-            throw new Error("Invalid level object");
-        }
-        
-        this.currentMap = level;
-
-        this.rootObject.addChildren(level.getActors());
-
-        await this.spawnLevelActors();
-        
-        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
-        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
-                
-        this.world.setGravity(level.getGravity());
-        
-        for(const player of this.players) {
-            if(this.controllerTypeForPlayer)
-                player.setController(this.container.get(this.controllerTypeForPlayer));
-        }
+    // Should be called once every "frame" to progress the world
+    // If you calculate deltaTime yourself, you can pass it in as an argument
+    tick(): void {
+        if(this.asEditor)
+            this.editorTick();
+        else
+            this.gameTick();
     }
 
     // Load a level from a given path (URL or local path)
@@ -512,25 +407,12 @@ export class Engine<TSocket, TReq> {
 
         actor.initialize();
 
-        if(parent)
-            parent.addChild(actor);
-        else
-            this.rootObject.addChild(actor);
-
-        if(position !== undefined)
-            actor.setPosition(position);
-
-        this.world.spawnActor(actor, actor.getPosition());
-        const children = actor.getChildrenOfType(Actor);
-        for(const child of children) {
-            await this.spawnActorInstance(child, actor);
-        }
-        actor.onSpawned();
+        await this.spawnActorInstance(actor, parent, position);
 
         return actor;
     }
 
-     async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
+    async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
         if (!this.world) {
             throw new Error("No world loaded");
         }
@@ -553,6 +435,324 @@ export class Engine<TSocket, TReq> {
         // if (this.spatialEnabled) {
         //     this.spatialGrid.insert(actor);
         // }
+
+        actor.isSpawned = true;
+    }
+
+    public getActorsCount(): number {
+        const flattenedActors = this.getActorsFlattened(this.rootObject);
+        return flattenedActors.length;
+    }
+
+    public despawnActor(actor: Actor): void {
+        for (const child of actor.getChildrenOfType(Actor)) {
+            this.despawnActor(child);
+        }
+        actor.onDespawned();
+        actor.getParent()?.removeChild(actor);
+        this.world?.despawnActor(actor);
+        actor.setWorld(null);
+        actor.isSpawned = false;
+    }
+
+    getCurrentLevel(): Level | undefined {
+        return this.currentMap;
+    }
+
+    async loadLevelObject(level: Level): Promise<void> {
+        if (!level) {
+            throw new Error("Invalid level object");
+        }
+        
+        this.currentMap = level;
+
+        this.rootObject.addChildren(level.getActors());
+
+        await this.spawnLevelActors();
+        
+        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
+        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
+                
+        this.world.setGravity(level.getGravity());
+        
+        this.configurePlayerControllers();
+    }
+    
+    protected handleNetworkTick(): void {
+
+    }
+
+    protected setControllerTypeForPlayer<T extends Controller>(
+        controllerCtor: Constructor<T> | null
+    ): void {
+        console.log("Setting controller type for player");
+        this.controllerTypeForPlayer = controllerCtor;
+    }
+
+    private getEditorActorsFlattened(actor: BaseObject): Actor[] {
+        const actors: Actor[] = [];
+
+        for (const child of actor.getChildrenOfType(EditorActor)) {
+            actors.push(child);
+            const children = this.getActorsFlattened(child);
+
+            if (children.length === 0) continue;
+
+            actors.push(...children);
+        }
+        return actors;
+    }
+
+    private getActorsFlattened(actor: BaseObject): Actor[] {
+        const actors: Actor[] = [];
+
+        for (const child of actor.getChildrenOfType(Actor)) {
+            actors.push(child);
+            const children = this.getActorsFlattened(child);
+
+            if (children.length === 0) continue;
+
+            actors.push(...children);
+        }
+        return actors;
+    }
+
+    private gameTick(): void {
+        const now = performance.now();
+
+        if(this.lastTickTime === 0){
+            this.lastTickTime = now;
+        }
+    
+        this.deltaTime = (now - this.lastTickTime) / 1000; // seconds
+        this.lastTickTime = now;
+
+        this.tickTimerManager(this.deltaTime);
+
+        this.players.forEach(player => {
+            player.getController()?._tick(this.deltaTime);
+        });
+
+        this.tickActorsAndWorld(this.deltaTime);
+
+        // server
+        if (this.networkMode === "server") {
+            this.serverTick(this.deltaTime);
+        } else if (this.networkMode === "client") {
+            this.clientTick(this.deltaTime);
+        } else {
+            this.singlePlayerTick(this.deltaTime);
+        }
+    }
+    private editorTick(): void {
+        // Editor tick logic
+        const flattenedActors = this.getEditorActorsFlattened(this.rootObject);
+        const tickingActors = flattenedActors
+            .filter(a => a.shouldTick) || [];
+
+        tickingActors.forEach(actor => actor._tick(this.deltaTime, this.networkMode));
+    }
+
+    private getFlattenedActors() : Actor[] {
+        const actors: Actor[] = [];
+
+        for (const child of this.rootObject.getChildrenOfType(Actor)) {
+            actors.push(child);
+            const children = this.getActorsFlattened(child);
+            if (children.length === 0) continue;
+            actors.push(...children);
+        }
+        return actors;
+    }
+
+    private renderActor(actor: Actor, gl: WebGL2RenderingContext, camera: Camera | undefined): void {
+        if (!camera) {
+            return;
+        }
+
+        const meshComponents = actor.getComponentsOfType(MeshComponent);
+        for (const component of meshComponents) {
+            if (component.getRenderPass() !== "forward") {
+                continue;
+            }
+            component.render(gl, camera);
+        }
+    }
+
+    private ensurePostProcessTarget(gl: WebGL2RenderingContext, width: number, height: number) {
+        if (
+            !this.postProcessTarget ||
+            this.postProcessTarget.width !== width ||
+            this.postProcessTarget.height !== height
+        ) {
+            if (this.postProcessTarget) {
+                gl.deleteFramebuffer(this.postProcessTarget.framebuffer);
+                gl.deleteTexture(this.postProcessTarget.colorTexture);
+                gl.deleteRenderbuffer(this.postProcessTarget.depthBuffer);
+            }
+
+            const framebuffer = gl.createFramebuffer();
+            const colorTexture = gl.createTexture();
+            const depthBuffer = gl.createRenderbuffer();
+
+            if (!framebuffer || !colorTexture || !depthBuffer) {
+                throw new Error("Failed to allocate post-process framebuffer");
+            }
+
+            gl.bindTexture(gl.TEXTURE_2D, colorTexture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
+            gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+            gl.framebufferRenderbuffer(
+                gl.FRAMEBUFFER,
+                gl.DEPTH_ATTACHMENT,
+                gl.RENDERBUFFER,
+                depthBuffer
+            );
+
+            const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+            if (status !== gl.FRAMEBUFFER_COMPLETE) {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+                gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+                gl.deleteFramebuffer(framebuffer);
+                gl.deleteTexture(colorTexture);
+                gl.deleteRenderbuffer(depthBuffer);
+                throw new Error(`Post-process framebuffer incomplete: 0x${status.toString(16)}`);
+            }
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+
+            this.postProcessTarget = {
+                framebuffer,
+                colorTexture,
+                depthBuffer,
+                width,
+                height,
+            };
+        }
+
+        return this.postProcessTarget!;
+    }
+
+    private shouldApplyPostProcess(component: MeshComponent, camera: Camera): boolean {
+        const owner = component.getActor();
+        if (!owner || owner.isHiddenInGame) {
+            return false;
+        }
+
+        if (owner instanceof PostProcessingVolumeActor) {
+            return owner.containsCamera(camera);
+        }
+
+        return true;
+    }
+    
+    private renderActorDebug(actor: Actor, gl: WebGL2RenderingContext, camera: Camera): void {
+        const meshComponents = actor.getComponentsOfType(MeshComponent);
+        for (const component of meshComponents) {
+            component.renderDebug(gl, camera);
+        }
+    }
+
+    private ensureInputManager(): InputManager | undefined {
+
+        this.inputManager?.dispose();
+
+        this.inputManager = this.container.get(InputManager);
+        
+        this.inputManager?.initialize();
+
+        return this.inputManager;
+    }
+
+    private configurePlayerControllers(): void {
+        if (!this.controllerTypeForPlayer) {
+            return;
+        }
+
+        for (const player of this.players) {
+            let controller = player.getController();
+
+            if (!controller) {
+                controller = this.container.get(this.controllerTypeForPlayer);
+                if (!controller) {
+                    continue;
+                }
+                player.setController(controller);
+            }
+
+            if (this.asEditor) {
+                controller.deactivate();
+            } else {
+                controller.activate();
+            }
+        }
+    }
+
+    private singlePlayerTick(_deltaTime: number): void {
+    }
+
+    private clientTick(_deltaTime: number): void {
+        // Despawn actors that are have status of killed
+        const actors = this.getActorsFlattened(this.rootObject);
+        for (const actor of actors) {
+            if (actor.isMarkedForDespawned()) {
+                this.despawnActor(actor);
+                // this.world?.despawnActor(actor);
+            }
+        }
+
+    }
+
+    
+
+    private serverTick(_deltaTime: number): void {
+
+    }
+
+    private tickTimerManager(_deltaTime: number): void {
+        this.timerManager.tick();
+    }
+
+    private tickActorsAndWorld(_deltaTime: number): void {
+
+        const flattenedActors = this.getActorsFlattened(this.rootObject);
+        const tickingActors = flattenedActors
+            .filter(a => a.shouldTick) || [];
+
+        tickingActors
+            .filter(a => a.tickGroup === "default")
+            .forEach(actor => actor._tick(this.deltaTime, this.networkMode));
+
+        this.world?._tick(1/120); // Physics tick at a fixed rate of 120Hz
+
+        tickingActors
+            .filter(a => a.tickGroup === "post-physics")
+            .forEach(actor => actor._tick(this.deltaTime, this.networkMode));
+
+        const replicatingActors = flattenedActors.filter(a => a.shouldReplicate) || [];
+
+        if (this.networkMode === "server") {
+            // Handle client-side prediction and reconciliation
+            for (const _actor of replicatingActors) {
+                // Handle client-side prediction and reconciliation
+            }
+        }
+
+        if(this.networkMode === "client") {
+            
+        }
     }
 
     private async spawnLevelActors(): Promise<void> {
@@ -562,7 +762,6 @@ export class Engine<TSocket, TReq> {
 
         for (const actor of actors) {
             await this.spawnActorInstance(actor);
-            actor.onSpawned();
         }
     }
 }

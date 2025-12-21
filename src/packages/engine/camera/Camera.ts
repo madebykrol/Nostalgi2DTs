@@ -19,4 +19,7 @@ export abstract class Camera {
     abstract lerpTo(target: Camera, t: number): void;
     abstract equals(other: Camera): boolean;
     abstract toString(): string;
+    setViewportSize(_width: number, _height: number): void {
+        // Optional hook for cameras that adapt to viewport changes.
+    }
 }

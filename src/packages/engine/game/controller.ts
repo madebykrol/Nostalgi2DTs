@@ -3,7 +3,7 @@ import { Actor } from "../world";
 
 export abstract class Controller {
 
-    private inputManager: InputManager;
+    protected readonly inputManager: InputManager;
     protected possessedActor: Actor | null = null;
 
     constructor(inputManager: InputManager) { 
@@ -17,6 +17,14 @@ export abstract class Controller {
 
     protected getInputManager(): InputManager {
         return this.inputManager;
+    }
+
+    public activate(): void {
+        // Optional activation hook for controllers.
+    }
+
+    public deactivate(): void {
+        // Optional deactivation hook for controllers.
     }
 
     public possess(actor: Actor): void {

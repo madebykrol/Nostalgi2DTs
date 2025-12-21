@@ -285,8 +285,8 @@ class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
     }
   }
 
-  startup(): void {
-    super.startup();
+  run(): void {
+    super.run();
     
     // Start network tick for broadcasting updates
     this.networkTickInterval = setInterval(() => {
@@ -350,7 +350,7 @@ builder
 
 const engine = builder.build(ServerEngine);
 
-engine.startup();
+engine.run();
 const level = new GrasslandsMap(builder.container);
 const demoActor = new DemoActor();
 

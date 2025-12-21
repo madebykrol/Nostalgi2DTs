@@ -1,4 +1,5 @@
-import { Actor, CircleCollisionComponent, PhysicsComponent } from "@repo/engine";
+import { Actor, CircleCollisionComponent, MeshComponent, PhysicsComponent, Quad } from "@repo/engine";
+import { UnlitMaterial } from "@repo/basicrenderer";
 import { PolygonCollisionComponent } from "../../engine/world/circleCollisionComponent";
 
 export class BombActor extends Actor {
@@ -16,6 +17,9 @@ export class BombActor extends Actor {
 
 
         this.addComponent(collisionComponent);
+        const material = new UnlitMaterial();
+        material.setColor([0.2, 0.7, 0.2, 1.0]);
+        this.addComponent(new MeshComponent(new Quad(), material));
     }
 }
 
@@ -31,6 +35,9 @@ export class DemoActor extends Actor {
         const collisionComponent = new CircleCollisionComponent(0.5);
         
         this.addComponent(collisionComponent);
+        const material = new UnlitMaterial();
+        material.setColor([0.9, 0.25, 0.25, 1.0]);
+        this.addComponent(new MeshComponent(new Quad(), material));
     }
 
     initialize(): void {

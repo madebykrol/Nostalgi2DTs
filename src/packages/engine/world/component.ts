@@ -1,4 +1,4 @@
-import { EngineNetworkMode } from "../engine";
+import type { EngineNetworkMode } from "../engine";
 import { Actor } from "./actor";
 
 export abstract class Component {

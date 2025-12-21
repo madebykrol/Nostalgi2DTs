@@ -1,5 +1,5 @@
-import { Container, inject, unmanaged, Vector2, Vertex2 } from "@repo/engine";
-import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, type TileMapActorOptions } from "@repo/tiler";
+import { Container, MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2 } from "@repo/engine";
+import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, TileMapMaterial, type TileMapActorOptions } from "@repo/tiler";
 import { WallActor } from "./wall";
 
 export class GameTileMapActor extends TileMapActor {
@@ -7,6 +7,9 @@ export class GameTileMapActor extends TileMapActor {
     super(parser, container, options);
 
     console.log(parser);
+
+    const material = new TileMapMaterial();
+    this.addComponent(new MeshComponent(new Quad(), material));
   }
 
   protected handleLayer(layer: TiledObjectLayer): boolean {
@@ -45,7 +48,7 @@ export class GameTileMapActor extends TileMapActor {
           let vertices: Vertex2[] = [];
 
           if (polygon && polygon.length >= 3) {
-            vertices = this.handlePolygonWall(polygon, scale, object.rotation ?? 0);
+            vertices = this.handlePolygonWall(polygon, scale, 0);
           }
 
           else {
@@ -56,6 +59,26 @@ export class GameTileMapActor extends TileMapActor {
               { x: 0, y: -object.height * scale }
             ] : [];
           }
+
+          //Rotate verticies according to object rotation the rotation should be based on the center of the object
+          // if (object.rotation && object.rotation !== 0) {
+          //   const centerX = (object.width ? object.width * scale : 0) / 2;
+          //   const centerY = (object.height ? -object.height * scale : 0) / 2;
+          //   const angleRad = (object.rotation * Math.PI) / 180;
+
+          //   vertices = vertices.map((vertex) => {
+          //     const translatedX = vertex.x - centerX;
+          //     const translatedY = vertex.y - centerY;
+          //     const rotatedX = translatedX * Math.cos(angleRad) - translatedY * Math.sin(angleRad);
+          //     const rotatedY = translatedX * Math.sin(angleRad) + translatedY * Math.cos(angleRad);
+          //     return {
+          //       x: rotatedX + centerX,
+          //       y: rotatedY + centerY
+          //     };
+          //   }
+          //   );
+          // }
+
 
           const wallActor = this.container.get<WallActor>(WallActor);
           wallActor.applyProperties({ vertices: vertices });

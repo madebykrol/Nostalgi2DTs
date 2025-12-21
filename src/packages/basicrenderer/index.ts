@@ -1,3 +1,4 @@
 // components
 export { default as Canvas } from "./canvas/canvas";
-export { BaseActorRenderer } from "./actorrenderer";
+export { UnlitMaterial } from "./unlitMaterial";
+export { UnlitMaterial as BaseActorRenderer } from "./unlitMaterial";

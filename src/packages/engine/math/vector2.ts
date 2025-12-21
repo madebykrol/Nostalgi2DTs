@@ -36,4 +36,8 @@ export class Vector2 {
     toString(): string {
         return `Vector2(${this.x}, ${this.y})`;
     }
+
+    static zero(): Vector2 {
+        return new Vector2(0, 0);
+    }
 }

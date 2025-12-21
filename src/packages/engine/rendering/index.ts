@@ -1,6 +1,10 @@
 export { Mesh } from "./mesh";
 export { Quad } from "./quad";
 export { MeshComponent } from "./meshComponent";
-export { ActorRenderer } from "./renderer";
 export { VertexShader } from "./vertex";
 export { FragmentShader } from "./fragment";
+export { Material, type MaterialRenderContext } from "./material";
+export type { MaterialRenderPass } from "./material";
+export { PostProcessMaterial } from "./postProcessMaterial";
+export { SphereWarpPostProcessMaterial } from "./sphereWarpPostProcessMaterial";
+export { PostProcessingVolumeActor } from "./postProcessingVolumeActor";
