@@ -16,5 +16,12 @@ export default defineConfig({
   base: "/",
   server: {
     port: 5173
+  },
+  build: {
+    minify: 'esbuild',
+    target: 'esnext',
+  },
+  esbuild: {
+    keepNames: true,
   }
 });
