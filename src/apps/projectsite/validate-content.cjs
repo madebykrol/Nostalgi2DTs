@@ -41,8 +41,15 @@ function scanDirectory(dir) {
       }
     }
   } catch (error) {
-    console.error('✗ Error reading directory:', path.relative(contentDir, dir));
-    console.error('  Error:', error.message);
+    if (error.code === 'ENOENT') {
+      console.error('✗ Directory not found:', path.relative(contentDir, dir));
+      console.error('  Make sure the content directory exists');
+    } else if (error.code === 'EACCES') {
+      console.error('✗ Permission denied:', path.relative(contentDir, dir));
+    } else {
+      console.error('✗ Error reading directory:', path.relative(contentDir, dir));
+      console.error('  Error:', error.message);
+    }
     errors++;
   }
 }

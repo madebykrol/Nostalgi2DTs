@@ -1,5 +1,8 @@
 // Type definitions for JSON content files
 
+// Content block types
+export type ContentBlockType = "paragraph" | "heading" | "list" | "code" | "image" | "note" | "warning";
+
 export interface Navigation {
   brand: {
     name: string;
@@ -64,7 +67,7 @@ export interface DocSection {
 }
 
 export interface ContentBlock {
-  type: "paragraph" | "heading" | "list" | "code" | "image" | "note" | "warning";
+  type: ContentBlockType;
   text?: string;
   level?: number;
   items?: string[];
