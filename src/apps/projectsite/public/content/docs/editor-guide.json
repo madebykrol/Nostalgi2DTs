@@ -1,0 +1,326 @@
+{
+  "id": "editor-guide",
+  "title": "Visual Editor Guide",
+  "summary": "Comprehensive guide to using the Nostalgi2D visual editor for asset creation and game development.",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "The Nostalgi2D visual editor is a web-based tool that lets you create game assets, design meshes, and manage your project without writing code. This guide covers all major features and workflows."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Editor Interface"
+    },
+    {
+      "type": "paragraph",
+      "text": "The editor consists of several key areas:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Top Toolbar - Quick access to common tools and actions",
+        "Left Sidebar - Asset browser and project navigator",
+        "Center Canvas - Main workspace for designing and editing",
+        "Right Sidebar - Properties and settings panel",
+        "Bottom Panel - Console and output logs"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/editor-interface-overview.png",
+      "alt": "Complete editor interface with all panels labeled",
+      "caption": "The Nostalgi2D editor interface"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Asset Management"
+    },
+    {
+      "type": "paragraph",
+      "text": "The asset browser on the left shows all your game assets organized by type:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Meshes - Custom 2D shapes and polygons",
+        "Sprites - Images and textures",
+        "Scenes - Game scenes and level layouts",
+        "Scripts - TypeScript game logic files",
+        "Audio - Sound effects and music"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Mesh Designer"
+    },
+    {
+      "type": "paragraph",
+      "text": "The mesh designer is the core tool for creating custom 2D shapes:"
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "Creating a New Mesh"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Click 'New Mesh' in the asset browser",
+        "Enter a name for your mesh",
+        "The mesh designer canvas opens in the center",
+        "Click to add vertices (points) to define your shape",
+        "Vertices must be added in counter-clockwise order"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/mesh-designer-workflow.png",
+      "alt": "Step-by-step mesh creation workflow",
+      "caption": "Creating a mesh from scratch"
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "Mesh Designer Tools"
+    },
+    {
+      "type": "paragraph",
+      "text": "The mesh designer provides several tools in the toolbar:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Select Tool - Select and move existing vertices",
+        "Add Vertex Tool - Click to add new vertices",
+        "Delete Tool - Remove vertices",
+        "Grid Snap - Snap vertices to grid",
+        "Zoom In/Out - Change canvas zoom level",
+        "Center View - Reset camera to center of mesh"
+      ]
+    },
+    {
+      "type": "note",
+      "text": "💡 Hold Shift while placing vertices to enable grid snapping for precise alignment."
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "Mesh Properties"
+    },
+    {
+      "type": "paragraph",
+      "text": "Configure mesh properties in the right sidebar:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Name - Unique identifier for the mesh",
+        "Material ID - Reference to material/texture",
+        "Fill Color - Preview color for the mesh",
+        "Tags - Custom tags for organization",
+        "Export Settings - Format and optimization options"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Scene Editor"
+    },
+    {
+      "type": "paragraph",
+      "text": "The scene editor lets you visually layout your game scenes:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Drag meshes from the asset browser onto the canvas",
+        "Position, rotate, and scale actors",
+        "Configure actor properties and components",
+        "Set up spawn points and boundaries",
+        "Test the scene in play mode"
+      ]
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ Scene editor is currently in development. Some features may not be fully functional."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Component Inspector"
+    },
+    {
+      "type": "paragraph",
+      "text": "When an actor is selected, the component inspector shows all attached components:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Transform - Position, rotation, scale",
+        "Sprite - Visual appearance settings",
+        "Physics - Mass, velocity, forces",
+        "Collider - Collision shape and properties",
+        "Custom Components - Your game-specific components"
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "Add new components using the '+' button at the bottom of the inspector."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Keyboard Shortcuts"
+    },
+    {
+      "type": "paragraph",
+      "text": "Speed up your workflow with these shortcuts:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Ctrl+N - New mesh",
+        "Ctrl+S - Save current asset",
+        "Ctrl+Z - Undo last action",
+        "Ctrl+Y - Redo action",
+        "Delete - Delete selected vertex/actor",
+        "Space - Pan canvas",
+        "Scroll - Zoom in/out",
+        "F - Frame selected object",
+        "Shift+Click - Snap to grid"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Export and Integration"
+    },
+    {
+      "type": "paragraph",
+      "text": "Export your assets for use in game code:"
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "Exporting Meshes"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "# In the editor, click Export on a mesh\n# Choose format: JSON (default), PNG, SVG\n# Save to your project's assets folder"
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "Using Exported Assets"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Import the exported mesh JSON\nimport playerMesh from './assets/meshes/player.json';\n\n// Use in your game\nconst mesh = new MeshComponent(playerMesh);\nplayer.addComponent(mesh);"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Plugin System"
+    },
+    {
+      "type": "paragraph",
+      "text": "The editor can be extended with plugins to add custom functionality:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Custom panels for specialized workflows",
+        "Additional tools in the mesh designer",
+        "Asset importers and exporters",
+        "Integration with external tools",
+        "Automation scripts"
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "See the Editor Plugins tutorial for detailed instructions on creating plugins."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Settings and Preferences"
+    },
+    {
+      "type": "paragraph",
+      "text": "Customize the editor to your preferences:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Theme - Dark or light color scheme",
+        "Grid Size - Spacing for grid snapping",
+        "Auto-save - Automatically save work every N minutes",
+        "Keybindings - Customize keyboard shortcuts",
+        "Canvas - Background color and grid visibility"
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "Access settings via the gear icon in the top-right corner."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Troubleshooting"
+    },
+    {
+      "type": "paragraph",
+      "text": "Common issues and solutions:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Mesh not visible - Check vertex winding order (must be counter-clockwise)",
+        "Can't select vertex - Zoom in for better precision",
+        "Editor is slow - Close unused panels, reduce canvas quality",
+        "Assets not loading - Check browser console for errors",
+        "Changes not saving - Check browser storage quota"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Tips and Best Practices"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Save your work frequently (Ctrl+S)",
+        "Use descriptive names for all assets",
+        "Organize assets with tags and folders",
+        "Keep meshes simple (3-8 vertices)",
+        "Test meshes in-game early and often",
+        "Use grid snap for precision",
+        "Export backups of important assets"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Next Steps"
+    },
+    {
+      "type": "paragraph",
+      "text": "Now that you understand the editor, explore these topics:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Follow the Mesh Designer tutorial for hands-on practice",
+        "Learn about the Plugin System to extend the editor",
+        "Read about Component Architecture for game logic",
+        "Check the API Reference for programmatic access"
+      ]
+    }
+  ]
+}

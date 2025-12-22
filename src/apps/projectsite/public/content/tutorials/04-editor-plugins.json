@@ -1,0 +1,221 @@
+{
+  "title": "04 • Editor Plugins",
+  "summary": "Extend the editor by creating custom panels, tools, and UI components.",
+  "color": "#fe53bb",
+  "difficulty": "intermediate",
+  "duration": "45 minutes",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "The Nostalgi2D editor is built with an extensible plugin architecture. You can create custom panels, add context menu items, and build tools tailored to your game development workflow."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Plugin Architecture Overview"
+    },
+    {
+      "type": "paragraph",
+      "text": "Editor plugins are modules that implement the EditorUIPlugin interface. They can register panels, dialogs, and interact with the editor's dependency injection container."
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "interface EditorUIPlugin {\n  id: string;\n  name: string;\n  version?: string;\n  activate: (context: PluginContext) => void | Promise<void>;\n  deactivate?: () => void | Promise<void>;\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating Your First Plugin"
+    },
+    {
+      "type": "paragraph",
+      "text": "Let's create a simple plugin that adds a custom panel to the editor:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { EditorUIPlugin, PluginContext } from '@nostalgi2d/editor';\nimport React from 'react';\n\nconst MyPlugin: EditorUIPlugin = {\n  id: 'my-custom-plugin',\n  name: 'My Custom Plugin',\n  version: '1.0.0',\n  \n  activate: (context: PluginContext) => {\n    // Register a custom panel\n    context.panels.register({\n      id: 'my-panel',\n      title: 'My Tools',\n      location: 'left', // 'left', 'right', 'bottom'\n      icon: 'Wrench',\n      render: () => <MyCustomPanel />\n    });\n  },\n  \n  deactivate: () => {\n    console.log('Plugin deactivated');\n  }\n};\n\nexport default MyPlugin;"
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/plugin-structure-vscode.png",
+      "alt": "VS Code showing plugin file structure",
+      "caption": "Plugin project structure in VS Code"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Building a Custom Panel Component"
+    },
+    {
+      "type": "paragraph",
+      "text": "Panel components are React components that can use hooks and access the editor context:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import React, { useState } from 'react';\nimport { useEditor } from '@nostalgi2d/editor';\n\nfunction MyCustomPanel() {\n  const editor = useEditor();\n  const [counter, setCounter] = useState(0);\n  \n  const handleCreateMesh = () => {\n    // Access editor APIs\n    const meshDesigner = editor.getService('MeshDesigner');\n    meshDesigner.createNewMesh('generated-mesh');\n  };\n  \n  return (\n    <div className=\"p-4 space-y-4\">\n      <h3 className=\"font-bold text-white\">Custom Tools</h3>\n      \n      <button\n        onClick={handleCreateMesh}\n        className=\"px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded\"\n      >\n        Create Mesh\n      </button>\n      \n      <div>\n        <p>Counter: {counter}</p>\n        <button onClick={() => setCounter(c => c + 1)}>\n          Increment\n        </button>\n      </div>\n    </div>\n  );\n}"
+    },
+    {
+      "type": "note",
+      "text": "💡 Use the useEditor() hook to access editor services and state from your React components."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Accessing Editor Services"
+    },
+    {
+      "type": "paragraph",
+      "text": "The editor uses dependency injection to provide services. Access them via the editor context:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "activate: (context: PluginContext) => {\n  // Get services from the IoC container\n  const editor = context.editor;\n  const assetManager = editor.getService('AssetManager');\n  const sceneManager = editor.getService('SceneManager');\n  \n  // Listen to editor events\n  editor.on('mesh:created', (mesh) => {\n    console.log('New mesh created:', mesh.id);\n  });\n  \n  // Register custom commands\n  context.commands.register({\n    id: 'my-plugin.custom-command',\n    label: 'Do Something Cool',\n    handler: () => {\n      // Command logic here\n    }\n  });\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Adding Context Menu Items"
+    },
+    {
+      "type": "paragraph",
+      "text": "Plugins can add items to context menus throughout the editor:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "activate: (context: PluginContext) => {\n  // Add item to mesh context menu\n  context.menus.register('mesh-context', {\n    id: 'export-mesh',\n    label: 'Export as PNG',\n    icon: 'Download',\n    handler: (mesh) => {\n      // Export logic\n      exportMeshAsImage(mesh);\n    },\n    // Show only when mesh is selected\n    when: (mesh) => mesh !== null\n  });\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating Modal Dialogs"
+    },
+    {
+      "type": "paragraph",
+      "text": "Show custom dialogs for user input or confirmations:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { useEditor } from '@nostalgi2d/editor';\n\nfunction MyPanel() {\n  const editor = useEditor();\n  \n  const showDialog = async () => {\n    const result = await editor.showDialog({\n      title: 'Create New Asset',\n      content: <AssetCreationForm />,\n      buttons: [\n        { label: 'Cancel', role: 'cancel' },\n        { label: 'Create', role: 'confirm', primary: true }\n      ]\n    });\n    \n    if (result.role === 'confirm') {\n      // User clicked Create\n      console.log('Form data:', result.data);\n    }\n  };\n  \n  return <button onClick={showDialog}>New Asset</button>;\n}"
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/plugin-modal-dialog.png",
+      "alt": "Custom modal dialog in the editor",
+      "caption": "Custom modal dialog created by a plugin"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Working with Assets"
+    },
+    {
+      "type": "paragraph",
+      "text": "Plugins can read, create, and modify assets:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "const assetManager = editor.getService('AssetManager');\n\n// List all meshes\nconst meshes = assetManager.getMeshes();\nmeshes.forEach(mesh => {\n  console.log(mesh.id, mesh.vertices.length);\n});\n\n// Create a new mesh\nconst newMesh = assetManager.createMesh({\n  id: 'procedural-mesh',\n  vertices: [\n    { x: 0, y: -10 },\n    { x: -10, y: 10 },\n    { x: 10, y: 10 }\n  ]\n});\n\n// Save changes\nawait assetManager.save();"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "State Management"
+    },
+    {
+      "type": "paragraph",
+      "text": "Plugins can maintain their own state using React hooks or the plugin storage API:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// In your plugin activation\nactivate: (context: PluginContext) => {\n  // Get persistent storage for this plugin\n  const storage = context.storage;\n  \n  // Load saved settings\n  const settings = storage.get('settings', {\n    theme: 'dark',\n    autoSave: true\n  });\n  \n  // Save settings\n  storage.set('settings', {\n    theme: 'light',\n    autoSave: false\n  });\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Testing Your Plugin"
+    },
+    {
+      "type": "paragraph",
+      "text": "Load your plugin in development mode:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "# In your plugin directory\nnpm run dev\n\n# The editor will hot-reload when you make changes"
+    },
+    {
+      "type": "paragraph",
+      "text": "Debug your plugin using browser DevTools. The editor provides a console for plugin logs."
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ Always test plugins thoroughly before distribution. Buggy plugins can crash the editor."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Publishing Your Plugin"
+    },
+    {
+      "type": "paragraph",
+      "text": "Package your plugin for distribution:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "# Build the plugin\nnpm run build\n\n# Package for distribution\nnpm pack\n\n# Or publish to npm\nnpm publish"
+    },
+    {
+      "type": "paragraph",
+      "text": "Users can install your plugin by adding it to their editor's plugin directory or via npm."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Plugin Examples"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Mesh Generator - Procedurally create meshes (circles, polygons, stars)",
+        "Asset Exporter - Export meshes to different formats",
+        "Scene Manager - Organize and manage multiple scenes",
+        "Animation Timeline - Create and edit animations visually",
+        "Performance Profiler - Monitor editor and game performance"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Best Practices"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Use unique plugin IDs to avoid conflicts",
+        "Provide clear error messages and user feedback",
+        "Clean up resources in the deactivate() method",
+        "Follow the editor's UI design patterns",
+        "Test with different screen sizes and themes",
+        "Document your plugin's features and usage"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Next Steps"
+    },
+    {
+      "type": "paragraph",
+      "text": "Now that you understand editor plugins, you're ready to dive into multiplayer networking. Learn about the actor synchronization protocol in the next tutorial."
+    }
+  ]
+}

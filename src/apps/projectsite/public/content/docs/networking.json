@@ -1,0 +1,266 @@
+{
+  "id": "networking",
+  "title": "Multiplayer Networking",
+  "summary": "Complete guide to implementing multiplayer games with authoritative server, input-based replication, and client prediction.",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "Nostalgi2D uses an authoritative server architecture with input-based replication for smooth, cheat-resistant multiplayer games. This guide covers the entire networking stack from connection to state synchronization."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Network Architecture"
+    },
+    {
+      "type": "paragraph",
+      "text": "The networking system is built on these key principles:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Server Authority - Server has final say on game state",
+        "Input Replication - Clients send inputs, not positions",
+        "Client Prediction - Clients predict their own movement",
+        "State Reconciliation - Clients correct prediction errors",
+        "Lag Compensation - Server rewinds time for fair hit detection"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/network-architecture-diagram.png",
+      "alt": "Diagram showing client-server communication flow",
+      "caption": "Network architecture with client prediction and reconciliation"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Setting Up the Server"
+    },
+    {
+      "type": "paragraph",
+      "text": "Create an authoritative game server with WebSocket support:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { NetworkServer, Engine, World } from '@nostalgi2d/engine';\nimport { WebSocketServer } from 'ws';\n\n// Create the server\nconst server = new NetworkServer({\n  port: 3000,\n  tickRate: 60, // Update rate in Hz\n  maxPlayers: 32\n});\n\n// Set up the game world\nconst world = new World();\nconst engine = new Engine({\n  targetFPS: 60,\n  fixedTimestep: 1000 / 60\n});\nengine.setWorld(world);\n\n// Handle client connections\nserver.on('client:connect', (client) => {\n  console.log('Client connected:', client.id);\n  \n  // Spawn a player actor for this client\n  const player = createPlayerActor();\n  player.setOwner(client.id);\n  world.addActor(player);\n  \n  // Send spawn message to all clients\n  server.broadcast({\n    type: 'actor:spawn',\n    actorId: player.id,\n    ownerId: client.id,\n    data: player.serialize()\n  });\n});\n\n// Start the server\nserver.start();\nconsole.log('Game server running on port 3000');"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Client Connection"
+    },
+    {
+      "type": "paragraph",
+      "text": "Connect to the game server from the client:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { NetworkClient } from '@nostalgi2d/engine';\n\nconst client = new NetworkClient();\n\n// Connect to server\ntry {\n  await client.connect('ws://localhost:3000');\n  console.log('Connected to server');\n} catch (error) {\n  console.error('Connection failed:', error);\n}\n\n// Handle disconnection\nclient.on('disconnect', (reason) => {\n  console.log('Disconnected:', reason);\n  // Show reconnect UI\n});"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Input-Based Replication"
+    },
+    {
+      "type": "paragraph",
+      "text": "Instead of sending position updates, clients send their inputs to the server:"
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "Client-Side Input Capture"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "let inputSequence = 0;\nconst inputHistory: InputState[] = [];\nconst MAX_HISTORY = 120; // 2 seconds at 60 FPS\n\nengine.onUpdate((deltaTime) => {\n  // Capture current input state\n  const inputState = {\n    sequence: inputSequence++,\n    timestamp: Date.now(),\n    keys: {\n      w: input.isKeyDown(Keys.W),\n      a: input.isKeyDown(Keys.A),\n      s: input.isKeyDown(Keys.S),\n      d: input.isKeyDown(Keys.D)\n    },\n    mouse: input.mouseWorldPosition\n  };\n  \n  // Store in history for reconciliation\n  inputHistory.push(inputState);\n  if (inputHistory.length > MAX_HISTORY) {\n    inputHistory.shift();\n  }\n  \n  // Send to server\n  client.sendInput(myActor.id, inputState);\n  \n  // Predict movement locally\n  applyInputToActor(myActor, inputState, deltaTime);\n});"
+    },
+    {
+      "type": "heading",
+      "level": 4,
+      "text": "Server-Side Input Processing"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Server receives and processes inputs\nserver.on('client:input', (client, inputState) => {\n  // Get the player's actor\n  const actor = world.getActorByOwner(client.id);\n  if (!actor) return;\n  \n  // Validate input (anti-cheat)\n  if (!validateInput(inputState)) {\n    console.warn('Invalid input from', client.id);\n    return;\n  }\n  \n  // Apply input to actor\n  applyInputToActor(actor, inputState, deltaTime);\n  \n  // Store the authoritative result\n  actor.lastProcessedInput = inputState.sequence;\n});"
+    },
+    {
+      "type": "note",
+      "text": "💡 The server is the authority. Clients send what they want to do, not where they are."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Client Prediction"
+    },
+    {
+      "type": "paragraph",
+      "text": "For responsive gameplay, clients predict their own movement immediately:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "function applyInputToActor(actor: Actor, input: InputState, dt: number) {\n  const speed = 200; // pixels per second\n  const transform = actor.getComponent(TransformComponent);\n  \n  // Apply movement based on input\n  if (input.keys.w) transform.position.y -= speed * dt / 1000;\n  if (input.keys.s) transform.position.y += speed * dt / 1000;\n  if (input.keys.a) transform.position.x -= speed * dt / 1000;\n  if (input.keys.d) transform.position.x += speed * dt / 1000;\n  \n  // Deterministic physics simulation\n  const physics = actor.getComponent(PhysicsComponent);\n  if (physics) {\n    physics.update(dt);\n  }\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "State Reconciliation"
+    },
+    {
+      "type": "paragraph",
+      "text": "When the server sends authoritative state, clients reconcile any prediction errors:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "client.onActorUpdate((updates) => {\n  updates.forEach(serverState => {\n    const actor = world.getActor(serverState.actorId);\n    \n    // Only reconcile our own actor\n    if (actor.id !== myActor.id) {\n      // Other actors: just update position\n      actor.setPosition(serverState.position);\n      return;\n    }\n    \n    // Find the input that matches this server state\n    const stateInput = inputHistory.find(\n      i => i.sequence === serverState.lastProcessedInput\n    );\n    \n    if (!stateInput) return;\n    \n    // Check if prediction was wrong\n    const positionError = distance(\n      actor.position,\n      serverState.position\n    );\n    \n    if (positionError > 5) { // 5 pixel threshold\n      console.log('Reconciling position error:', positionError);\n      \n      // Reset to server state\n      actor.setPosition(serverState.position);\n      actor.setVelocity(serverState.velocity);\n      \n      // Replay inputs that happened after this state\n      const inputsToReplay = inputHistory.filter(\n        i => i.sequence > serverState.lastProcessedInput\n      );\n      \n      inputsToReplay.forEach(input => {\n        applyInputToActor(actor, input, 1000 / 60);\n      });\n    }\n  });\n});"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ Reconciliation requires deterministic game logic. Use fixed timesteps and avoid randomness in movement code."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Broadcasting State Updates"
+    },
+    {
+      "type": "paragraph",
+      "text": "The server broadcasts actor states at a fixed rate:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Server broadcasts state at 60 Hz\nconst TICK_RATE = 60;\nconst TICK_INTERVAL = 1000 / TICK_RATE;\n\nsetInterval(() => {\n  // Gather all actor states\n  const updates = world.actors.map(actor => ({\n    actorId: actor.id,\n    position: actor.getComponent(TransformComponent).position,\n    rotation: actor.getComponent(TransformComponent).rotation,\n    velocity: actor.getComponent(PhysicsComponent)?.velocity,\n    lastProcessedInput: actor.lastProcessedInput\n  }));\n  \n  // Broadcast to all clients\n  server.broadcast({\n    type: 'actor:update',\n    serverTime: Date.now(),\n    updates: updates\n  });\n}, TICK_INTERVAL);"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Lag Compensation"
+    },
+    {
+      "type": "paragraph",
+      "text": "For fair hit detection, the server can rewind time to where the client saw the target:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Server-side hit detection with lag compensation\nfunction processShot(shooter: Actor, target: Actor, clientTime: number) {\n  // Calculate client latency\n  const latency = Date.now() - clientTime;\n  \n  // Rewind target to where client saw it\n  const historicalPosition = target.getPositionAt(\n    clientTime - latency\n  );\n  \n  // Check if shot hit the historical position\n  if (isInRange(shooter.position, historicalPosition, weaponRange)) {\n    // Hit! Apply damage\n    target.takeDamage(shooter.weaponDamage);\n    return true;\n  }\n  \n  return false;\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Entity Ownership"
+    },
+    {
+      "type": "paragraph",
+      "text": "Actors can be owned by specific clients for authority:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Client-Owned - Player character controlled by input",
+        "Server-Owned - NPCs, items, projectiles",
+        "Shared - Vehicles or objects multiple players can control"
+      ]
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Set actor ownership\nplayer.setOwner(client.id);\n\n// Check ownership\nif (actor.isOwnedBy(client.id)) {\n  // Client can control this actor\n  applyInputToActor(actor, input);\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Remote Procedure Calls"
+    },
+    {
+      "type": "paragraph",
+      "text": "For non-gameplay events, use RPC calls:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Client requests to chat\nawait client.rpc('chat:send', [\n  { message: 'Hello world!' }\n]);\n\n// Server handles RPC\nserver.onRPC('chat:send', async (client, params) => {\n  const [data] = params;\n  \n  // Validate and broadcast\n  if (data.message.length > 200) {\n    return { error: 'Message too long' };\n  }\n  \n  server.broadcast({\n    type: 'chat:message',\n    from: client.username,\n    message: data.message\n  });\n  \n  return { success: true };\n});"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Optimization Tips"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Send input at 60Hz, state updates at 20-30Hz to reduce bandwidth",
+        "Use delta compression for position updates",
+        "Only send visible actors to each client (interest management)",
+        "Batch multiple messages into single packets",
+        "Use binary protocols for better performance than JSON",
+        "Implement client-side interpolation for smooth movement"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Testing Multiplayer"
+    },
+    {
+      "type": "paragraph",
+      "text": "Test your multiplayer implementation effectively:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "# Start server\nnpm run dev --filter=server\n\n# Start multiple clients in different browser windows\nnpm run dev --filter=client"
+    },
+    {
+      "type": "paragraph",
+      "text": "Simulate lag and packet loss for realistic testing:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Add artificial latency for testing\nclient.setSimulatedLatency(100); // 100ms\nclient.setPacketLoss(0.05); // 5% packet loss"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Security Considerations"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Never trust client input - validate everything on server",
+        "Use rate limiting to prevent spam",
+        "Implement timeout for inactive connections",
+        "Validate movement speed to detect speedhacks",
+        "Check line of sight for shooting",
+        "Use encryption for sensitive data (TLS/WSS)"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Next Steps"
+    },
+    {
+      "type": "paragraph",
+      "text": "Now you understand multiplayer networking:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Build a complete multiplayer game (see tutorial 06)",
+        "Study the actor synchronization protocol documentation",
+        "Explore Network API reference for advanced features",
+        "Read about performance optimization techniques"
+      ]
+    }
+  ]
+}
