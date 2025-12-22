@@ -429,7 +429,7 @@ export class TileMapMaterial extends Material {
     }
 
     private async loadTexture(gl: WebGL2RenderingContext, src: string): Promise<WebGLTexture> {
-        const image = await this.loadImage("public" + src);
+        const image = await this.loadImage(src);
         const texture = gl.createTexture();
         if (!texture) {
             throw new Error("Failed to create WebGL texture");
