@@ -1,5 +1,8 @@
 // Type definitions for JSON content files
 
+// Content block types
+export type ContentBlockType = "paragraph" | "heading" | "list" | "code" | "image" | "note" | "warning";
+
 export interface Navigation {
   brand: {
     name: string;
@@ -64,12 +67,15 @@ export interface DocSection {
 }
 
 export interface ContentBlock {
-  type: "paragraph" | "heading" | "list" | "code";
+  type: ContentBlockType;
   text?: string;
   level?: number;
   items?: string[];
   language?: string;
   code?: string;
+  src?: string; // For images
+  alt?: string; // For images
+  caption?: string; // For images
 }
 
 export interface ApiContent {
@@ -83,6 +89,31 @@ export interface ApiModule {
   description: string;
   color: string;
   example: string;
+  methods?: ApiMethod[];
+  properties?: ApiProperty[];
+}
+
+export interface ApiMethod {
+  name: string;
+  description: string;
+  signature: string;
+  parameters?: ApiParameter[];
+  returns?: string;
+  example?: string;
+}
+
+export interface ApiProperty {
+  name: string;
+  type: string;
+  description: string;
+  readonly?: boolean;
+}
+
+export interface ApiParameter {
+  name: string;
+  type: string;
+  description: string;
+  optional?: boolean;
 }
 
 export interface TutorialsContent {
@@ -96,4 +127,7 @@ export interface Tutorial {
   summary: string;
   color: string;
   steps?: string[];
+  content?: ContentBlock[]; // For detailed tutorial content
+  difficulty?: "beginner" | "intermediate" | "advanced";
+  duration?: string; // e.g., "30 minutes"
 }

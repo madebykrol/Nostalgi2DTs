@@ -1,0 +1,177 @@
+{
+  "title": "02 • Hello World",
+  "summary": "Write your first TypeScript game code with entities, components, and rendering.",
+  "color": "#9d4edd",
+  "difficulty": "beginner",
+  "duration": "30 minutes",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "In this tutorial, you'll create your first Nostalgi2D game from scratch. You'll learn how to initialize the engine, create actors with components, implement a game loop, and render to the screen."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Project Setup"
+    },
+    {
+      "type": "paragraph",
+      "text": "Create a new TypeScript project and install the Nostalgi2D engine:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "mkdir my-game\ncd my-game\nnpm init -y\nnpm install typescript @nostalgi2d/engine\nnpx tsc --init"
+    },
+    {
+      "type": "paragraph",
+      "text": "Configure your tsconfig.json for module resolution:"
+    },
+    {
+      "type": "code",
+      "language": "json",
+      "code": "{\n  \"compilerOptions\": {\n    \"target\": \"ES2020\",\n    \"module\": \"ESNext\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"esModuleInterop\": true,\n    \"skipLibCheck\": true,\n    \"forceConsistentCasingInFileNames\": true,\n    \"outDir\": \"./dist\"\n  }\n}"
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/vscode-project-structure.png",
+      "alt": "VSCode showing the project structure with src and config files",
+      "caption": "Your project structure in VSCode"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating the Game Engine"
+    },
+    {
+      "type": "paragraph",
+      "text": "Create a new file src/main.ts and initialize the engine:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { Engine, World, PixiRenderer } from '@nostalgi2d/engine';\n\n// Initialize the engine with configuration\nconst engine = new Engine({\n  targetFPS: 60,\n  fixedTimestep: 1000 / 60, // 60 FPS\n  maxFrameSkip: 5\n});\n\n// Create a world for entity management\nconst world = new World();\nengine.setWorld(world);\n\n// Set up the renderer\nconst canvas = document.getElementById('game-canvas') as HTMLCanvasElement;\nconst renderer = new PixiRenderer(canvas, {\n  width: 800,\n  height: 600,\n  backgroundColor: 0x0a0e1a\n});\n\nengine.setRenderer(renderer);\n\nconsole.log('Engine initialized!');"
+    },
+    {
+      "type": "note",
+      "text": "💡 The Engine class manages the game loop, timing, and system updates. The World manages entities and components using the ECS pattern."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating Your First Actor"
+    },
+    {
+      "type": "paragraph",
+      "text": "Actors are game objects that can have components attached. Let's create a simple player actor with a sprite:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { Actor, TransformComponent, SpriteComponent } from '@nostalgi2d/engine';\n\n// Create a player actor\nconst player = new Actor('player');\n\n// Add a transform component for position and rotation\nconst transform = new TransformComponent({\n  position: { x: 400, y: 300 },\n  rotation: 0,\n  scale: { x: 1, y: 1 }\n});\nplayer.addComponent(transform);\n\n// Add a sprite component for rendering\nconst sprite = new SpriteComponent({\n  width: 32,\n  height: 32,\n  color: 0x00ffff // Cyan color\n});\nplayer.addComponent(sprite);\n\n// Add the actor to the world\nworld.addActor(player);\n\nconsole.log('Player actor created!');"
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/vscode-actor-creation.png",
+      "alt": "VSCode editor showing the actor creation code with IntelliSense",
+      "caption": "Creating an actor with components - TypeScript provides full autocomplete"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Implementing the Game Loop"
+    },
+    {
+      "type": "paragraph",
+      "text": "The game loop updates game logic and renders frames. Add update logic to your main.ts:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Define the update function\nfunction update(deltaTime: number) {\n  // Update game logic here\n  // deltaTime is in milliseconds since last frame\n  \n  // Example: Rotate the player slowly\n  const playerTransform = player.getComponent(TransformComponent);\n  if (playerTransform) {\n    playerTransform.rotation += 0.01;\n  }\n}\n\n// Define the render function\nfunction render() {\n  // Clear the screen\n  renderer.clear();\n  \n  // Render all actors in the world\n  world.render(renderer);\n  \n  // Present the frame\n  renderer.present();\n}\n\n// Register the update and render callbacks\nengine.onUpdate(update);\nengine.onRender(render);\n\n// Start the game loop\nengine.start();\n\nconsole.log('Game loop started!');"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ Game logic should go in update(), not in render(). This ensures consistent behavior regardless of frame rate."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Adding Input Handling"
+    },
+    {
+      "type": "paragraph",
+      "text": "Let's add keyboard input to move the player:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { InputManager, Keys } from '@nostalgi2d/engine';\n\n// Create input manager\nconst input = new InputManager();\nengine.setInputManager(input);\n\n// Update the update function to handle input\nfunction update(deltaTime: number) {\n  const playerTransform = player.getComponent(TransformComponent);\n  if (!playerTransform) return;\n  \n  const moveSpeed = 0.2; // pixels per millisecond\n  \n  // Handle WASD movement\n  if (input.isKeyDown(Keys.W)) {\n    playerTransform.position.y -= moveSpeed * deltaTime;\n  }\n  if (input.isKeyDown(Keys.S)) {\n    playerTransform.position.y += moveSpeed * deltaTime;\n  }\n  if (input.isKeyDown(Keys.A)) {\n    playerTransform.position.x -= moveSpeed * deltaTime;\n  }\n  if (input.isKeyDown(Keys.D)) {\n    playerTransform.position.x += moveSpeed * deltaTime;\n  }\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating the HTML Canvas"
+    },
+    {
+      "type": "paragraph",
+      "text": "Create an index.html file to host your game:"
+    },
+    {
+      "type": "code",
+      "language": "html",
+      "code": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>My Nostalgi2D Game</title>\n  <style>\n    body {\n      margin: 0;\n      padding: 0;\n      display: flex;\n      justify-content: center;\n      align-items: center;\n      height: 100vh;\n      background: #0a0e1a;\n    }\n    #game-canvas {\n      border: 2px solid #08f7fe;\n      box-shadow: 0 0 20px rgba(8, 247, 254, 0.5);\n    }\n  </style>\n</head>\n<body>\n  <canvas id=\"game-canvas\" width=\"800\" height=\"600\"></canvas>\n  <script type=\"module\" src=\"./src/main.ts\"></script>\n</body>\n</html>"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Running Your Game"
+    },
+    {
+      "type": "paragraph",
+      "text": "Set up a development server with Vite for hot reload:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "npm install -D vite\nnpx vite"
+    },
+    {
+      "type": "paragraph",
+      "text": "Open your browser to http://localhost:5173 and you should see your cyan square that you can move with WASD keys!"
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/hello-world-running.png",
+      "alt": "Browser window showing the game with a cyan square on a dark background",
+      "caption": "Your first Nostalgi2D game running in the browser"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Complete Code Example"
+    },
+    {
+      "type": "paragraph",
+      "text": "Here's the complete main.ts file:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { \n  Engine, \n  World, \n  PixiRenderer,\n  Actor,\n  TransformComponent,\n  SpriteComponent,\n  InputManager,\n  Keys\n} from '@nostalgi2d/engine';\n\n// Initialize engine\nconst engine = new Engine({\n  targetFPS: 60,\n  fixedTimestep: 1000 / 60,\n  maxFrameSkip: 5\n});\n\n// Create world\nconst world = new World();\nengine.setWorld(world);\n\n// Set up renderer\nconst canvas = document.getElementById('game-canvas') as HTMLCanvasElement;\nconst renderer = new PixiRenderer(canvas, {\n  width: 800,\n  height: 600,\n  backgroundColor: 0x0a0e1a\n});\nengine.setRenderer(renderer);\n\n// Create input manager\nconst input = new InputManager();\nengine.setInputManager(input);\n\n// Create player\nconst player = new Actor('player');\nconst transform = new TransformComponent({\n  position: { x: 400, y: 300 },\n  rotation: 0,\n  scale: { x: 1, y: 1 }\n});\nconst sprite = new SpriteComponent({\n  width: 32,\n  height: 32,\n  color: 0x00ffff\n});\nplayer.addComponent(transform);\nplayer.addComponent(sprite);\nworld.addActor(player);\n\n// Game loop\nfunction update(deltaTime: number) {\n  const playerTransform = player.getComponent(TransformComponent);\n  if (!playerTransform) return;\n  \n  const moveSpeed = 0.2;\n  \n  if (input.isKeyDown(Keys.W)) {\n    playerTransform.position.y -= moveSpeed * deltaTime;\n  }\n  if (input.isKeyDown(Keys.S)) {\n    playerTransform.position.y += moveSpeed * deltaTime;\n  }\n  if (input.isKeyDown(Keys.A)) {\n    playerTransform.position.x -= moveSpeed * deltaTime;\n  }\n  if (input.isKeyDown(Keys.D)) {\n    playerTransform.position.x += moveSpeed * deltaTime;\n  }\n}\n\nfunction render() {\n  renderer.clear();\n  world.render(renderer);\n  renderer.present();\n}\n\nengine.onUpdate(update);\nengine.onRender(render);\nengine.start();"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Next Steps"
+    },
+    {
+      "type": "paragraph",
+      "text": "Congratulations! You've created your first Nostalgi2D game. In the next tutorial, you'll learn how to add physics, collision detection, and more sophisticated input handling."
+    },
+    {
+      "type": "note",
+      "text": "💡 Try experimenting with different component combinations, colors, and movement speeds to get comfortable with the engine API."
+    }
+  ]
+}

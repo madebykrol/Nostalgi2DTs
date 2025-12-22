@@ -1,0 +1,174 @@
+{
+  "name": "Network",
+  "description": "Provides server/client networking with input-based replication, RPC calls, and authoritative server architecture for multiplayer games.",
+  "color": "#9d4edd",
+  "example": "import { NetworkClient, NetworkServer } from '@nostalgi2d/engine';\n\n// Client\nconst client = new NetworkClient('ws://localhost:3000');\nclient.connect();\n\n// Server\nconst server = new NetworkServer({ port: 3000 });\nserver.start();",
+  "properties": [
+    {
+      "name": "isConnected",
+      "type": "boolean",
+      "description": "Whether the client is connected to a server",
+      "readonly": true
+    },
+    {
+      "name": "clientId",
+      "type": "string | null",
+      "description": "The unique ID assigned to this client by the server",
+      "readonly": true
+    },
+    {
+      "name": "latency",
+      "type": "number",
+      "description": "Current round-trip latency to server in milliseconds",
+      "readonly": true
+    }
+  ],
+  "methods": [
+    {
+      "name": "connect",
+      "description": "Connects to a game server (client-side)",
+      "signature": "connect(url: string, options?: ConnectionOptions): Promise<void>",
+      "parameters": [
+        {
+          "name": "url",
+          "type": "string",
+          "description": "WebSocket URL of the server (e.g., 'ws://localhost:3000')"
+        },
+        {
+          "name": "options",
+          "type": "ConnectionOptions",
+          "description": "Optional connection configuration",
+          "optional": true
+        }
+      ],
+      "returns": "Promise<void> - Resolves when connection is established",
+      "example": "const client = new NetworkClient();\nawait client.connect('ws://game-server.com:3000', {\n  timeout: 5000,\n  reconnect: true\n});"
+    },
+    {
+      "name": "disconnect",
+      "description": "Disconnects from the server",
+      "signature": "disconnect(): void",
+      "parameters": [],
+      "returns": "void",
+      "example": "client.disconnect();"
+    },
+    {
+      "name": "sendInput",
+      "description": "Sends player input to the server for authoritative processing",
+      "signature": "sendInput(actorId: string, input: InputState, sequence: number): void",
+      "parameters": [
+        {
+          "name": "actorId",
+          "type": "string",
+          "description": "ID of the actor this input controls"
+        },
+        {
+          "name": "input",
+          "type": "InputState",
+          "description": "The input state for this frame"
+        },
+        {
+          "name": "sequence",
+          "type": "number",
+          "description": "Monotonically increasing sequence number for reconciliation"
+        }
+      ],
+      "returns": "void",
+      "example": "// Client sends input every frame\nlet sequence = 0;\nengine.onUpdate(() => {\n  const input = inputManager.captureState();\n  client.sendInput(myActor.id, input, sequence++);\n});"
+    },
+    {
+      "name": "onActorUpdate",
+      "description": "Registers a callback for when the server sends actor state updates",
+      "signature": "onActorUpdate(callback: (updates: ActorState[]) => void): void",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "(updates: ActorState[]) => void",
+          "description": "Function called with array of actor state updates from server"
+        }
+      ],
+      "returns": "void",
+      "example": "client.onActorUpdate((updates) => {\n  updates.forEach(state => {\n    const actor = world.getActor(state.actorId);\n    if (actor) {\n      // Update position, rotation, etc.\n      actor.reconcile(state);\n    }\n  });\n});"
+    },
+    {
+      "name": "onActorSpawn",
+      "description": "Registers a callback for when the server spawns a new actor",
+      "signature": "onActorSpawn(callback: (actorData: ActorSpawnData) => void): void",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "(actorData: ActorSpawnData) => void",
+          "description": "Function called when a new actor should be spawned"
+        }
+      ],
+      "returns": "void",
+      "example": "client.onActorSpawn((data) => {\n  const actor = createActorFromData(data);\n  world.addActor(actor);\n});"
+    },
+    {
+      "name": "onActorDespawn",
+      "description": "Registers a callback for when the server despawns an actor",
+      "signature": "onActorDespawn(callback: (actorId: string) => void): void",
+      "parameters": [
+        {
+          "name": "actorId",
+          "type": "string",
+          "description": "ID of the actor to remove"
+        }
+      ],
+      "returns": "void",
+      "example": "client.onActorDespawn((actorId) => {\n  world.removeActor(actorId);\n});"
+    },
+    {
+      "name": "rpc",
+      "description": "Calls a remote procedure on the server",
+      "signature": "rpc(method: string, params: any[]): Promise<any>",
+      "parameters": [
+        {
+          "name": "method",
+          "type": "string",
+          "description": "Name of the remote method to call"
+        },
+        {
+          "name": "params",
+          "type": "any[]",
+          "description": "Array of parameters to pass to the method"
+        }
+      ],
+      "returns": "Promise<any> - Resolves with the return value from the server",
+      "example": "// Client requests to join a team\nconst result = await client.rpc('joinTeam', ['blue-team']);\nif (result.success) {\n  console.log('Joined team:', result.teamName);\n}"
+    },
+    {
+      "name": "broadcast",
+      "description": "Broadcasts a message to all connected clients (server-side)",
+      "signature": "broadcast(message: NetworkMessage): void",
+      "parameters": [
+        {
+          "name": "message",
+          "type": "NetworkMessage",
+          "description": "The message to broadcast"
+        }
+      ],
+      "returns": "void",
+      "example": "// Server broadcasts game state at 60Hz\nsetInterval(() => {\n  const updates = captureActorStates();\n  server.broadcast({\n    type: 'actor:update',\n    updates: updates\n  });\n}, 1000 / 60);"
+    },
+    {
+      "name": "sendTo",
+      "description": "Sends a message to a specific client (server-side)",
+      "signature": "sendTo(clientId: string, message: NetworkMessage): void",
+      "parameters": [
+        {
+          "name": "clientId",
+          "type": "string",
+          "description": "ID of the client to send to"
+        },
+        {
+          "name": "message",
+          "type": "NetworkMessage",
+          "description": "The message to send"
+        }
+      ],
+      "returns": "void",
+      "example": "// Send player-specific data\nserver.sendTo(clientId, {\n  type: 'player:inventory',\n  items: playerInventory\n});"
+    }
+  ]
+}

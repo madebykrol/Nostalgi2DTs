@@ -1,0 +1,183 @@
+{
+  "name": "Input",
+  "description": "Unified input handling system for keyboard, mouse, and gamepad. Provides state tracking, event callbacks, and input recording for replays.",
+  "color": "#fe53bb",
+  "example": "import { InputManager, Keys } from '@nostalgi2d/engine';\n\nconst input = new InputManager();\nengine.setInputManager(input);\n\nif (input.isKeyDown(Keys.W)) {\n  player.moveForward();\n}",
+  "properties": [
+    {
+      "name": "mousePosition",
+      "type": "{ x: number; y: number }",
+      "description": "Current mouse position in screen coordinates",
+      "readonly": true
+    },
+    {
+      "name": "mouseWorldPosition",
+      "type": "{ x: number; y: number }",
+      "description": "Mouse position converted to world coordinates",
+      "readonly": true
+    },
+    {
+      "name": "isRecording",
+      "type": "boolean",
+      "description": "Whether input recording is currently active",
+      "readonly": true
+    }
+  ],
+  "methods": [
+    {
+      "name": "isKeyDown",
+      "description": "Checks if a key is currently pressed",
+      "signature": "isKeyDown(key: Keys): boolean",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "Keys",
+          "description": "The key code to check (use Keys enum)"
+        }
+      ],
+      "returns": "boolean - true if the key is currently down",
+      "example": "if (input.isKeyDown(Keys.SPACE)) {\n  player.jump();\n}"
+    },
+    {
+      "name": "isKeyPressed",
+      "description": "Checks if a key was just pressed this frame (fires once per press)",
+      "signature": "isKeyPressed(key: Keys): boolean",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "Keys",
+          "description": "The key code to check"
+        }
+      ],
+      "returns": "boolean - true if the key was pressed this frame",
+      "example": "if (input.isKeyPressed(Keys.E)) {\n  player.interact();\n}"
+    },
+    {
+      "name": "isKeyReleased",
+      "description": "Checks if a key was just released this frame",
+      "signature": "isKeyReleased(key: Keys): boolean",
+      "parameters": [
+        {
+          "name": "key",
+          "type": "Keys",
+          "description": "The key code to check"
+        }
+      ],
+      "returns": "boolean - true if the key was released this frame",
+      "example": "if (input.isKeyReleased(Keys.SHIFT)) {\n  player.stopSprinting();\n}"
+    },
+    {
+      "name": "isMouseButtonDown",
+      "description": "Checks if a mouse button is currently pressed",
+      "signature": "isMouseButtonDown(button: MouseButton): boolean",
+      "parameters": [
+        {
+          "name": "button",
+          "type": "MouseButton",
+          "description": "Mouse button (0=left, 1=middle, 2=right)"
+        }
+      ],
+      "returns": "boolean - true if the button is currently down",
+      "example": "if (input.isMouseButtonDown(0)) {\n  // Left mouse button is down\n  player.shoot(input.mouseWorldPosition);\n}"
+    },
+    {
+      "name": "getAxis",
+      "description": "Gets a normalized axis value from keyboard or gamepad input",
+      "signature": "getAxis(axisName: string): number",
+      "parameters": [
+        {
+          "name": "axisName",
+          "type": "string",
+          "description": "Name of the axis ('horizontal', 'vertical', etc.)"
+        }
+      ],
+      "returns": "number - Value between -1 and 1",
+      "example": "// Configure axes\ninput.configureAxis('horizontal', {\n  negative: Keys.A,\n  positive: Keys.D\n});\n\n// Use in game\nconst horizontal = input.getAxis('horizontal');\nplayer.velocity.x = horizontal * speed;"
+    },
+    {
+      "name": "configureAxis",
+      "description": "Configures a virtual axis with key bindings",
+      "signature": "configureAxis(name: string, config: AxisConfig): void",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Name for this axis"
+        },
+        {
+          "name": "config",
+          "type": "AxisConfig",
+          "description": "Configuration with positive and negative keys"
+        }
+      ],
+      "returns": "void",
+      "example": "input.configureAxis('vertical', {\n  negative: Keys.S,\n  positive: Keys.W,\n  deadzone: 0.1\n});"
+    },
+    {
+      "name": "onKeyDown",
+      "description": "Registers a callback for key press events",
+      "signature": "onKeyDown(callback: (key: Keys) => void): () => void",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "(key: Keys) => void",
+          "description": "Function called when any key is pressed"
+        }
+      ],
+      "returns": "() => void - Unsubscribe function",
+      "example": "const unsubscribe = input.onKeyDown((key) => {\n  console.log('Key pressed:', key);\n});\n\n// Later...\nunsubscribe();"
+    },
+    {
+      "name": "onMouseMove",
+      "description": "Registers a callback for mouse movement",
+      "signature": "onMouseMove(callback: (position: Vector2) => void): () => void",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "(position: Vector2) => void",
+          "description": "Function called when mouse moves"
+        }
+      ],
+      "returns": "() => void - Unsubscribe function",
+      "example": "input.onMouseMove((pos) => {\n  crosshair.setPosition(pos);\n});"
+    },
+    {
+      "name": "startRecording",
+      "description": "Starts recording all input events for replay",
+      "signature": "startRecording(): void",
+      "parameters": [],
+      "returns": "void",
+      "example": "// Start recording a replay\ninput.startRecording();\n// ... play game ...\nconst recording = input.stopRecording();\nsaveRecording(recording);"
+    },
+    {
+      "name": "stopRecording",
+      "description": "Stops recording and returns the recorded input data",
+      "signature": "stopRecording(): InputRecording",
+      "parameters": [],
+      "returns": "InputRecording - Object containing all recorded inputs",
+      "example": "const recording = input.stopRecording();\nlocalStorage.setItem('replay', JSON.stringify(recording));"
+    },
+    {
+      "name": "playRecording",
+      "description": "Plays back a recorded input session",
+      "signature": "playRecording(recording: InputRecording): void",
+      "parameters": [
+        {
+          "name": "recording",
+          "type": "InputRecording",
+          "description": "Previously recorded input data"
+        }
+      ],
+      "returns": "void",
+      "example": "const recording = JSON.parse(localStorage.getItem('replay'));\ninput.playRecording(recording);"
+    },
+    {
+      "name": "captureState",
+      "description": "Captures the current input state for network transmission",
+      "signature": "captureState(): InputState",
+      "parameters": [],
+      "returns": "InputState - Serializable snapshot of current input",
+      "example": "// Client sends input to server\nconst state = input.captureState();\nnetwork.sendInput(player.id, state, sequence++);"
+    }
+  ]
+}

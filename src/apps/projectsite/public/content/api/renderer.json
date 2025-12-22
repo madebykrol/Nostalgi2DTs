@@ -1,0 +1,239 @@
+{
+  "name": "Renderer",
+  "description": "Abstract rendering interface with multiple backend implementations (PixiJS, Canvas2D, Three.js). Provides consistent API for drawing sprites, meshes, and effects.",
+  "color": "#08f7fe",
+  "example": "import { PixiRenderer } from '@nostalgi2d/engine';\n\nconst renderer = new PixiRenderer(canvas, {\n  width: 800,\n  height: 600,\n  backgroundColor: 0x1a1a2e\n});\n\nengine.setRenderer(renderer);",
+  "properties": [
+    {
+      "name": "width",
+      "type": "number",
+      "description": "Rendering viewport width in pixels",
+      "readonly": true
+    },
+    {
+      "name": "height",
+      "type": "number",
+      "description": "Rendering viewport height in pixels",
+      "readonly": true
+    },
+    {
+      "name": "canvas",
+      "type": "HTMLCanvasElement",
+      "description": "The canvas element being rendered to",
+      "readonly": true
+    },
+    {
+      "name": "camera",
+      "type": "Camera",
+      "description": "The active camera controlling the view",
+      "readonly": false
+    }
+  ],
+  "methods": [
+    {
+      "name": "clear",
+      "description": "Clears the screen with the background color",
+      "signature": "clear(): void",
+      "parameters": [],
+      "returns": "void",
+      "example": "function render() {\n  renderer.clear();\n  world.render(renderer);\n  renderer.present();\n}"
+    },
+    {
+      "name": "present",
+      "description": "Presents the rendered frame to the screen",
+      "signature": "present(): void",
+      "parameters": [],
+      "returns": "void",
+      "example": "// Called after all drawing is complete\nrenderer.present();"
+    },
+    {
+      "name": "drawSprite",
+      "description": "Draws a sprite at the specified position",
+      "signature": "drawSprite(sprite: Sprite, transform: Transform): void",
+      "parameters": [
+        {
+          "name": "sprite",
+          "type": "Sprite",
+          "description": "The sprite to draw"
+        },
+        {
+          "name": "transform",
+          "type": "Transform",
+          "description": "Position, rotation, and scale"
+        }
+      ],
+      "returns": "void",
+      "example": "const sprite = new Sprite(texture);\nrenderer.drawSprite(sprite, {\n  position: { x: 100, y: 100 },\n  rotation: Math.PI / 4,\n  scale: { x: 2, y: 2 }\n});"
+    },
+    {
+      "name": "drawMesh",
+      "description": "Draws a mesh (polygon) with the specified vertices",
+      "signature": "drawMesh(vertices: Vector2[], color: number, transform: Transform): void",
+      "parameters": [
+        {
+          "name": "vertices",
+          "type": "Vector2[]",
+          "description": "Array of vertex positions"
+        },
+        {
+          "name": "color",
+          "type": "number",
+          "description": "Fill color as hex (e.g., 0xFF0000 for red)"
+        },
+        {
+          "name": "transform",
+          "type": "Transform",
+          "description": "Transform to apply to the mesh"
+        }
+      ],
+      "returns": "void",
+      "example": "const vertices = [\n  { x: 0, y: -20 },\n  { x: -15, y: 15 },\n  { x: 15, y: 15 }\n];\nrenderer.drawMesh(vertices, 0x00FFFF, transform);"
+    },
+    {
+      "name": "drawLine",
+      "description": "Draws a line between two points",
+      "signature": "drawLine(start: Vector2, end: Vector2, color: number, thickness?: number): void",
+      "parameters": [
+        {
+          "name": "start",
+          "type": "Vector2",
+          "description": "Starting point"
+        },
+        {
+          "name": "end",
+          "type": "Vector2",
+          "description": "Ending point"
+        },
+        {
+          "name": "color",
+          "type": "number",
+          "description": "Line color"
+        },
+        {
+          "name": "thickness",
+          "type": "number",
+          "description": "Line thickness in pixels",
+          "optional": true
+        }
+      ],
+      "returns": "void",
+      "example": "// Draw a debug line\nrenderer.drawLine(\n  { x: 0, y: 0 },\n  { x: 100, y: 100 },\n  0xFF0000,\n  2\n);"
+    },
+    {
+      "name": "drawCircle",
+      "description": "Draws a circle at the specified position",
+      "signature": "drawCircle(position: Vector2, radius: number, color: number, fill?: boolean): void",
+      "parameters": [
+        {
+          "name": "position",
+          "type": "Vector2",
+          "description": "Center position"
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "description": "Circle radius in pixels"
+        },
+        {
+          "name": "color",
+          "type": "number",
+          "description": "Color"
+        },
+        {
+          "name": "fill",
+          "type": "boolean",
+          "description": "Whether to fill (default: true)",
+          "optional": true
+        }
+      ],
+      "returns": "void",
+      "example": "// Draw a filled circle\nrenderer.drawCircle({ x: 200, y: 150 }, 30, 0x00FF00, true);\n\n// Draw a circle outline\nrenderer.drawCircle({ x: 200, y: 150 }, 35, 0xFFFFFF, false);"
+    },
+    {
+      "name": "drawText",
+      "description": "Draws text at the specified position",
+      "signature": "drawText(text: string, position: Vector2, style?: TextStyle): void",
+      "parameters": [
+        {
+          "name": "text",
+          "type": "string",
+          "description": "Text to draw"
+        },
+        {
+          "name": "position",
+          "type": "Vector2",
+          "description": "Position to draw at"
+        },
+        {
+          "name": "style",
+          "type": "TextStyle",
+          "description": "Font, size, color, etc.",
+          "optional": true
+        }
+      ],
+      "returns": "void",
+      "example": "renderer.drawText('Score: 100', { x: 10, y: 10 }, {\n  font: 'Arial',\n  size: 24,\n  color: 0xFFFFFF,\n  align: 'left'\n});"
+    },
+    {
+      "name": "setCamera",
+      "description": "Sets the active camera for rendering",
+      "signature": "setCamera(camera: Camera): void",
+      "parameters": [
+        {
+          "name": "camera",
+          "type": "Camera",
+          "description": "Camera instance to use for rendering"
+        }
+      ],
+      "returns": "void",
+      "example": "const camera = new Camera({\n  position: { x: 0, y: 0 },\n  zoom: 1.0\n});\nrenderer.setCamera(camera);"
+    },
+    {
+      "name": "screenToWorld",
+      "description": "Converts screen coordinates to world coordinates",
+      "signature": "screenToWorld(screenPos: Vector2): Vector2",
+      "parameters": [
+        {
+          "name": "screenPos",
+          "type": "Vector2",
+          "description": "Position in screen space"
+        }
+      ],
+      "returns": "Vector2 - Position in world space",
+      "example": "const mouseWorld = renderer.screenToWorld(input.mousePosition);\nplayer.lookAt(mouseWorld);"
+    },
+    {
+      "name": "worldToScreen",
+      "description": "Converts world coordinates to screen coordinates",
+      "signature": "worldToScreen(worldPos: Vector2): Vector2",
+      "parameters": [
+        {
+          "name": "worldPos",
+          "type": "Vector2",
+          "description": "Position in world space"
+        }
+      ],
+      "returns": "Vector2 - Position in screen space",
+      "example": "const screenPos = renderer.worldToScreen(enemy.position);\nif (screenPos.x > 0 && screenPos.x < width) {\n  // Enemy is visible on screen\n}"
+    },
+    {
+      "name": "resize",
+      "description": "Resizes the renderer viewport",
+      "signature": "resize(width: number, height: number): void",
+      "parameters": [
+        {
+          "name": "width",
+          "type": "number",
+          "description": "New width in pixels"
+        },
+        {
+          "name": "height",
+          "type": "number",
+          "description": "New height in pixels"
+        }
+      ],
+      "returns": "void",
+      "example": "window.addEventListener('resize', () => {\n  renderer.resize(window.innerWidth, window.innerHeight);\n});"
+    }
+  ]
+}

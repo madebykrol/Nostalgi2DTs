@@ -1,0 +1,192 @@
+{
+  "title": "01 • Mesh Component Designer",
+  "summary": "Master the mesh designer workflow to create custom 2D shapes for your game.",
+  "color": "#fe53bb",
+  "difficulty": "beginner",
+  "duration": "20 minutes",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "The mesh component designer is a powerful tool for creating custom 2D shapes that can be used as sprites, collision boundaries, or visual elements in your game. This tutorial covers advanced mesh design techniques and best practices."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Understanding Mesh Structure"
+    },
+    {
+      "type": "paragraph",
+      "text": "A mesh in Nostalgi2D consists of:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Vertices: Points that define the shape (x, y coordinates)",
+        "Edges: Lines connecting vertices in order",
+        "Fill: The interior of the polygon defined by the vertices",
+        "Metadata: Properties like meshId and materialId"
+      ]
+    },
+    {
+      "type": "code",
+      "language": "json",
+      "code": "{\n  \"meshId\": \"player-ship\",\n  \"vertices\": [\n    { \"x\": 0, \"y\": -20 },\n    { \"x\": -15, \"y\": 15 },\n    { \"x\": 15, \"y\": 15 }\n  ],\n  \"materialId\": \"default\"\n}"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating Complex Shapes"
+    },
+    {
+      "type": "paragraph",
+      "text": "Let's create a spaceship mesh with proper vertex winding:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Start at the top point of the ship (nose)",
+        "Add vertices moving counter-clockwise around the shape",
+        "Keep the shape convex - no inward-pointing angles",
+        "Use 5-8 vertices for most game objects"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/mesh-designer-spaceship.png",
+      "alt": "Mesh designer showing a spaceship shape with labeled vertices",
+      "caption": "Creating a spaceship mesh with proper counter-clockwise vertex order"
+    },
+    {
+      "type": "note",
+      "text": "💡 Counter-clockwise vertex order ensures proper rendering and collision detection. Most graphics APIs use this convention."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Working with the Canvas"
+    },
+    {
+      "type": "paragraph",
+      "text": "The mesh designer canvas provides several tools to help you work precisely:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Grid Snapping: Hold Shift while placing vertices to snap to grid",
+        "Zoom: Use mouse wheel or zoom controls to see details",
+        "Pan: Click and drag the canvas background to move the view",
+        "Coordinates Display: Shows x,y position of your cursor"
+      ]
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ Vertices are defined in local space relative to the mesh center. Position (0,0) is the center of rotation."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Adding Metadata"
+    },
+    {
+      "type": "paragraph",
+      "text": "Metadata helps you organize and reference meshes in your game code:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "meshId: A unique identifier for this mesh (used in code)",
+        "materialId: Reference to a material/texture (for future use)",
+        "tags: Custom properties for categorization",
+        "description: Human-readable notes about the mesh"
+      ]
+    },
+    {
+      "type": "paragraph",
+      "text": "Set these properties in the Properties panel on the right side of the editor."
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/mesh-properties-panel.png",
+      "alt": "Properties panel showing mesh metadata fields",
+      "caption": "Configure mesh metadata in the Properties panel"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Testing Your Mesh"
+    },
+    {
+      "type": "paragraph",
+      "text": "Before using a mesh in your game, test it in the editor:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Use the preview mode to see how the mesh will render",
+        "Check that all vertices are visible and correctly positioned",
+        "Verify the mesh is convex by checking for inward angles",
+        "Test different scale factors to ensure it looks good at various sizes"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Exporting Meshes"
+    },
+    {
+      "type": "paragraph",
+      "text": "Once your mesh is ready, export it for use in your game runtime:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { MeshComponent } from '@nostalgi2d/engine';\nimport playerMesh from './assets/meshes/player-ship.json';\n\nconst mesh = new MeshComponent(playerMesh);\nactor.addComponent(mesh);"
+    },
+    {
+      "type": "paragraph",
+      "text": "Mesh JSON files can be imported directly into your TypeScript code and used to create mesh components at runtime."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Best Practices"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Keep meshes simple - use 3-8 vertices for best performance",
+        "Always use counter-clockwise vertex order",
+        "Center important meshes at (0,0) for predictable rotation",
+        "Use descriptive meshId names (e.g., 'player-ship', 'enemy-bullet')",
+        "Save frequently while designing complex meshes"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Common Issues"
+    },
+    {
+      "type": "paragraph",
+      "text": "If your mesh doesn't render correctly:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Check vertex order - should be counter-clockwise",
+        "Ensure the mesh is convex (no inward angles)",
+        "Verify all vertices have valid x,y coordinates",
+        "Check that meshId is unique and properly referenced in code"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Next Steps"
+    },
+    {
+      "type": "paragraph",
+      "text": "Now that you can create custom meshes, you're ready to use them in actual game code. Continue to the Hello World tutorial to learn how to create actors with mesh components and render them on screen."
+    }
+  ]
+}
