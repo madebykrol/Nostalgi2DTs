@@ -535,6 +535,52 @@ const App = () => {
     [engine]
   );
 
+  const handleTouchDrop = useCallback(
+    async (event: CustomEvent<{ actorTypeId: string; clientX: number; clientY: number }>) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance || !engine) {
+        return;
+      }
+
+      const { actorTypeId, clientX, clientY } = event.detail;
+
+      // Create a synthetic drag event to reuse the existing drop handler logic
+      const syntheticEvent = {
+        clientX,
+        clientY,
+        dataTransfer: {
+          getData: (type: string) => {
+            if (type === "application/x-editor-actor") {
+              return JSON.stringify({ type: actorTypeId });
+            }
+            return "";
+          },
+        },
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      } as any as DragEvent<HTMLDivElement>;
+
+      const handlers = sceneDragDropRegistryRef.current.resolve();
+      const context = {
+        editor: editorInstance,
+        engine,
+        canvas: document.getElementById("gamescreen") as HTMLCanvasElement | null,
+      };
+
+      for (const handler of handlers) {
+        if (!handler.onDrop) {
+          continue;
+        }
+        const result = handler.onDrop(syntheticEvent, context);
+        const handled = result instanceof Promise ? await result : result;
+        if (handled === true) {
+          break;
+        }
+      }
+    },
+    [engine]
+  );
+
   const handleMenuButtonClick = useCallback(
     (menuId: string) => (event: MouseEvent<HTMLButtonElement>) => {
       const editorInstance = editorRef.current;
@@ -760,6 +806,19 @@ const App = () => {
       unsubscribe();
     };
   }, []);
+
+  // Listen for custom touch drop events
+  useEffect(() => {
+    const handleCustomTouchDrop = (event: Event) => {
+      void handleTouchDrop(event as CustomEvent<{ actorTypeId: string; clientX: number; clientY: number }>);
+    };
+    
+    document.addEventListener("actorpalette:touchdrop", handleCustomTouchDrop);
+    
+    return () => {
+      document.removeEventListener("actorpalette:touchdrop", handleCustomTouchDrop);
+    };
+  }, [handleTouchDrop]);
 
   const handlePlay = () => {
     if (!engine) {

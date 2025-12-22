@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Actor, Editor, Engine, Vector2 } from "@repo/engine";
 import { EditorUIPlugin } from "@repo/engine";
 import { withInjection } from "../ioc/ioc";
@@ -9,6 +9,9 @@ type ActorRegistryEntry = {
 };
 
 const ACTOR_MIME_TYPE = "application/x-editor-actor";
+
+// Global state for touch drag (to communicate between palette and scene)
+let activeTouchDragData: { type: string } | null = null;
 
 const isActorConstructor = (ctor: unknown): ctor is new () => Actor => {
   if (typeof ctor !== "function") {
@@ -57,12 +60,83 @@ type ActorPalettePanelBaseProps = {
 
 const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBaseProps) => {
   const [actorEntries, setActorEntries] = useState<ActorRegistryEntry[]>(() => discoverActorTypes(engine));
+  const [isDragging, setIsDragging] = useState(false);
+  const dragPreviewRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setActorEntries(discoverActorTypes(engine));
   }, [engine]);
 
   const entries = useMemo(() => actorEntries, [actorEntries]);
+
+  const handlePointerDown = (entry: ActorRegistryEntry) => (event: React.PointerEvent<HTMLButtonElement>) => {
+    // For mouse, let the native drag-and-drop handle it
+    if (event.pointerType === "mouse") {
+      return;
+    }
+
+    // For touch devices, set up our custom drag handling
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const button = event.currentTarget;
+    button.setPointerCapture(event.pointerId);
+    
+    // Store the drag data globally
+    activeTouchDragData = { type: entry.id };
+    setIsDragging(true);
+
+    // Create a drag preview element
+    const preview = document.createElement("div");
+    preview.className = "fixed pointer-events-none z-[9999] px-3 py-2 bg-cyan-400/20 border border-cyan-400/50 rounded text-xs text-white shadow-lg";
+    preview.style.left = `${event.clientX}px`;
+    preview.style.top = `${event.clientY}px`;
+    preview.style.transform = "translate(-50%, -50%)";
+    preview.textContent = entry.name;
+    document.body.appendChild(preview);
+    dragPreviewRef.current = preview;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.style.left = `${moveEvent.clientX}px`;
+        dragPreviewRef.current.style.top = `${moveEvent.clientY}px`;
+      }
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      button.releasePointerCapture(upEvent.pointerId);
+      
+      // Dispatch a custom event at the drop location
+      const dropTarget = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+      if (dropTarget) {
+        const customEvent = new CustomEvent("actorpalette:touchdrop", {
+          bubbles: true,
+          detail: {
+            actorTypeId: entry.id,
+            clientX: upEvent.clientX,
+            clientY: upEvent.clientY,
+          },
+        });
+        dropTarget.dispatchEvent(customEvent);
+      }
+
+      // Clean up
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.remove();
+        dragPreviewRef.current = null;
+      }
+      activeTouchDragData = null;
+      setIsDragging(false);
+      
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
+    };
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+  };
 
   if (entries.length === 0) {
     return <div className="text-xs text-white/60">No spawnable actors registered.</div>;
@@ -77,7 +151,7 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
           <li key={entry.id}>
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2 text-left text-xs text-white transition hover:bg-white/10"
+              className="flex w-full items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2 text-left text-xs text-white transition hover:bg-white/10 touch-none"
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = "copy";
@@ -86,6 +160,7 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
                   JSON.stringify({ type: entry.id })
                 );
               }}
+              onPointerDown={handlePointerDown(entry)}
             >
               <span>{entry.name}</span>
             </button>
