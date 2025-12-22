@@ -545,20 +545,23 @@ const App = () => {
       const { actorTypeId, clientX, clientY } = event.detail;
 
       // Create a synthetic drag event to reuse the existing drop handler logic
-      const syntheticEvent = {
+      // This provides a minimal implementation of the DragEvent interface needed by handlers
+      const syntheticDataTransfer = {
+        getData: (type: string) => {
+          if (type === "application/x-editor-actor") {
+            return JSON.stringify({ type: actorTypeId });
+          }
+          return "";
+        },
+      };
+
+      const syntheticEvent: Partial<DragEvent<HTMLDivElement>> = {
         clientX,
         clientY,
-        dataTransfer: {
-          getData: (type: string) => {
-            if (type === "application/x-editor-actor") {
-              return JSON.stringify({ type: actorTypeId });
-            }
-            return "";
-          },
-        },
+        dataTransfer: syntheticDataTransfer as DataTransfer,
         preventDefault: () => {},
         stopPropagation: () => {},
-      } as any as DragEvent<HTMLDivElement>;
+      };
 
       const handlers = sceneDragDropRegistryRef.current.resolve();
       const context = {
@@ -571,7 +574,7 @@ const App = () => {
         if (!handler.onDrop) {
           continue;
         }
-        const result = handler.onDrop(syntheticEvent, context);
+        const result = handler.onDrop(syntheticEvent as DragEvent<HTMLDivElement>, context);
         const handled = result instanceof Promise ? await result : result;
         if (handled === true) {
           break;

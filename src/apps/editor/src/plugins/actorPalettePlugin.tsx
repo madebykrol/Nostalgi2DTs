@@ -10,8 +10,8 @@ type ActorRegistryEntry = {
 
 const ACTOR_MIME_TYPE = "application/x-editor-actor";
 
-// Global state for touch drag (to communicate between palette and scene)
-let activeTouchDragData: { type: string } | null = null;
+// Z-index for drag preview overlay
+const DRAG_PREVIEW_Z_INDEX = 9999;
 
 const isActorConstructor = (ctor: unknown): ctor is new () => Actor => {
   if (typeof ctor !== "function") {
@@ -82,16 +82,15 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
     const button = event.currentTarget;
     button.setPointerCapture(event.pointerId);
     
-    // Store the drag data globally
-    activeTouchDragData = { type: entry.id };
     setIsDragging(true);
 
     // Create a drag preview element
     const preview = document.createElement("div");
-    preview.className = "fixed pointer-events-none z-[9999] px-3 py-2 bg-cyan-400/20 border border-cyan-400/50 rounded text-xs text-white shadow-lg";
+    preview.className = "fixed pointer-events-none px-3 py-2 bg-cyan-400/20 border border-cyan-400/50 rounded text-xs text-white shadow-lg";
     preview.style.left = `${event.clientX}px`;
     preview.style.top = `${event.clientY}px`;
     preview.style.transform = "translate(-50%, -50%)";
+    preview.style.zIndex = String(DRAG_PREVIEW_Z_INDEX);
     preview.textContent = entry.name;
     document.body.appendChild(preview);
     dragPreviewRef.current = preview;
@@ -125,7 +124,6 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
         dragPreviewRef.current.remove();
         dragPreviewRef.current = null;
       }
-      activeTouchDragData = null;
       setIsDragging(false);
       
       document.removeEventListener("pointermove", handlePointerMove);
