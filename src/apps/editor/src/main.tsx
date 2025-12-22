@@ -544,11 +544,14 @@ const App = () => {
 
       const { actorTypeId, clientX, clientY } = event.detail;
 
+      // MIME type must match ACTOR_MIME_TYPE in actorPalettePlugin.tsx
+      const ACTOR_MIME_TYPE = "application/x-editor-actor";
+
       // Create a synthetic drag event to reuse the existing drop handler logic
       // This provides a minimal implementation of the DragEvent interface needed by handlers
       const syntheticDataTransfer = {
         getData: (type: string) => {
-          if (type === "application/x-editor-actor") {
+          if (type === ACTOR_MIME_TYPE) {
             return JSON.stringify({ type: actorTypeId });
           }
           return "";

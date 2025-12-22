@@ -62,10 +62,29 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
   const [actorEntries, setActorEntries] = useState<ActorRegistryEntry[]>(() => discoverActorTypes(engine));
   const [isDragging, setIsDragging] = useState(false);
   const dragPreviewRef = useRef<HTMLDivElement | null>(null);
+  const activeHandlersRef = useRef<{
+    move: (e: PointerEvent) => void;
+    up: (e: PointerEvent) => void;
+  } | null>(null);
 
   useEffect(() => {
     setActorEntries(discoverActorTypes(engine));
   }, [engine]);
+
+  // Cleanup handlers on unmount
+  useEffect(() => {
+    return () => {
+      if (activeHandlersRef.current) {
+        document.removeEventListener("pointermove", activeHandlersRef.current.move);
+        document.removeEventListener("pointerup", activeHandlersRef.current.up);
+        document.removeEventListener("pointercancel", activeHandlersRef.current.up);
+      }
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.remove();
+        dragPreviewRef.current = null;
+      }
+    };
+  }, []);
 
   const entries = useMemo(() => actorEntries, [actorEntries]);
 
@@ -105,6 +124,14 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
     const handlePointerUp = (upEvent: PointerEvent) => {
       button.releasePointerCapture(upEvent.pointerId);
       
+      // Clean up event listeners
+      if (activeHandlersRef.current) {
+        document.removeEventListener("pointermove", activeHandlersRef.current.move);
+        document.removeEventListener("pointerup", activeHandlersRef.current.up);
+        document.removeEventListener("pointercancel", activeHandlersRef.current.up);
+        activeHandlersRef.current = null;
+      }
+      
       // Dispatch a custom event at the drop location
       const dropTarget = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
       if (dropTarget) {
@@ -119,16 +146,18 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
         dropTarget.dispatchEvent(customEvent);
       }
 
-      // Clean up
+      // Clean up drag preview
       if (dragPreviewRef.current) {
         dragPreviewRef.current.remove();
         dragPreviewRef.current = null;
       }
       setIsDragging(false);
-      
-      document.removeEventListener("pointermove", handlePointerMove);
-      document.removeEventListener("pointerup", handlePointerUp);
-      document.removeEventListener("pointercancel", handlePointerUp);
+    };
+
+    // Store handlers in ref for cleanup
+    activeHandlersRef.current = {
+      move: handlePointerMove,
+      up: handlePointerUp,
     };
 
     document.addEventListener("pointermove", handlePointerMove);
