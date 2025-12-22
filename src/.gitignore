@@ -11,9 +11,9 @@ server/dist
 public/dist
 
 # TypeScript build artifacts
-apps/*/*.js
-apps/*/*.d.ts
-apps/*/*.d.ts.map
+apps/**/*.js
+apps/**/*.d.ts
+apps/**/*.d.ts.map
 packages/**/*.js
 packages/**/*.d.ts
 packages/**/*.d.ts.map

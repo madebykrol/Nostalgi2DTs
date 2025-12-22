@@ -14,5 +14,12 @@ export default defineConfig({
   base: "/Nostalgi2DTs/client/",
   server: {
     port: 5174
+  },
+  build: {
+    minify: 'esbuild',
+    target: 'esnext',
+  },
+  esbuild: {
+    keepNames: true,
   }
 });
