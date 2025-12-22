@@ -443,6 +443,36 @@ function ContentBlockRenderer({ block }: { block: any }) {
       </pre>
     );
   }
+  if (block.type === "image") {
+    return (
+      <figure className="my-4">
+        <img 
+          src={block.src} 
+          alt={block.alt || ""} 
+          className="rounded-xl border border-white/10 max-w-full h-auto"
+        />
+        {block.caption && (
+          <figcaption className="mt-2 text-xs text-slate-400 text-center">
+            {block.caption}
+          </figcaption>
+        )}
+      </figure>
+    );
+  }
+  if (block.type === "note") {
+    return (
+      <div className="my-4 rounded-xl border border-cyan-400/30 bg-cyan-400/5 p-4">
+        <p className="text-sm text-slate-300">{block.text}</p>
+      </div>
+    );
+  }
+  if (block.type === "warning") {
+    return (
+      <div className="my-4 rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-4">
+        <p className="text-sm text-slate-300">{block.text}</p>
+      </div>
+    );
+  }
   return null;
 }
 

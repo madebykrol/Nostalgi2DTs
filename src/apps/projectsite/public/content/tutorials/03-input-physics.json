@@ -1,0 +1,172 @@
+{
+  "title": "03 • Input & Physics",
+  "summary": "Capture keyboard input, apply physics forces, and handle collisions.",
+  "color": "#08f7fe",
+  "difficulty": "intermediate",
+  "duration": "40 minutes",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "This tutorial teaches you how to add physics simulation to your game, including forces, velocity, collision detection, and response. You'll build a simple game where the player can move around and bounce off boundaries."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Adding Physics Components"
+    },
+    {
+      "type": "paragraph",
+      "text": "The physics system in Nostalgi2D uses components to add physics behavior to actors:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "import { PhysicsComponent, ColliderComponent } from '@nostalgi2d/engine';\n\n// Add physics to the player\nconst physics = new PhysicsComponent({\n  mass: 1.0,\n  velocity: { x: 0, y: 0 },\n  acceleration: { x: 0, y: 0 },\n  drag: 0.98, // Friction coefficient\n  restitution: 0.8 // Bounciness (0 = no bounce, 1 = perfect bounce)\n});\nplayer.addComponent(physics);\n\n// Add collision detection\nconst collider = new ColliderComponent({\n  shape: 'circle',\n  radius: 16,\n  isTrigger: false\n});\nplayer.addComponent(collider);"
+    },
+    {
+      "type": "note",
+      "text": "💡 Physics components handle velocity, acceleration, and forces. Collider components handle collision detection and response."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Applying Forces for Movement"
+    },
+    {
+      "type": "paragraph",
+      "text": "Instead of directly changing position, we'll apply forces to the physics component for more realistic movement:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "function update(deltaTime: number) {\n  const playerPhysics = player.getComponent(PhysicsComponent);\n  if (!playerPhysics) return;\n  \n  const moveForce = 0.5; // Force magnitude\n  \n  // Apply forces based on input\n  if (input.isKeyDown(Keys.W)) {\n    playerPhysics.applyForce({ x: 0, y: -moveForce });\n  }\n  if (input.isKeyDown(Keys.S)) {\n    playerPhysics.applyForce({ x: 0, y: moveForce });\n  }\n  if (input.isKeyDown(Keys.A)) {\n    playerPhysics.applyForce({ x: -moveForce, y: 0 });\n  }\n  if (input.isKeyDown(Keys.D)) {\n    playerPhysics.applyForce({ x: moveForce, y: 0 });\n  }\n  \n  // Apply gravity (optional)\n  // playerPhysics.applyForce({ x: 0, y: 0.1 });\n}"
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/physics-forces-diagram.png",
+      "alt": "Diagram showing force vectors being applied to a player actor",
+      "caption": "Forces are applied to the physics component, which updates velocity and position"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating Boundary Colliders"
+    },
+    {
+      "type": "paragraph",
+      "text": "Let's create invisible wall actors to keep the player within the screen:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Create boundary walls\nfunction createBoundary(x: number, y: number, width: number, height: number) {\n  const wall = new Actor('boundary');\n  \n  const transform = new TransformComponent({\n    position: { x, y },\n    rotation: 0,\n    scale: { x: 1, y: 1 }\n  });\n  wall.addComponent(transform);\n  \n  const collider = new ColliderComponent({\n    shape: 'box',\n    width: width,\n    height: height,\n    isTrigger: false,\n    isStatic: true // Static colliders don't move\n  });\n  wall.addComponent(collider);\n  \n  world.addActor(wall);\n  return wall;\n}\n\n// Create screen boundaries\nconst screenWidth = 800;\nconst screenHeight = 600;\nconst wallThickness = 10;\n\ncreeateBoundary(screenWidth / 2, -wallThickness / 2, screenWidth, wallThickness); // Top\ncreateBoundary(screenWidth / 2, screenHeight + wallThickness / 2, screenWidth, wallThickness); // Bottom\ncreateBoundary(-wallThickness / 2, screenHeight / 2, wallThickness, screenHeight); // Left\ncreateBoundary(screenWidth + wallThickness / 2, screenHeight / 2, wallThickness, screenHeight); // Right"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Handling Collision Events"
+    },
+    {
+      "type": "paragraph",
+      "text": "You can respond to collision events by registering callbacks:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Register collision handler\nconst playerCollider = player.getComponent(ColliderComponent);\nif (playerCollider) {\n  playerCollider.onCollisionEnter((other) => {\n    console.log('Player collided with:', other.actor.name);\n    \n    // Play sound effect\n    // audioManager.play('bounce');\n    \n    // Visual feedback\n    // flashSprite(player);\n  });\n  \n  playerCollider.onCollisionExit((other) => {\n    console.log('Player stopped colliding with:', other.actor.name);\n  });\n}"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ Collision callbacks fire during the physics update step. Avoid modifying the physics simulation directly in these callbacks to prevent unexpected behavior."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Implementing Collision Response"
+    },
+    {
+      "type": "paragraph",
+      "text": "The physics system automatically handles collision response based on the restitution (bounciness) property:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "restitution = 0: No bounce (perfectly inelastic collision)",
+        "restitution = 0.5: Moderate bounce (loses half the energy)",
+        "restitution = 1.0: Perfect bounce (elastic collision)",
+        "restitution > 1.0: Gains energy on bounce (unrealistic but fun)"
+      ]
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Create a bouncy ball\nconst ball = new Actor('ball');\nconst ballPhysics = new PhysicsComponent({\n  mass: 0.5,\n  velocity: { x: 2, y: -3 },\n  restitution: 0.9 // Very bouncy\n});\nball.addComponent(ballPhysics);"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Advanced Input: Impulses"
+    },
+    {
+      "type": "paragraph",
+      "text": "For immediate velocity changes (like jumping), use impulses instead of forces:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Jump mechanic\nlet isGrounded = false;\n\nfunction update(deltaTime: number) {\n  const playerPhysics = player.getComponent(PhysicsComponent);\n  if (!playerPhysics) return;\n  \n  // Jump when space is pressed and player is on ground\n  if (input.isKeyPressed(Keys.SPACE) && isGrounded) {\n    playerPhysics.applyImpulse({ x: 0, y: -5 });\n    isGrounded = false;\n  }\n  \n  // Check if player is grounded\n  // (Implementation depends on your collision system)\n}"
+    },
+    {
+      "type": "note",
+      "text": "💡 Use applyForce() for continuous acceleration and applyImpulse() for instant velocity changes."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Debugging Physics"
+    },
+    {
+      "type": "paragraph",
+      "text": "Enable physics debug rendering to visualize colliders and forces:"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "// Enable debug mode\nconst physicsSystem = engine.getSystem(PhysicsSystem);\nif (physicsSystem) {\n  physicsSystem.enableDebugDraw(true);\n}"
+    },
+    {
+      "type": "paragraph",
+      "text": "This will draw outlines around all colliders and show velocity vectors, making it easier to debug physics issues."
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/physics-debug-mode.png",
+      "alt": "Game view showing debug wireframes around colliders",
+      "caption": "Physics debug mode showing collider boundaries and velocity vectors"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Performance Tips"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Mark static objects as isStatic: true to skip physics calculations",
+        "Use simpler collider shapes (circles > boxes > polygons)",
+        "Limit the number of active physics objects on screen",
+        "Use spatial partitioning for large numbers of colliders",
+        "Consider using trigger colliders for non-physical interactions"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Next Steps"
+    },
+    {
+      "type": "paragraph",
+      "text": "You now understand how to add physics and collision detection to your game. Next, learn how to extend the editor with custom plugins to create tools for your game development workflow."
+    }
+  ]
+}

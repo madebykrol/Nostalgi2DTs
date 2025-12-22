@@ -8,9 +8,17 @@ All content files are located in `/public/content/` directory:
 
 - **navigation.json** - Site navigation, routes, and external links
 - **home.json** - Homepage content (hero, features, pitch)
-- **docs.json** - Documentation sections and content
-- **api.json** - API reference modules
-- **tutorials.json** - Tutorial pages
+- **docs.json** - Documentation sections (legacy, use docs/ directory for new content)
+- **api.json** - API reference modules (legacy, use api/ directory for new content)
+- **tutorials.json** - Tutorial pages (legacy, use tutorials/ directory for new content)
+
+### New Modular Structure
+
+For easier maintenance, content is now organized into subdirectories:
+
+- **docs/** - Individual documentation files (getting-started.json, editor-guide.json, etc.)
+- **api/** - Individual API module files (engine.json, world.json, network.json, etc.)
+- **tutorials/** - Individual tutorial files (00-editor-basics.json, 01-mesh-designer.json, etc.)
 
 ## Editing Content
 
@@ -131,22 +139,50 @@ Content block types:
 - `paragraph` - Regular text paragraph
 - `heading` - Heading (level 3, 4, or 5)
 - `list` - Bulleted list
-- `code` - Code block with syntax
+- `code` - Code block with syntax highlighting
+- `image` - Image with optional caption
+- `note` - Informational callout box (cyan theme)
+- `warning` - Warning callout box (yellow theme)
 
 ### 4. API Reference
 
-Edit `/public/content/api.json`:
+#### Legacy Format (api.json)
+
+Edit `/public/content/api.json` for simple API overviews.
+
+#### New Modular Format (api/ directory)
+
+Create individual files in `/public/content/api/` for detailed API documentation:
 
 ```json
 {
-  "title": "API Reference",
-  "subtitle": "Description",
-  "modules": [
+  "name": "ModuleName",
+  "description": "What it does",
+  "color": "#08f7fe",
+  "example": "import { ModuleName } from '@pkg';\n\nconst m = new ModuleName();",
+  "properties": [
     {
-      "name": "ModuleName",
+      "name": "propertyName",
+      "type": "string",
+      "description": "What it represents",
+      "readonly": true
+    }
+  ],
+  "methods": [
+    {
+      "name": "methodName",
       "description": "What it does",
-      "color": "#08f7fe",
-      "example": "import { ModuleName } from '@pkg';\n\nconst m = new ModuleName();"
+      "signature": "methodName(param: Type): ReturnType",
+      "parameters": [
+        {
+          "name": "param",
+          "type": "Type",
+          "description": "Parameter description",
+          "optional": false
+        }
+      ],
+      "returns": "ReturnType - Description of return value",
+      "example": "const result = module.methodName(value);"
     }
   ]
 }
@@ -154,21 +190,49 @@ Edit `/public/content/api.json`:
 
 ### 5. Tutorials
 
-Edit `/public/content/tutorials.json`:
+#### Legacy Format (tutorials.json)
+
+Edit `/public/content/tutorials.json` for simple tutorial lists.
+
+#### New Detailed Format (tutorials/ directory)
+
+Create individual files in `/public/content/tutorials/` for comprehensive tutorials with screenshots and detailed content:
 
 ```json
 {
-  "title": "Tutorials",
-  "subtitle": "Description",
-  "tutorials": [
+  "title": "01 • Tutorial Name",
+  "summary": "Brief description",
+  "color": "#08f7fe",
+  "difficulty": "beginner",
+  "duration": "30 minutes",
+  "content": [
     {
-      "title": "01 • Tutorial Name",
-      "summary": "Brief description",
-      "color": "#08f7fe",
-      "steps": [
-        "Step 1",
-        "Step 2"
-      ]
+      "type": "paragraph",
+      "text": "Introduction paragraph"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Section Title"
+    },
+    {
+      "type": "code",
+      "language": "typescript",
+      "code": "const example = 'code';"
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/example.png",
+      "alt": "Description of image",
+      "caption": "Image caption"
+    },
+    {
+      "type": "note",
+      "text": "💡 Helpful tip or information"
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ Important warning or caution"
     }
   ]
 }
@@ -209,10 +273,36 @@ After editing JSON files:
 - Validate JSON syntax before committing (use a JSON validator)
 - Keep the same structure when adding new items
 
+## Adding Screenshots and Images
+
+Images should be placed in `/public/content/screenshots/` directory. Reference them in JSON using:
+
+```json
+{
+  "type": "image",
+  "src": "/content/screenshots/your-image.png",
+  "alt": "Descriptive alt text for accessibility",
+  "caption": "Optional caption displayed below the image"
+}
+```
+
+Supported image formats: PNG, JPG, GIF, WebP
+
+### Best Practices for Screenshots
+
+- Use consistent window sizes (800x600 or 1280x720)
+- Highlight important UI elements with colored boxes or arrows
+- Include cursor in screenshots when showing interactions
+- Save in PNG format for crisp UI elements
+- Compress images to keep file sizes reasonable (<500KB per image)
+- Use descriptive filenames (e.g., `vscode-mesh-designer.png`)
+
 ## Troubleshooting
 
 If content doesn't appear:
 1. Check JSON syntax is valid (no trailing commas, proper quotes)
-2. Ensure file is in `/public/content/` directory
-3. Clear browser cache and refresh
-4. Check browser console for errors
+2. Ensure file is in correct directory (`/public/content/`, `/public/content/docs/`, etc.)
+3. Verify image paths start with `/content/` not `/public/content/`
+4. Clear browser cache and refresh
+5. Check browser console for errors
+6. Validate JSON with an online validator

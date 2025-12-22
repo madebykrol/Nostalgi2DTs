@@ -1,0 +1,246 @@
+{
+  "id": "getting-started",
+  "title": "Getting Started",
+  "summary": "Complete guide to installing and setting up your first Nostalgi2D project.",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "This guide will walk you through everything you need to get started with Nostalgi2D, from installing prerequisites to running your first game."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "System Requirements"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Node.js 18.x or higher (LTS recommended)",
+        "npm 11.x or yarn 1.22.x package manager",
+        "TypeScript 5.x (installed with project)",
+        "Modern web browser (Chrome, Firefox, Safari, or Edge)",
+        "Code editor (VS Code recommended for best TypeScript support)"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Installing Node.js"
+    },
+    {
+      "type": "paragraph",
+      "text": "If you don't have Node.js installed, download it from the official website:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "# Check if Node.js is installed\nnode --version\n\n# Check if npm is installed\nnpm --version"
+    },
+    {
+      "type": "note",
+      "text": "💡 We recommend using nvm (Node Version Manager) to manage multiple Node.js versions on your system."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Cloning the Repository"
+    },
+    {
+      "type": "paragraph",
+      "text": "Clone the Nostalgi2D repository from GitHub:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "git clone https://github.com/madebykrol/Nostalgi2DTs.git\ncd Nostalgi2DTs"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Installing Dependencies"
+    },
+    {
+      "type": "paragraph",
+      "text": "The project uses npm workspaces to manage multiple packages. Install all dependencies from the src directory:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "cd src\nnpm install"
+    },
+    {
+      "type": "paragraph",
+      "text": "This will install dependencies for all packages in the monorepo, including the engine, editor, client, and server."
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/npm-install.png",
+      "alt": "Terminal showing npm install progress",
+      "caption": "Installing dependencies with npm"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Running the Editor"
+    },
+    {
+      "type": "paragraph",
+      "text": "Start the visual editor to explore the mesh designer and create assets:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "npm run dev --filter=editor"
+    },
+    {
+      "type": "paragraph",
+      "text": "The editor will be available at http://localhost:5173"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Running the Client"
+    },
+    {
+      "type": "paragraph",
+      "text": "To run the game client for testing:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "npm run dev --filter=client"
+    },
+    {
+      "type": "paragraph",
+      "text": "The client will be available at http://localhost:5174"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Running the Server"
+    },
+    {
+      "type": "paragraph",
+      "text": "For multiplayer development, start the authoritative server:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "npm run dev --filter=server"
+    },
+    {
+      "type": "paragraph",
+      "text": "The server will listen on port 3000 by default."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Project Structure"
+    },
+    {
+      "type": "paragraph",
+      "text": "Understanding the project layout:"
+    },
+    {
+      "type": "code",
+      "language": "text",
+      "code": "Nostalgi2DTs/\n├── src/\n│   ├── apps/\n│   │   ├── editor/      # Visual mesh designer and tools\n│   │   ├── client/      # Game client runtime\n│   │   ├── server/      # Authoritative server\n│   │   └── projectsite/ # Documentation website\n│   ├── packages/\n│   │   └── engine/      # Core engine package\n│   └── package.json     # Workspace configuration\n├── docs/                # Markdown documentation\n└── README.md"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating a New Game Project"
+    },
+    {
+      "type": "paragraph",
+      "text": "To start a new game outside the monorepo:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "mkdir my-nostalgi2d-game\ncd my-nostalgi2d-game\nnpm init -y\nnpm install @nostalgi2d/engine\nnpm install -D typescript vite\nnpx tsc --init"
+    },
+    {
+      "type": "paragraph",
+      "text": "Create a simple index.html and src/main.ts to get started. See the Hello World tutorial for a complete example."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "VS Code Setup"
+    },
+    {
+      "type": "paragraph",
+      "text": "For the best development experience, install these VS Code extensions:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "ESLint - JavaScript and TypeScript linting",
+        "Prettier - Code formatter",
+        "TypeScript Vue Plugin - Enhanced TypeScript support",
+        "Error Lens - Inline error highlighting"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/vscode-extensions.png",
+      "alt": "VS Code extensions panel showing recommended extensions",
+      "caption": "Recommended VS Code extensions for Nostalgi2D development"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Building for Production"
+    },
+    {
+      "type": "paragraph",
+      "text": "To build your game for production deployment:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "npm run build --filter=client\n\n# Output will be in apps/client/dist/"
+    },
+    {
+      "type": "paragraph",
+      "text": "The build output can be deployed to any static hosting service (Netlify, Vercel, GitHub Pages, etc.)."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Troubleshooting"
+    },
+    {
+      "type": "paragraph",
+      "text": "Common issues and solutions:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Port already in use: Change the port in vite.config.ts or kill the process using the port",
+        "Module not found: Run npm install again from the src directory",
+        "TypeScript errors: Ensure you're using TypeScript 5.x or higher",
+        "Build fails: Clear node_modules and reinstall: rm -rf node_modules && npm install"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Next Steps"
+    },
+    {
+      "type": "paragraph",
+      "text": "Now that your environment is set up:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Follow the Editor Basics tutorial to learn the visual tools",
+        "Read the Hello World tutorial to create your first game code",
+        "Explore the API Reference for detailed documentation",
+        "Check out the example projects in the repository"
+      ]
+    }
+  ]
+}

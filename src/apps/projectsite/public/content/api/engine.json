@@ -1,0 +1,148 @@
+{
+  "name": "Engine",
+  "description": "The main game engine class that manages the game loop, timing, systems, and overall game execution.",
+  "color": "#08f7fe",
+  "example": "import { Engine } from '@nostalgi2d/engine';\n\nconst engine = new Engine({\n  targetFPS: 60,\n  fixedTimestep: 1000 / 60\n});\n\nengine.start();",
+  "properties": [
+    {
+      "name": "isRunning",
+      "type": "boolean",
+      "description": "Indicates whether the game loop is currently running",
+      "readonly": true
+    },
+    {
+      "name": "currentFPS",
+      "type": "number",
+      "description": "The actual frames per second being achieved",
+      "readonly": true
+    },
+    {
+      "name": "deltaTime",
+      "type": "number",
+      "description": "Time elapsed since the last frame in milliseconds",
+      "readonly": true
+    },
+    {
+      "name": "totalTime",
+      "type": "number",
+      "description": "Total time elapsed since engine start in milliseconds",
+      "readonly": true
+    }
+  ],
+  "methods": [
+    {
+      "name": "start",
+      "description": "Starts the game loop and begins running the game",
+      "signature": "start(): void",
+      "parameters": [],
+      "returns": "void",
+      "example": "engine.start();"
+    },
+    {
+      "name": "stop",
+      "description": "Stops the game loop and pauses game execution",
+      "signature": "stop(): void",
+      "parameters": [],
+      "returns": "void",
+      "example": "engine.stop();"
+    },
+    {
+      "name": "setWorld",
+      "description": "Sets the World instance that manages entities and components",
+      "signature": "setWorld(world: World): void",
+      "parameters": [
+        {
+          "name": "world",
+          "type": "World",
+          "description": "The World instance to use for entity management"
+        }
+      ],
+      "returns": "void",
+      "example": "const world = new World();\nengine.setWorld(world);"
+    },
+    {
+      "name": "setRenderer",
+      "description": "Sets the renderer to use for drawing the game",
+      "signature": "setRenderer(renderer: IRenderer): void",
+      "parameters": [
+        {
+          "name": "renderer",
+          "type": "IRenderer",
+          "description": "A renderer implementation (PixiRenderer, CanvasRenderer, etc.)"
+        }
+      ],
+      "returns": "void",
+      "example": "const renderer = new PixiRenderer(canvas);\nengine.setRenderer(renderer);"
+    },
+    {
+      "name": "setInputManager",
+      "description": "Sets the input manager for handling keyboard, mouse, and gamepad input",
+      "signature": "setInputManager(inputManager: InputManager): void",
+      "parameters": [
+        {
+          "name": "inputManager",
+          "type": "InputManager",
+          "description": "The InputManager instance to use"
+        }
+      ],
+      "returns": "void",
+      "example": "const input = new InputManager();\nengine.setInputManager(input);"
+    },
+    {
+      "name": "onUpdate",
+      "description": "Registers a callback to be called every frame for game logic updates",
+      "signature": "onUpdate(callback: (deltaTime: number) => void): void",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "(deltaTime: number) => void",
+          "description": "Function called each frame with delta time in milliseconds"
+        }
+      ],
+      "returns": "void",
+      "example": "engine.onUpdate((dt) => {\n  // Update game logic\n  player.update(dt);\n});"
+    },
+    {
+      "name": "onRender",
+      "description": "Registers a callback to be called every frame for rendering",
+      "signature": "onRender(callback: () => void): void",
+      "parameters": [
+        {
+          "name": "callback",
+          "type": "() => void",
+          "description": "Function called each frame to render the game"
+        }
+      ],
+      "returns": "void",
+      "example": "engine.onRender(() => {\n  renderer.clear();\n  world.render(renderer);\n  renderer.present();\n});"
+    },
+    {
+      "name": "getSystem",
+      "description": "Retrieves a system by its type",
+      "signature": "getSystem<T extends System>(systemType: Constructor<T>): T | null",
+      "parameters": [
+        {
+          "name": "systemType",
+          "type": "Constructor<T>",
+          "description": "The class/constructor of the system to retrieve"
+        }
+      ],
+      "returns": "T | null - The system instance or null if not found",
+      "example": "const physicsSystem = engine.getSystem(PhysicsSystem);\nif (physicsSystem) {\n  physicsSystem.setGravity({ x: 0, y: 9.8 });\n}"
+    },
+    {
+      "name": "addSystem",
+      "description": "Adds a system to the engine",
+      "signature": "addSystem(system: System): void",
+      "parameters": [
+        {
+          "name": "system",
+          "type": "System",
+          "description": "The system instance to add"
+        }
+      ],
+      "returns": "void",
+      "example": "const customSystem = new MyGameSystem();\nengine.addSystem(customSystem);"
+    }
+  ]
+}

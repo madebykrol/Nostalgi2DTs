@@ -1,0 +1,159 @@
+{
+  "title": "00 • Editor Basics",
+  "summary": "Get familiar with the visual editor, create your first mesh, and explore the interface.",
+  "color": "#08f7fe",
+  "difficulty": "beginner",
+  "duration": "15 minutes",
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "The Nostalgi2D editor is a web-based visual tool that helps you create game assets, design meshes, and manage your project without writing code. This tutorial will introduce you to the editor interface and basic workflows."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Starting the Editor"
+    },
+    {
+      "type": "paragraph",
+      "text": "To launch the editor, navigate to your project directory and run the development server:"
+    },
+    {
+      "type": "code",
+      "language": "bash",
+      "code": "cd Nostalgi2DTs/src\nnpm install\nnpm run dev --filter=editor"
+    },
+    {
+      "type": "paragraph",
+      "text": "The editor will be available at http://localhost:5173"
+    },
+    {
+      "type": "note",
+      "text": "💡 The editor runs entirely in your browser and uses local storage to save your work."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Editor Interface Overview"
+    },
+    {
+      "type": "paragraph",
+      "text": "The editor interface consists of several key panels:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Assets Panel (left): Browse and manage meshes, components, and other assets",
+        "Canvas Area (center): Visual workspace for designing meshes and scenes",
+        "Properties Panel (right): Edit properties of selected assets",
+        "Toolbar (top): Quick access to common tools and actions"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/editor-overview.png",
+      "alt": "Editor interface showing the main panels and workspace",
+      "caption": "The Nostalgi2D editor interface with labeled panels"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Creating Your First Mesh"
+    },
+    {
+      "type": "paragraph",
+      "text": "Meshes are the building blocks of your game's visual elements. Let's create a simple triangle mesh:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Open the Assets panel on the left side of the editor",
+        "Click the 'New Mesh' button at the top of the panel",
+        "Enter a name for your mesh (e.g., 'PlayerTriangle')",
+        "The mesh designer canvas will open in the center"
+      ]
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/create-mesh-button.png",
+      "alt": "New Mesh button in the Assets panel",
+      "caption": "Click 'New Mesh' to start creating a new mesh asset"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Using the Mesh Designer"
+    },
+    {
+      "type": "paragraph",
+      "text": "The mesh designer provides a canvas where you can add and arrange vertices to create custom shapes:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Click on the canvas to add vertices (points)",
+        "Drag vertices to reposition them",
+        "Right-click on a vertex to remove it",
+        "Vertices must be added in counter-clockwise order for proper rendering"
+      ]
+    },
+    {
+      "type": "warning",
+      "text": "⚠️ Important: Meshes must be convex polygons. Concave shapes will not render correctly."
+    },
+    {
+      "type": "paragraph",
+      "text": "For a triangle, add three vertices in counter-clockwise order. The mesh designer will automatically connect them and show a preview with a fill color."
+    },
+    {
+      "type": "image",
+      "src": "/content/screenshots/mesh-designer-canvas.png",
+      "alt": "Mesh designer canvas showing a triangle with three vertices",
+      "caption": "Creating a triangle mesh by placing three vertices"
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Saving and Managing Meshes"
+    },
+    {
+      "type": "paragraph",
+      "text": "Once you're happy with your mesh, save it to the asset library:"
+    },
+    {
+      "type": "list",
+      "items": [
+        "Click the 'Save' button in the mesh designer toolbar",
+        "Your mesh will appear in the Assets panel",
+        "You can edit it later by clicking on it in the Assets panel",
+        "Meshes are stored as JSON and can be exported for use in your game"
+      ]
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Exploring Editor Plugins"
+    },
+    {
+      "type": "paragraph",
+      "text": "The editor can be extended with plugins that add custom panels, tools, and functionality. Plugins are loaded automatically when the editor starts."
+    },
+    {
+      "type": "paragraph",
+      "text": "You can view available plugins and their panels in the View menu. Custom panels can be docked to any side of the editor workspace."
+    },
+    {
+      "type": "note",
+      "text": "💡 Learn how to create your own editor plugins in the 'Editor Plugins' tutorial."
+    },
+    {
+      "type": "heading",
+      "level": 3,
+      "text": "Next Steps"
+    },
+    {
+      "type": "paragraph",
+      "text": "Now that you understand the editor basics, you're ready to dive deeper into mesh design and component creation. Continue to the next tutorial to master the mesh component designer workflow."
+    }
+  ]
+}

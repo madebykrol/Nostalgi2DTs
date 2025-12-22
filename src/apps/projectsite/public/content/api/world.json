@@ -1,0 +1,143 @@
+{
+  "name": "World",
+  "description": "Manages entities (actors), components, and provides query capabilities for the Entity Component System architecture.",
+  "color": "#fe53bb",
+  "example": "import { World } from '@nostalgi2d/engine';\n\nconst world = new World();\nworld.addActor(player);\n\nconst enemies = world.query({ \n  has: [TransformComponent, EnemyComponent] \n});",
+  "properties": [
+    {
+      "name": "actors",
+      "type": "Map<string, Actor>",
+      "description": "Collection of all actors in the world, indexed by their unique ID",
+      "readonly": true
+    },
+    {
+      "name": "actorCount",
+      "type": "number",
+      "description": "Total number of actors currently in the world",
+      "readonly": true
+    }
+  ],
+  "methods": [
+    {
+      "name": "addActor",
+      "description": "Adds an actor to the world",
+      "signature": "addActor(actor: Actor): void",
+      "parameters": [
+        {
+          "name": "actor",
+          "type": "Actor",
+          "description": "The actor instance to add to the world"
+        }
+      ],
+      "returns": "void",
+      "example": "const player = new Actor('player');\nworld.addActor(player);"
+    },
+    {
+      "name": "removeActor",
+      "description": "Removes an actor from the world",
+      "signature": "removeActor(actorId: string): boolean",
+      "parameters": [
+        {
+          "name": "actorId",
+          "type": "string",
+          "description": "The unique ID of the actor to remove"
+        }
+      ],
+      "returns": "boolean - true if the actor was removed, false if not found",
+      "example": "world.removeActor(player.id);"
+    },
+    {
+      "name": "getActor",
+      "description": "Retrieves an actor by its ID",
+      "signature": "getActor(actorId: string): Actor | undefined",
+      "parameters": [
+        {
+          "name": "actorId",
+          "type": "string",
+          "description": "The unique ID of the actor to retrieve"
+        }
+      ],
+      "returns": "Actor | undefined - The actor if found, undefined otherwise",
+      "example": "const actor = world.getActor('player-001');\nif (actor) {\n  console.log('Found player:', actor.name);\n}"
+    },
+    {
+      "name": "query",
+      "description": "Queries the world for actors matching specific component criteria",
+      "signature": "query(criteria: QueryCriteria): Actor[]",
+      "parameters": [
+        {
+          "name": "criteria",
+          "type": "QueryCriteria",
+          "description": "Object specifying which components to match (has, hasAny, without)",
+          "optional": false
+        }
+      ],
+      "returns": "Actor[] - Array of actors matching the criteria",
+      "example": "// Find all actors with transform and sprite components\nconst visibleActors = world.query({\n  has: [TransformComponent, SpriteComponent]\n});\n\n// Find actors with either physics or kinematic\nconst movingActors = world.query({\n  hasAny: [PhysicsComponent, KinematicComponent]\n});\n\n// Find sprites without physics\nconst staticSprites = world.query({\n  has: [SpriteComponent],\n  without: [PhysicsComponent]\n});"
+    },
+    {
+      "name": "clear",
+      "description": "Removes all actors from the world",
+      "signature": "clear(): void",
+      "parameters": [],
+      "returns": "void",
+      "example": "// Clear the world when loading a new level\nworld.clear();\nloadLevel('level-2');"
+    },
+    {
+      "name": "update",
+      "description": "Updates all systems and actors in the world",
+      "signature": "update(deltaTime: number): void",
+      "parameters": [
+        {
+          "name": "deltaTime",
+          "type": "number",
+          "description": "Time elapsed since last update in milliseconds"
+        }
+      ],
+      "returns": "void",
+      "example": "// Called automatically by the engine\nengine.onUpdate((dt) => {\n  world.update(dt);\n});"
+    },
+    {
+      "name": "render",
+      "description": "Renders all visible actors in the world",
+      "signature": "render(renderer: IRenderer): void",
+      "parameters": [
+        {
+          "name": "renderer",
+          "type": "IRenderer",
+          "description": "The renderer to use for drawing"
+        }
+      ],
+      "returns": "void",
+      "example": "// Called automatically by the engine\nengine.onRender(() => {\n  world.render(renderer);\n});"
+    },
+    {
+      "name": "findActorsByName",
+      "description": "Finds all actors with a specific name",
+      "signature": "findActorsByName(name: string): Actor[]",
+      "parameters": [
+        {
+          "name": "name",
+          "type": "string",
+          "description": "The name to search for"
+        }
+      ],
+      "returns": "Actor[] - Array of actors with matching name",
+      "example": "// Find all enemy actors\nconst enemies = world.findActorsByName('enemy');\nenemies.forEach(enemy => {\n  enemy.takeDamage(10);\n});"
+    },
+    {
+      "name": "findActorsByTag",
+      "description": "Finds all actors with a specific tag",
+      "signature": "findActorsByTag(tag: string): Actor[]",
+      "parameters": [
+        {
+          "name": "tag",
+          "type": "string",
+          "description": "The tag to search for"
+        }
+      ],
+      "returns": "Actor[] - Array of actors with the specified tag",
+      "example": "// Mark actors as 'player-owned'\nplayer.addTag('player-owned');\nplayerBullet.addTag('player-owned');\n\n// Find all player-owned entities\nconst playerEntities = world.findActorsByTag('player-owned');"
+    }
+  ]
+}
