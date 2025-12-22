@@ -1,76 +1,101 @@
 {
   "title": "Tutorials",
-  "subtitle": "Follow step-by-step guides to build your first prototype.",
+  "subtitle": "Learn by building - from your first mesh to multiplayer games.",
   "tutorials": [
     {
-      "title": "00 • Hello World",
-      "summary": "Create a window, draw a sprite, and wire a basic update loop.",
+      "title": "00 • Editor Basics",
+      "summary": "Get familiar with the visual editor, create your first mesh, and explore the interface.",
       "color": "#08f7fe",
+      "steps": [
+        "Launch the editor and navigate the interface",
+        "Open the Meshes panel and create a new mesh asset",
+        "Use the mesh designer to add and arrange vertices",
+        "Save your mesh and view it in the asset list",
+        "Learn about editor panels and plugin system"
+      ]
+    },
+    {
+      "title": "01 • Mesh Component Designer",
+      "summary": "Master the mesh designer workflow to create custom 2D shapes for your game.",
+      "color": "#fe53bb",
+      "steps": [
+        "Understand the mesh designer canvas and controls",
+        "Create convex polygons with proper vertex winding",
+        "Add metadata like meshId and materialId",
+        "Test meshes by attaching them to actors",
+        "Export and integrate meshes into your game runtime"
+      ]
+    },
+    {
+      "title": "02 • Hello World",
+      "summary": "Write your first TypeScript game code with entities, components, and rendering.",
+      "color": "#9d4edd",
       "steps": [
         "Set up your project structure",
-        "Initialize the engine",
-        "Load your first sprite",
-        "Implement the game loop",
-        "Render to the screen"
+        "Initialize the engine and create a scene",
+        "Create an actor with a sprite component",
+        "Implement the game loop with update logic",
+        "Render to the screen and handle input"
       ]
     },
     {
-      "title": "01 • Input & Physics",
-      "summary": "Capture WASD, apply forces, and collide with the world.",
-      "color": "#fe53bb",
-      "steps": [
-        "Set up input handlers",
-        "Create a player entity with physics",
-        "Apply movement forces",
-        "Add collision boundaries",
-        "Handle collision responses"
-      ]
-    },
-    {
-      "title": "02 • Multiplayer",
-      "summary": "Spin up an authoritative server and replicate player state.",
-      "color": "#9d4edd",
-      "steps": [
-        "Configure the server",
-        "Set up client connection",
-        "Implement state replication",
-        "Add client prediction",
-        "Test with multiple clients"
-      ]
-    },
-    {
-      "title": "03 • Advanced Rendering",
-      "summary": "Implement particle effects, lighting, and post-processing.",
+      "title": "03 • Input & Physics",
+      "summary": "Capture keyboard input, apply physics forces, and handle collisions.",
       "color": "#08f7fe",
       "steps": [
-        "Create a particle system",
-        "Add dynamic lighting",
-        "Implement post-processing effects",
-        "Optimize rendering performance"
+        "Set up the input manager for WASD controls",
+        "Create a player entity with physics component",
+        "Apply movement forces based on input",
+        "Add collision boundaries and detect impacts",
+        "Implement collision response logic"
       ]
     },
     {
-      "title": "04 • UI & Menus",
-      "summary": "Build interactive menus, HUD elements, and dialog systems.",
+      "title": "04 • Editor Plugins",
+      "summary": "Extend the editor by creating custom panels, tools, and UI components.",
       "color": "#fe53bb",
       "steps": [
-        "Design the UI architecture",
-        "Create menu components",
-        "Implement HUD elements",
-        "Add dialog system",
-        "Handle UI input"
+        "Learn the EditorUIPlugin interface and activation",
+        "Create a custom panel with React components",
+        "Use IoC dependency injection to access the editor",
+        "Register context menu items for scene interactions",
+        "Build reusable editor tools for your workflow"
       ]
     },
     {
-      "title": "05 • Optimization",
-      "summary": "Profile your game and optimize for performance.",
+      "title": "05 • Actor Synchronization",
+      "summary": "Understand the input-based replication protocol for multiplayer games.",
       "color": "#9d4edd",
       "steps": [
-        "Set up profiling tools",
-        "Identify bottlenecks",
-        "Optimize rendering",
-        "Reduce memory allocations",
-        "Test on target hardware"
+        "Learn about client-owned vs server-owned actors",
+        "Implement input capture on the client",
+        "Set up the ServerReplicationManager to validate inputs",
+        "Configure client prediction and reconciliation",
+        "Test synchronization with multiple clients"
+      ]
+    },
+    {
+      "title": "06 • Multiplayer Game",
+      "summary": "Build a complete multiplayer game with authoritative server and client prediction.",
+      "color": "#08f7fe",
+      "steps": [
+        "Configure WebSocket server with the engine",
+        "Implement client connection and authentication",
+        "Send input batches from client to server",
+        "Broadcast actor state updates at 60Hz",
+        "Test with artificial lag and multiple players"
+      ]
+    },
+    {
+      "title": "07 • Custom Rendering",
+      "summary": "Choose and configure rendering backends - PixiJS, Canvas2D, or Three.js.",
+      "color": "#fe53bb",
+      "steps": [
+        "Understand the renderer adapter pattern",
+        "Set up PixiJS for high-performance WebGL rendering",
+        "Implement custom shaders and effects",
+        "Switch between rendering backends",
+        "Optimize render performance with culling"
       ]
     }
   ]

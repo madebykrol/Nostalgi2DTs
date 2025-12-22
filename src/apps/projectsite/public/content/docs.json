@@ -8,11 +8,11 @@
       "content": [
         {
           "type": "paragraph",
-          "text": "Nostalgi2D is a TypeScript-first 2D game engine designed for building multiplayer games with an authoritative server architecture."
+          "text": "Nostalgi2D is a TypeScript-first 2D game engine designed for building multiplayer games with an authoritative server architecture. It combines a visual editor with powerful coding APIs to make game development accessible and productive."
         },
         {
           "type": "paragraph",
-          "text": "The engine provides a modular approach where you can opt-in to the features you need: physics, rendering, networking, and input handling."
+          "text": "The engine provides both a graphical editor for visual tasks and clean TypeScript APIs for game logic. You can choose the approach that fits your workflow — use the editor for asset creation and scene setup, then write code for gameplay mechanics."
         },
         {
           "type": "heading",
@@ -22,10 +22,11 @@
         {
           "type": "list",
           "items": [
+            "Visual Editor with mesh designer and plugin system",
             "Entity Component System (ECS) architecture",
-            "Deterministic game loop",
-            "Authoritative server model",
-            "Client prediction and reconciliation"
+            "Deterministic game loop for consistent simulation",
+            "Authoritative server model with input-based replication",
+            "Client prediction and state reconciliation"
           ]
         }
       ]
@@ -37,7 +38,7 @@
       "content": [
         {
           "type": "paragraph",
-          "text": "Getting started with Nostalgi2D is straightforward. Follow these steps to set up your development environment."
+          "text": "Getting started with Nostalgi2D is straightforward. The repository includes multiple applications: a visual editor, client runtime, server, and project website."
         },
         {
           "type": "heading",
@@ -48,7 +49,7 @@
           "type": "list",
           "items": [
             "Node.js 18.x or higher",
-            "npm or yarn package manager",
+            "npm 11.x package manager",
             "TypeScript 5.x"
           ]
         },
@@ -60,7 +61,64 @@
         {
           "type": "code",
           "language": "bash",
-          "code": "# Clone the repository\ngit clone https://github.com/madebykrol/Nostalgi2DTs\n\n# Install dependencies\nnpm install\n\n# Start development server\nnpm run dev"
+          "code": "# Clone the repository\ngit clone https://github.com/madebykrol/Nostalgi2DTs\n\n# Navigate to source directory\ncd Nostalgi2DTs/src\n\n# Install dependencies\nnpm install\n\n# Start the editor\nnpm run dev\n\n# Or start a specific app\nnpm run dev --filter=editor\nnpm run dev --filter=client\nnpm run dev --filter=server"
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "What's Included"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Visual Editor at http://localhost:5173 (editor app)",
+            "Game Client runtime for testing",
+            "Authoritative Server with networking",
+            "Engine packages and core systems"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "editor",
+      "title": "Visual Editor",
+      "summary": "Mesh designer, component editor, and plugin system.",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "The Nostalgi2D editor provides a graphical interface for creating game assets and managing your project. It's built as a web application with extensible plugin architecture."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Mesh Component Designer"
+        },
+        {
+          "type": "paragraph",
+          "text": "Create custom 2D mesh shapes visually without writing code. The mesh designer lets you add, drag, and remove vertices on a canvas. Meshes are serialized to JSON and can be attached to actors in your game."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Editor Plugin System"
+        },
+        {
+          "type": "paragraph",
+          "text": "Extend the editor with custom panels, context menus, and modals. Plugins use React components and have access to the editor's IoC container for dependency injection."
+        },
+        {
+          "type": "code",
+          "language": "typescript",
+          "code": "// Example plugin registration\nconst myPlugin: EditorUIPlugin = {\n  id: 'my-plugin',\n  activate: ({ panels, editor }) => {\n    return panels.register({\n      id: 'my-panel',\n      title: 'My Tool',\n      location: 'left',\n      render: () => <MyComponent />\n    });\n  }\n};"
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Component Asset Storage"
+        },
+        {
+          "type": "paragraph",
+          "text": "The editor manages component assets through a storage system. Assets can be saved, loaded, and exported as JSON for use in your game runtime."
         }
       ]
     },
@@ -96,29 +154,43 @@
     {
       "id": "netcode",
       "title": "Networking",
-      "summary": "Authoritative server, replication, and prediction.",
+      "summary": "Authoritative server, input replication, and prediction.",
       "content": [
         {
           "type": "paragraph",
-          "text": "Nostalgi2D provides built-in networking capabilities for multiplayer games."
+          "text": "Nostalgi2D uses an input-based replication protocol for multiplayer games. The server is authoritative and clients send inputs rather than position updates."
         },
         {
           "type": "heading",
           "level": 3,
-          "text": "Authoritative Server"
+          "text": "Input-Based Replication"
         },
         {
           "type": "paragraph",
-          "text": "The server has full control over the game state, preventing cheating and ensuring fair gameplay."
+          "text": "Clients send their input commands (keyboard, mouse) to the server. The server validates and replays these inputs deterministically to compute the authoritative game state."
+        },
+        {
+          "type": "code",
+          "language": "typescript",
+          "code": "// Client sends input\ninterface ClientInputMessage {\n  type: 'client:input',\n  actorId: string,\n  sequence: number,\n  inputs: InputState[]\n}\n\n// Server broadcasts state\ninterface ActorUpdateMessage {\n  type: 'actor:update',\n  updates: ActorState[]\n}"
         },
         {
           "type": "heading",
           "level": 3,
-          "text": "Client Prediction"
+          "text": "Client Prediction & Reconciliation"
         },
         {
           "type": "paragraph",
-          "text": "Client-side prediction provides immediate feedback to players while maintaining server authority."
+          "text": "Clients predict their own actor's movement immediately for responsive controls. When receiving authoritative state from the server, clients reconcile by replaying inputs from their history if the state diverged."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Actor Synchronization Protocol"
+        },
+        {
+          "type": "paragraph",
+          "text": "The protocol defines message types for actor spawn, despawn, ownership, and state updates. It includes visual diagrams and implementation examples in the documentation."
         }
       ]
     },
