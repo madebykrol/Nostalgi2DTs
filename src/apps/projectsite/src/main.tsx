@@ -448,7 +448,8 @@ function ContentBlockRenderer({ block }: { block: any }) {
       <figure className="my-4">
         <img 
           src={block.src} 
-          alt={block.alt || ""} 
+          alt={block.alt || "Screenshot"} 
+          loading="lazy"
           className="rounded-xl border border-white/10 max-w-full h-auto"
         />
         {block.caption && (

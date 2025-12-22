@@ -28,16 +28,22 @@ function validateJSON(filePath) {
 }
 
 function scanDirectory(dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
     
-    if (entry.isDirectory()) {
-      scanDirectory(fullPath);
-    } else if (entry.name.endsWith('.json')) {
-      validateJSON(fullPath);
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      
+      if (entry.isDirectory()) {
+        scanDirectory(fullPath);
+      } else if (entry.name.endsWith('.json')) {
+        validateJSON(fullPath);
+      }
     }
+  } catch (error) {
+    console.error('✗ Error reading directory:', path.relative(contentDir, dir));
+    console.error('  Error:', error.message);
+    errors++;
   }
 }
 
