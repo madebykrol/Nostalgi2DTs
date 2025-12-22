@@ -60,7 +60,6 @@ type ActorPalettePanelBaseProps = {
 
 const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBaseProps) => {
   const [actorEntries, setActorEntries] = useState<ActorRegistryEntry[]>(() => discoverActorTypes(engine));
-  const [isDragging, setIsDragging] = useState(false);
   const dragPreviewRef = useRef<HTMLDivElement | null>(null);
   const activeHandlersRef = useRef<{
     move: (e: PointerEvent) => void;
@@ -100,8 +99,6 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
     
     const button = event.currentTarget;
     button.setPointerCapture(event.pointerId);
-    
-    setIsDragging(true);
 
     // Create a drag preview element
     const preview = document.createElement("div");
@@ -151,7 +148,6 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
         dragPreviewRef.current.remove();
         dragPreviewRef.current = null;
       }
-      setIsDragging(false);
     };
 
     // Store handlers in ref for cleanup
