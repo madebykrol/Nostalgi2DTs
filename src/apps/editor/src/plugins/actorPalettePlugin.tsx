@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Actor, Editor, Engine, Vector2 } from "@repo/engine";
 import { EditorUIPlugin } from "@repo/engine";
 import { withInjection } from "../ioc/ioc";
@@ -9,6 +9,9 @@ type ActorRegistryEntry = {
 };
 
 const ACTOR_MIME_TYPE = "application/x-editor-actor";
+
+// Z-index for drag preview overlay
+const DRAG_PREVIEW_Z_INDEX = 9999;
 
 const isActorConstructor = (ctor: unknown): ctor is new () => Actor => {
   if (typeof ctor !== "function") {
@@ -57,12 +60,106 @@ type ActorPalettePanelBaseProps = {
 
 const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBaseProps) => {
   const [actorEntries, setActorEntries] = useState<ActorRegistryEntry[]>(() => discoverActorTypes(engine));
+  const dragPreviewRef = useRef<HTMLDivElement | null>(null);
+  const activeHandlersRef = useRef<{
+    move: (e: PointerEvent) => void;
+    up: (e: PointerEvent) => void;
+  } | null>(null);
 
   useEffect(() => {
     setActorEntries(discoverActorTypes(engine));
   }, [engine]);
 
+  // Cleanup handlers on unmount
+  useEffect(() => {
+    return () => {
+      if (activeHandlersRef.current) {
+        document.removeEventListener("pointermove", activeHandlersRef.current.move);
+        document.removeEventListener("pointerup", activeHandlersRef.current.up);
+        document.removeEventListener("pointercancel", activeHandlersRef.current.up);
+      }
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.remove();
+        dragPreviewRef.current = null;
+      }
+    };
+  }, []);
+
   const entries = useMemo(() => actorEntries, [actorEntries]);
+
+  const handlePointerDown = (entry: ActorRegistryEntry) => (event: React.PointerEvent<HTMLButtonElement>) => {
+    // For mouse, let the native drag-and-drop handle it
+    if (event.pointerType === "mouse") {
+      return;
+    }
+
+    // For touch devices, set up our custom drag handling
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const button = event.currentTarget;
+    button.setPointerCapture(event.pointerId);
+
+    // Create a drag preview element
+    const preview = document.createElement("div");
+    preview.className = "fixed pointer-events-none px-3 py-2 bg-cyan-400/20 border border-cyan-400/50 rounded text-xs text-white shadow-lg";
+    preview.style.left = `${event.clientX}px`;
+    preview.style.top = `${event.clientY}px`;
+    preview.style.transform = "translate(-50%, -50%)";
+    preview.style.zIndex = String(DRAG_PREVIEW_Z_INDEX);
+    preview.textContent = entry.name;
+    document.body.appendChild(preview);
+    dragPreviewRef.current = preview;
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.style.left = `${moveEvent.clientX}px`;
+        dragPreviewRef.current.style.top = `${moveEvent.clientY}px`;
+      }
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      button.releasePointerCapture(upEvent.pointerId);
+      
+      // Clean up event listeners
+      if (activeHandlersRef.current) {
+        document.removeEventListener("pointermove", activeHandlersRef.current.move);
+        document.removeEventListener("pointerup", activeHandlersRef.current.up);
+        document.removeEventListener("pointercancel", activeHandlersRef.current.up);
+        activeHandlersRef.current = null;
+      }
+      
+      // Dispatch a custom event at the drop location
+      const dropTarget = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+      if (dropTarget) {
+        const customEvent = new CustomEvent("actorpalette:touchdrop", {
+          bubbles: true,
+          detail: {
+            actorTypeId: entry.id,
+            clientX: upEvent.clientX,
+            clientY: upEvent.clientY,
+          },
+        });
+        dropTarget.dispatchEvent(customEvent);
+      }
+
+      // Clean up drag preview
+      if (dragPreviewRef.current) {
+        dragPreviewRef.current.remove();
+        dragPreviewRef.current = null;
+      }
+    };
+
+    // Store handlers in ref for cleanup
+    activeHandlersRef.current = {
+      move: handlePointerMove,
+      up: handlePointerUp,
+    };
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+  };
 
   if (entries.length === 0) {
     return <div className="text-xs text-white/60">No spawnable actors registered.</div>;
@@ -77,7 +174,7 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
           <li key={entry.id}>
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2 text-left text-xs text-white transition hover:bg-white/10"
+              className="flex w-full items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2 text-left text-xs text-white transition hover:bg-white/10 touch-none"
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = "copy";
@@ -86,6 +183,7 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
                   JSON.stringify({ type: entry.id })
                 );
               }}
+              onPointerDown={handlePointerDown(entry)}
             >
               <span>{entry.name}</span>
             </button>
