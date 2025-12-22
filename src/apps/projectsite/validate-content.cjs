@@ -2,7 +2,7 @@
 
 /**
  * Validates all JSON content files in the projectsite
- * Run with: node validate-content.js
+ * Run with: node validate-content.cjs
  */
 
 const fs = require('fs');
