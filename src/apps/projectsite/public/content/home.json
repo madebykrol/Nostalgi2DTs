@@ -1,17 +1,17 @@
 {
   "hero": {
-    "title": "Build bold 2D worlds with Nostalgi2D",
-    "subtitle": "A TypeScript-first, multiplayer-ready 2D engine for speed, clarity and creative flow. From prototypes to persistent worlds — ship faster with an authoritative server model and ergonomic APIs.",
+    "title": "Build 2D games with speed and clarity",
+    "subtitle": "A developer-friendly TypeScript engine with a visual editor, multiplayer networking, and clean APIs. From your first sprite to production-ready games — Nostalgi2D makes game development accessible and enjoyable.",
     "cta": [
       {
-        "label": "Read the Docs",
+        "label": "Get Started",
         "icon": "Rocket",
         "action": "navigate",
         "target": "docs",
         "style": "primary"
       },
       {
-        "label": "Quickstart Tutorial",
+        "label": "View Tutorials",
         "action": "navigate",
         "target": "tutorials",
         "style": "ghost"
@@ -20,41 +20,41 @@
   },
   "features": [
     {
-      "title": "Performance",
-      "description": "Deterministic loops, zero-GC hot paths, and smart culling keep your frame times razor sharp.",
+      "title": "Visual Editor",
+      "description": "Design meshes, configure scenes, and build plugins with a powerful in-browser editor. No command-line required to get started.",
       "icon": "Cpu",
       "color": "#08f7fe"
     },
     {
-      "title": "Modularity",
-      "description": "Composable systems with clean boundaries — opt-in physics, rendering, input, and netcode modules.",
-      "icon": "Rocket",
+      "title": "TypeScript-First",
+      "description": "Full type safety from game logic to networking. Write code with confidence using modern TypeScript features and comprehensive APIs.",
+      "icon": "Code2",
       "color": "#fe53bb"
     },
     {
-      "title": "Multiplayer",
-      "description": "Authoritative server, client prediction, and rollback-ready state replication out of the box.",
+      "title": "Multiplayer Ready",
+      "description": "Built-in authoritative server with input-based replication, client prediction, and state reconciliation. Network your game from day one.",
       "icon": "Network",
       "color": "#9d4edd"
     }
   ],
   "pitch": {
-    "title": "Why Nostalgi2D?",
+    "title": "Why Developers Love Nostalgi2D",
     "columns": [
       [
-        "TypeScript-first APIs with strong typing across server and client.",
-        "Pluggable ECS that stays out of your way until you need it.",
-        "Asset-light build pipeline; hot reload where it matters."
+        "Visual mesh designer and component editor — create assets without touching code.",
+        "Plugin system for extending the editor with custom panels and tools.",
+        "Hot reload during development for rapid iteration and testing."
       ],
       [
-        "Authoritative netcode with prediction hooks and reconciliation helpers.",
-        "Deterministic simulation options for competitive modes.",
-        "Headless server support; spin up bots for load and QA."
+        "Comprehensive tutorials covering both editor workflows and coding patterns.",
+        "Well-documented actor synchronization protocol with examples.",
+        "Step-by-step guides from Hello World to multiplayer games."
       ],
       [
-        "Batteries-included docs, tutorials, and API references.",
-        "Modular: pick rendering (Pixi/Three/Canvas) without rewiring core.",
-        "Friendly ergonomics with escape hatches for experts."
+        "Clean, modular architecture with pluggable rendering backends (Pixi/Canvas/Three).",
+        "Entity Component System that's optional — use it when it fits your needs.",
+        "Headless server support for testing, bots, and automated validation."
       ]
     ]
   }
