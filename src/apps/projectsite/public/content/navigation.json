@@ -1,0 +1,40 @@
+{
+  "brand": {
+    "name": "Nostalgi2D",
+    "tagline": "TypeScript-first 2D Game Engine"
+  },
+  "externalLinks": [
+    {
+      "id": "github",
+      "label": "Repo",
+      "url": "https://github.com/madebykrol/Nostalgi2DTs",
+      "icon": "Github"
+    }
+  ],
+  "routes": [
+    {
+      "id": "home",
+      "label": "Home",
+      "icon": "Rocket",
+      "contentFile": "home.json"
+    },
+    {
+      "id": "docs",
+      "label": "Docs",
+      "icon": "BookText",
+      "contentFile": "docs.json"
+    },
+    {
+      "id": "api",
+      "label": "API",
+      "icon": "Code2",
+      "contentFile": "api.json"
+    },
+    {
+      "id": "tutorials",
+      "label": "Tutorials",
+      "icon": "TerminalSquare",
+      "contentFile": "tutorials.json"
+    }
+  ]
+}
