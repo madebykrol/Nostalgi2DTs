@@ -1,0 +1,61 @@
+{
+  "hero": {
+    "title": "Build bold 2D worlds with Nostalgi2D",
+    "subtitle": "A TypeScript-first, multiplayer-ready 2D engine for speed, clarity and creative flow. From prototypes to persistent worlds — ship faster with an authoritative server model and ergonomic APIs.",
+    "cta": [
+      {
+        "label": "Read the Docs",
+        "icon": "Rocket",
+        "action": "navigate",
+        "target": "docs",
+        "style": "primary"
+      },
+      {
+        "label": "Quickstart Tutorial",
+        "action": "navigate",
+        "target": "tutorials",
+        "style": "ghost"
+      }
+    ]
+  },
+  "features": [
+    {
+      "title": "Performance",
+      "description": "Deterministic loops, zero-GC hot paths, and smart culling keep your frame times razor sharp.",
+      "icon": "Cpu",
+      "color": "#08f7fe"
+    },
+    {
+      "title": "Modularity",
+      "description": "Composable systems with clean boundaries — opt-in physics, rendering, input, and netcode modules.",
+      "icon": "Rocket",
+      "color": "#fe53bb"
+    },
+    {
+      "title": "Multiplayer",
+      "description": "Authoritative server, client prediction, and rollback-ready state replication out of the box.",
+      "icon": "Network",
+      "color": "#9d4edd"
+    }
+  ],
+  "pitch": {
+    "title": "Why Nostalgi2D?",
+    "columns": [
+      [
+        "TypeScript-first APIs with strong typing across server and client.",
+        "Pluggable ECS that stays out of your way until you need it.",
+        "Asset-light build pipeline; hot reload where it matters."
+      ],
+      [
+        "Authoritative netcode with prediction hooks and reconciliation helpers.",
+        "Deterministic simulation options for competitive modes.",
+        "Headless server support; spin up bots for load and QA."
+      ],
+      [
+        "Batteries-included docs, tutorials, and API references.",
+        "Modular: pick rendering (Pixi/Three/Canvas) without rewiring core.",
+        "Friendly ergonomics with escape hatches for experts."
+      ]
+    ]
+  }
+}

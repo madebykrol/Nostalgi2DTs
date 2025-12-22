@@ -1,0 +1,77 @@
+{
+  "title": "Tutorials",
+  "subtitle": "Follow step-by-step guides to build your first prototype.",
+  "tutorials": [
+    {
+      "title": "00 • Hello World",
+      "summary": "Create a window, draw a sprite, and wire a basic update loop.",
+      "color": "#08f7fe",
+      "steps": [
+        "Set up your project structure",
+        "Initialize the engine",
+        "Load your first sprite",
+        "Implement the game loop",
+        "Render to the screen"
+      ]
+    },
+    {
+      "title": "01 • Input & Physics",
+      "summary": "Capture WASD, apply forces, and collide with the world.",
+      "color": "#fe53bb",
+      "steps": [
+        "Set up input handlers",
+        "Create a player entity with physics",
+        "Apply movement forces",
+        "Add collision boundaries",
+        "Handle collision responses"
+      ]
+    },
+    {
+      "title": "02 • Multiplayer",
+      "summary": "Spin up an authoritative server and replicate player state.",
+      "color": "#9d4edd",
+      "steps": [
+        "Configure the server",
+        "Set up client connection",
+        "Implement state replication",
+        "Add client prediction",
+        "Test with multiple clients"
+      ]
+    },
+    {
+      "title": "03 • Advanced Rendering",
+      "summary": "Implement particle effects, lighting, and post-processing.",
+      "color": "#08f7fe",
+      "steps": [
+        "Create a particle system",
+        "Add dynamic lighting",
+        "Implement post-processing effects",
+        "Optimize rendering performance"
+      ]
+    },
+    {
+      "title": "04 • UI & Menus",
+      "summary": "Build interactive menus, HUD elements, and dialog systems.",
+      "color": "#fe53bb",
+      "steps": [
+        "Design the UI architecture",
+        "Create menu components",
+        "Implement HUD elements",
+        "Add dialog system",
+        "Handle UI input"
+      ]
+    },
+    {
+      "title": "05 • Optimization",
+      "summary": "Profile your game and optimize for performance.",
+      "color": "#9d4edd",
+      "steps": [
+        "Set up profiling tools",
+        "Identify bottlenecks",
+        "Optimize rendering",
+        "Reduce memory allocations",
+        "Test on target hardware"
+      ]
+    }
+  ]
+}

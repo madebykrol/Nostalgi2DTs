@@ -1,0 +1,42 @@
+{
+  "title": "API Reference",
+  "subtitle": "High-level modules and their surface areas.",
+  "modules": [
+    {
+      "name": "Engine",
+      "description": "Create, configure, and run the main loop.",
+      "color": "#08f7fe",
+      "example": "import { Engine } from \"@nostalgi2d/engine\";\n\nconst engine = new Engine();\n// ..."
+    },
+    {
+      "name": "World",
+      "description": "Entity storage, systems registration, and queries.",
+      "color": "#fe53bb",
+      "example": "import { World } from \"@nostalgi2d/engine\";\n\nconst world = new World();\n// ..."
+    },
+    {
+      "name": "Network",
+      "description": "Server/client adapters, RPC, and replication.",
+      "color": "#9d4edd",
+      "example": "import { Network } from \"@nostalgi2d/engine\";\n\nconst network = new Network();\n// ..."
+    },
+    {
+      "name": "Renderer",
+      "description": "Abstractions for different rendering backends.",
+      "color": "#08f7fe",
+      "example": "import { Renderer } from \"@nostalgi2d/engine\";\n\nconst renderer = new Renderer();\n// ..."
+    },
+    {
+      "name": "Input",
+      "description": "Unified input handling for keyboard, mouse, and gamepad.",
+      "color": "#fe53bb",
+      "example": "import { Input } from \"@nostalgi2d/engine\";\n\nconst input = new Input();\n// ..."
+    },
+    {
+      "name": "Physics",
+      "description": "2D physics simulation and collision detection.",
+      "color": "#9d4edd",
+      "example": "import { Physics } from \"@nostalgi2d/engine\";\n\nconst physics = new Physics();\n// ..."
+    }
+  ]
+}

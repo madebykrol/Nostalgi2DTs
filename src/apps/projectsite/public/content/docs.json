@@ -1,0 +1,154 @@
+{
+  "title": "Documentation",
+  "sections": [
+    {
+      "id": "intro",
+      "title": "Introduction",
+      "summary": "Overview, concepts, and mental model.",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Nostalgi2D is a TypeScript-first 2D game engine designed for building multiplayer games with an authoritative server architecture."
+        },
+        {
+          "type": "paragraph",
+          "text": "The engine provides a modular approach where you can opt-in to the features you need: physics, rendering, networking, and input handling."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Core Concepts"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Entity Component System (ECS) architecture",
+            "Deterministic game loop",
+            "Authoritative server model",
+            "Client prediction and reconciliation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "install",
+      "title": "Installation",
+      "summary": "Set up CLI, templates, and your first project.",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Getting started with Nostalgi2D is straightforward. Follow these steps to set up your development environment."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Prerequisites"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Node.js 18.x or higher",
+            "npm or yarn package manager",
+            "TypeScript 5.x"
+          ]
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Quick Start"
+        },
+        {
+          "type": "code",
+          "language": "bash",
+          "code": "# Clone the repository\ngit clone https://github.com/madebykrol/Nostalgi2DTs\n\n# Install dependencies\nnpm install\n\n# Start development server\nnpm run dev"
+        }
+      ]
+    },
+    {
+      "id": "engine",
+      "title": "Engine Core",
+      "summary": "Game loop, timing, ECS, scenes, and input.",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "The engine core provides the fundamental building blocks for your game."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Game Loop"
+        },
+        {
+          "type": "paragraph",
+          "text": "Nostalgi2D uses a fixed timestep game loop for deterministic simulation. This ensures consistent behavior across different machines and frame rates."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Entity Component System"
+        },
+        {
+          "type": "paragraph",
+          "text": "The ECS architecture separates data (components) from behavior (systems), making your game logic modular and maintainable."
+        }
+      ]
+    },
+    {
+      "id": "netcode",
+      "title": "Networking",
+      "summary": "Authoritative server, replication, and prediction.",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Nostalgi2D provides built-in networking capabilities for multiplayer games."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Authoritative Server"
+        },
+        {
+          "type": "paragraph",
+          "text": "The server has full control over the game state, preventing cheating and ensuring fair gameplay."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Client Prediction"
+        },
+        {
+          "type": "paragraph",
+          "text": "Client-side prediction provides immediate feedback to players while maintaining server authority."
+        }
+      ]
+    },
+    {
+      "id": "rendering",
+      "title": "Rendering",
+      "summary": "Adapters for Pixi, Canvas2D, and Three.js.",
+      "content": [
+        {
+          "type": "paragraph",
+          "text": "Nostalgi2D supports multiple rendering backends, allowing you to choose the best fit for your game."
+        },
+        {
+          "type": "heading",
+          "level": 3,
+          "text": "Available Renderers"
+        },
+        {
+          "type": "list",
+          "items": [
+            "PixiJS - High-performance 2D WebGL renderer",
+            "Canvas2D - Simple and lightweight canvas API",
+            "Three.js - For 2.5D or 3D effects"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "All renderers share a common interface, making it easy to switch between them."
+        }
+      ]
+    }
+  ]
+}
