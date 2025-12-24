@@ -158,8 +158,8 @@ export class DefaultInputManager extends InputManager {
       return;
     }
 
-    if (event.touches.length === 2 && this.lastTouchDistance !== null) {
-      // Two fingers moving - handle pinch zoom
+    if (event.touches.length === 2 && this.lastTouchDistance !== null && this.touchStartDistance !== null) {
+      // Two fingers moving with active pinch state - handle pinch zoom
       const touch1 = event.touches[0];
       const touch2 = event.touches[1];
       const currentDistance = this.calculateTouchDistance(touch1, touch2);
@@ -167,7 +167,13 @@ export class DefaultInputManager extends InputManager {
       const delta = currentDistance - this.lastTouchDistance;
       this.lastTouchDistance = currentDistance;
 
+      const target = touch1.target as HTMLCanvasElement | null;
+      if (!target) {
+        return;
+      }
+
       const { x, y } = this.calculateTouchCenter(touch1, touch2);
+      const worldPosition = this.getWorldPosition(x, y, target.width, target.height);
 
       this.emit(
         this.generateEvent("pinch", "move", {
@@ -180,6 +186,8 @@ export class DefaultInputManager extends InputManager {
           distance: currentDistance,
           centerX: x,
           centerY: y,
+          worldX: worldPosition?.x ?? x,
+          worldY: worldPosition?.y ?? y,
         },
         {}
       );
@@ -188,8 +196,8 @@ export class DefaultInputManager extends InputManager {
   };
 
   private readonly onTouchEnd = (event: TouchEvent) => {
-    if (event.touches.length === 0) {
-      // Reset pinch state when all fingers are lifted
+    // Reset pinch state when all fingers are lifted or when we had a pinch gesture and now have less than 2 fingers
+    if (event.touches.length === 0 || (this.touchStartDistance !== null && event.touches.length < 2)) {
       this.touchStartDistance = null;
       this.lastTouchDistance = null;
     }

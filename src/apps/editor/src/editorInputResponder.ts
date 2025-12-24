@@ -69,8 +69,8 @@ export class EditorInputResponder {
     this.adjustZoom(data.deltaY);
   };
 
-  private readonly handlePinchMove = (data: { delta: number; centerX: number; centerY: number }) => {
-    this.adjustZoomFromPinch(data.delta);
+  private readonly handlePinchMove = (data: { delta: number; centerX: number; centerY: number; worldX: number; worldY: number }) => {
+    this.adjustZoomFromPinch(data.delta, new Vector2(data.worldX, data.worldY));
   };
 
   constructor(private readonly inputManager: InputManager, private readonly engine: Engine<unknown, unknown>, private readonly editor: Editor) {
@@ -213,16 +213,33 @@ export class EditorInputResponder {
     camera.setZoom(currentZoom - deltaY * 0.001);
   }
 
-  private adjustZoomFromPinch(delta: number): void {
+  private adjustZoomFromPinch(delta: number, worldPoint: Vector2): void {
     const camera = this.engine.getCurrentCamera();
     if (!camera) {
       return;
     }
 
     const currentZoom = camera.getZoom();
-    // Pinch delta is in pixels - normalize it to a reasonable zoom speed
+    const currentPosition = camera.getPosition();
+    
+    // Calculate new zoom (pinch delta is in pixels - normalize it to a reasonable zoom speed)
     // Positive delta means pinching out (zoom in), negative means pinching in (zoom out)
-    camera.setZoom(currentZoom + delta * 0.005);
+    const newZoom = currentZoom + delta * 0.005;
+    
+    // Calculate the camera position adjustment to zoom toward the pinch center point
+    // The idea is to keep the world point under the pinch center stationary in screen space
+    const zoomRatio = newZoom / currentZoom;
+    const offsetX = worldPoint.x - currentPosition.x;
+    const offsetY = worldPoint.y - currentPosition.y;
+    
+    // Adjust camera position to maintain the pinch center in place
+    const newPosition = new Vector2(
+      worldPoint.x - offsetX * zoomRatio,
+      worldPoint.y - offsetY * zoomRatio
+    );
+    
+    camera.setZoom(newZoom);
+    camera.setPosition(newPosition);
   }
 
   private applySelection(next: Set<Actor>, preferredFocus: Actor | null = null): void {
