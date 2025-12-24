@@ -5,6 +5,8 @@ import { inject, injectable } from "inversify";
 
 export class DefaultInputManager extends InputManager {
   private isAttached = false;
+  private touchStartDistance: number | null = null;
+  private lastTouchDistance: number | null = null;
 
   private readonly onKeyDown = (event: KeyboardEvent) => {
     this.emit(
@@ -136,6 +138,112 @@ export class DefaultInputManager extends InputManager {
     });
   };
 
+  private readonly onTouchStart = (event: TouchEvent) => {
+    if (!this.checkGameScreenTouch(event)) {
+      return;
+    }
+
+    if (event.touches.length === 2) {
+      // Two fingers detected - start pinch gesture
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      this.touchStartDistance = this.calculateTouchDistance(touch1, touch2);
+      this.lastTouchDistance = this.touchStartDistance;
+      event.preventDefault();
+    }
+  };
+
+  private readonly onTouchMove = (event: TouchEvent) => {
+    if (!this.checkGameScreenTouch(event)) {
+      return;
+    }
+
+    if (event.touches.length === 2 && this.lastTouchDistance !== null && this.touchStartDistance !== null) {
+      // Two fingers moving with active pinch state - handle pinch zoom
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      const currentDistance = this.calculateTouchDistance(touch1, touch2);
+      
+      const delta = currentDistance - this.lastTouchDistance;
+      this.lastTouchDistance = currentDistance;
+
+      const target = touch1.target as HTMLCanvasElement | null;
+      if (!target) {
+        return;
+      }
+
+      const { x, y } = this.calculateTouchCenter(touch1, touch2);
+      const worldPosition = this.getWorldPosition(x, y, target.width, target.height);
+
+      // If we can't get world position, skip this event to avoid incorrect zoom behavior
+      if (!worldPosition) {
+        return;
+      }
+
+      this.emit(
+        this.generateEvent("pinch", "move", {
+          ctrl: false,
+          shift: false,
+          alt: false,
+        }),
+        {
+          delta,
+          distance: currentDistance,
+          centerX: x,
+          centerY: y,
+          worldX: worldPosition.x,
+          worldY: worldPosition.y,
+        },
+        {}
+      );
+      event.preventDefault();
+    }
+  };
+
+  private readonly onTouchEnd = (event: TouchEvent) => {
+    // Reset pinch state when all fingers are lifted or when we had a pinch gesture and now have less than 2 fingers
+    if (event.touches.length === 0 || (this.touchStartDistance !== null && event.touches.length < 2)) {
+      this.touchStartDistance = null;
+      this.lastTouchDistance = null;
+    }
+  };
+
+  private calculateTouchDistance(touch1: Touch, touch2: Touch): number {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  private calculateTouchCenter(touch1: Touch, touch2: Touch): { x: number; y: number } {
+    const target = touch1.target as HTMLCanvasElement | null;
+    if (!target) {
+      return { x: 0, y: 0 };
+    }
+
+    const rect = target.getBoundingClientRect();
+    const scaleX = rect.width !== 0 ? target.width / rect.width : 1;
+    const scaleY = rect.height !== 0 ? target.height / rect.height : 1;
+
+    const centerClientX = (touch1.clientX + touch2.clientX) / 2;
+    const centerClientY = (touch1.clientY + touch2.clientY) / 2;
+
+    const x = (centerClientX - rect.left) * scaleX;
+    const y = (centerClientY - rect.top) * scaleY;
+
+    return { x, y };
+  }
+
+  private checkGameScreenTouch(event: TouchEvent): boolean {
+    // Check if all touches are on the game screen
+    for (let i = 0; i < event.touches.length; i++) {
+      const target = event.touches[i].target as HTMLElement | null;
+      if (target?.id !== "gamescreen") {
+        return false;
+      }
+    }
+    return event.touches.length > 0;
+  }
+
   constructor(
     @inject(Engine<WebSocket, http.IncomingMessage>) protected engine: Engine<WebSocket, http.IncomingMessage>
   ) {
@@ -154,6 +262,9 @@ export class DefaultInputManager extends InputManager {
     window.addEventListener("mouseup", this.onMouseUp);
     window.addEventListener("wheel", this.onWheel, { passive: true });
     window.addEventListener("contextmenu", this.onContextMenu);
+    window.addEventListener("touchstart", this.onTouchStart, { passive: false });
+    window.addEventListener("touchmove", this.onTouchMove, { passive: false });
+    window.addEventListener("touchend", this.onTouchEnd);
 
     this.isAttached = true;
   }
@@ -171,6 +282,9 @@ export class DefaultInputManager extends InputManager {
     window.removeEventListener("mouseup", this.onMouseUp);
     window.removeEventListener("wheel", this.onWheel);
     window.removeEventListener("contextmenu", this.onContextMenu);
+    window.removeEventListener("touchstart", this.onTouchStart);
+    window.removeEventListener("touchmove", this.onTouchMove);
+    window.removeEventListener("touchend", this.onTouchEnd);
 
     this.isAttached = false;
     super.dispose();

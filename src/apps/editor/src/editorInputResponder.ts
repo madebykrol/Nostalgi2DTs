@@ -5,6 +5,7 @@ import {
   GizmoActor,
   GizmoHandle,
   InputManager,
+  MathUtils,
   PostProcessingVolumeActor,
   SphereWarpPostProcessMaterial,
   Vector2,
@@ -17,6 +18,10 @@ type DragInteraction = {
 
 // Bridges editor input to selection management and gizmo interaction.
 export class EditorInputResponder {
+  private static readonly PINCH_ZOOM_SENSITIVITY = 0.005;
+  private static readonly CAMERA_ZOOM_MIN = 0.5;
+  private static readonly CAMERA_ZOOM_MAX = 10;
+  
   private isActive = false;
   private lastMousePosition = new Vector2(0, 0);
   private readonly mouseDownEvents: readonly string[] = [
@@ -69,6 +74,10 @@ export class EditorInputResponder {
     this.adjustZoom(data.deltaY);
   };
 
+  private readonly handlePinchMove = (data: { delta: number; centerX: number; centerY: number; worldX: number; worldY: number }) => {
+    this.adjustZoomFromPinch(data.delta, new Vector2(data.worldX, data.worldY));
+  };
+
   constructor(private readonly inputManager: InputManager, private readonly engine: Engine<unknown, unknown>, private readonly editor: Editor) {
     this.highlightMaterial = this.findHighlightMaterial();
     this.syncSelectionHighlight();
@@ -88,6 +97,7 @@ export class EditorInputResponder {
     this.inputManager.on("mouse:move", this.handleMouseMove);
     this.inputManager.on("mouse:up", this.handleMouseUp);
     this.inputManager.on("wheel:tap:shift", this.handleWheelWithShift);
+    this.inputManager.on("pinch:move", this.handlePinchMove);
 
     for (const event of this.mouseDownEvents) {
       this.inputManager.on(event, this.handleMouseDown);
@@ -111,6 +121,7 @@ export class EditorInputResponder {
     this.inputManager.off("mouse:move", this.handleMouseMove);
     this.inputManager.off("mouse:up", this.handleMouseUp);
     this.inputManager.off("wheel:tap:shift", this.handleWheelWithShift);
+    this.inputManager.off("pinch:move", this.handlePinchMove);
 
     for (const event of this.mouseDownEvents) {
       this.inputManager.off(event, this.handleMouseDown);
@@ -205,6 +216,40 @@ export class EditorInputResponder {
 
     const currentZoom = camera.getZoom();
     camera.setZoom(currentZoom - deltaY * 0.001);
+  }
+
+  private adjustZoomFromPinch(delta: number, worldPoint: Vector2): void {
+    const camera = this.engine.getCurrentCamera();
+    if (!camera) {
+      return;
+    }
+
+    const currentZoom = camera.getZoom();
+    const currentPosition = camera.getPosition();
+    
+    // Calculate new zoom (pinch delta is in pixels - normalize it to a reasonable zoom speed)
+    // Positive delta means pinching out (zoom in), negative means pinching in (zoom out)
+    // Clamp the zoom value to match camera constraints
+    const newZoom = MathUtils.clamp(
+      currentZoom + delta * EditorInputResponder.PINCH_ZOOM_SENSITIVITY,
+      EditorInputResponder.CAMERA_ZOOM_MIN,
+      EditorInputResponder.CAMERA_ZOOM_MAX
+    );
+    
+    // Calculate the camera position adjustment to zoom toward the pinch center point
+    // The idea is to keep the world point under the pinch center stationary in screen space
+    const zoomRatio = newZoom / currentZoom;
+    const offsetX = worldPoint.x - currentPosition.x;
+    const offsetY = worldPoint.y - currentPosition.y;
+    
+    // Adjust camera position to maintain the pinch center in place
+    const newPosition = new Vector2(
+      worldPoint.x - offsetX * zoomRatio,
+      worldPoint.y - offsetY * zoomRatio
+    );
+    
+    camera.setZoom(newZoom);
+    camera.setPosition(newPosition);
   }
 
   private applySelection(next: Set<Actor>, preferredFocus: Actor | null = null): void {
