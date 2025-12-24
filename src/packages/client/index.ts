@@ -188,8 +188,8 @@ export class DefaultInputManager extends InputManager {
   };
 
   private readonly onTouchEnd = (event: TouchEvent) => {
-    if (event.touches.length < 2) {
-      // Reset pinch state when less than two fingers
+    if (event.touches.length === 0) {
+      // Reset pinch state when all fingers are lifted
       this.touchStartDistance = null;
       this.lastTouchDistance = null;
     }
@@ -221,8 +221,14 @@ export class DefaultInputManager extends InputManager {
   }
 
   private checkGameScreenTouch(event: TouchEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return target?.id === "gamescreen";
+    // Check if all touches are on the game screen
+    for (let i = 0; i < event.touches.length; i++) {
+      const target = event.touches[i].target as HTMLElement | null;
+      if (target?.id !== "gamescreen") {
+        return false;
+      }
+    }
+    return event.touches.length > 0;
   }
 
   constructor(
