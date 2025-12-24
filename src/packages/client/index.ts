@@ -175,6 +175,11 @@ export class DefaultInputManager extends InputManager {
       const { x, y } = this.calculateTouchCenter(touch1, touch2);
       const worldPosition = this.getWorldPosition(x, y, target.width, target.height);
 
+      // If we can't get world position, skip this event to avoid incorrect zoom behavior
+      if (!worldPosition) {
+        return;
+      }
+
       this.emit(
         this.generateEvent("pinch", "move", {
           ctrl: false,
@@ -186,8 +191,8 @@ export class DefaultInputManager extends InputManager {
           distance: currentDistance,
           centerX: x,
           centerY: y,
-          worldX: worldPosition?.x ?? x,
-          worldY: worldPosition?.y ?? y,
+          worldX: worldPosition.x,
+          worldY: worldPosition.y,
         },
         {}
       );

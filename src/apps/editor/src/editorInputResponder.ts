@@ -18,6 +18,10 @@ type DragInteraction = {
 
 // Bridges editor input to selection management and gizmo interaction.
 export class EditorInputResponder {
+  private static readonly PINCH_ZOOM_SENSITIVITY = 0.005;
+  private static readonly CAMERA_ZOOM_MIN = 0.5;
+  private static readonly CAMERA_ZOOM_MAX = 10;
+  
   private isActive = false;
   private lastMousePosition = new Vector2(0, 0);
   private readonly mouseDownEvents: readonly string[] = [
@@ -225,8 +229,12 @@ export class EditorInputResponder {
     
     // Calculate new zoom (pinch delta is in pixels - normalize it to a reasonable zoom speed)
     // Positive delta means pinching out (zoom in), negative means pinching in (zoom out)
-    // Clamp the zoom value to match camera constraints (0.5 to 10)
-    const newZoom = MathUtils.clamp(currentZoom + delta * 0.005, 0.5, 10);
+    // Clamp the zoom value to match camera constraints
+    const newZoom = MathUtils.clamp(
+      currentZoom + delta * EditorInputResponder.PINCH_ZOOM_SENSITIVITY,
+      EditorInputResponder.CAMERA_ZOOM_MIN,
+      EditorInputResponder.CAMERA_ZOOM_MAX
+    );
     
     // Calculate the camera position adjustment to zoom toward the pinch center point
     // The idea is to keep the world point under the pinch center stationary in screen space
