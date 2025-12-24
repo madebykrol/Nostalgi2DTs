@@ -5,6 +5,7 @@ import {
   GizmoActor,
   GizmoHandle,
   InputManager,
+  MathUtils,
   PostProcessingVolumeActor,
   SphereWarpPostProcessMaterial,
   Vector2,
@@ -224,7 +225,8 @@ export class EditorInputResponder {
     
     // Calculate new zoom (pinch delta is in pixels - normalize it to a reasonable zoom speed)
     // Positive delta means pinching out (zoom in), negative means pinching in (zoom out)
-    const newZoom = currentZoom + delta * 0.005;
+    // Clamp the zoom value to match camera constraints (0.5 to 10)
+    const newZoom = MathUtils.clamp(currentZoom + delta * 0.005, 0.5, 10);
     
     // Calculate the camera position adjustment to zoom toward the pinch center point
     // The idea is to keep the world point under the pinch center stationary in screen space
