@@ -69,6 +69,10 @@ export class EditorInputResponder {
     this.adjustZoom(data.deltaY);
   };
 
+  private readonly handlePinchMove = (data: { delta: number; centerX: number; centerY: number }) => {
+    this.adjustZoomFromPinch(data.delta);
+  };
+
   constructor(private readonly inputManager: InputManager, private readonly engine: Engine<unknown, unknown>, private readonly editor: Editor) {
     this.highlightMaterial = this.findHighlightMaterial();
     this.syncSelectionHighlight();
@@ -88,6 +92,7 @@ export class EditorInputResponder {
     this.inputManager.on("mouse:move", this.handleMouseMove);
     this.inputManager.on("mouse:up", this.handleMouseUp);
     this.inputManager.on("wheel:tap:shift", this.handleWheelWithShift);
+    this.inputManager.on("pinch:move", this.handlePinchMove);
 
     for (const event of this.mouseDownEvents) {
       this.inputManager.on(event, this.handleMouseDown);
@@ -111,6 +116,7 @@ export class EditorInputResponder {
     this.inputManager.off("mouse:move", this.handleMouseMove);
     this.inputManager.off("mouse:up", this.handleMouseUp);
     this.inputManager.off("wheel:tap:shift", this.handleWheelWithShift);
+    this.inputManager.off("pinch:move", this.handlePinchMove);
 
     for (const event of this.mouseDownEvents) {
       this.inputManager.off(event, this.handleMouseDown);
@@ -205,6 +211,18 @@ export class EditorInputResponder {
 
     const currentZoom = camera.getZoom();
     camera.setZoom(currentZoom - deltaY * 0.001);
+  }
+
+  private adjustZoomFromPinch(delta: number): void {
+    const camera = this.engine.getCurrentCamera();
+    if (!camera) {
+      return;
+    }
+
+    const currentZoom = camera.getZoom();
+    // Pinch delta is in pixels - normalize it to a reasonable zoom speed
+    // Positive delta means pinching out (zoom in), negative means pinching in (zoom out)
+    camera.setZoom(currentZoom + delta * 0.005);
   }
 
   private applySelection(next: Set<Actor>, preferredFocus: Actor | null = null): void {
