@@ -21,6 +21,7 @@ import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client"
 const App = () => {
 
   const ws = useRef<WebSocket>(null);
+  const [engine, setEngine] = useState<ClientEngine | null>(null);
 
   useEffect(() => {
     ws.current = new WebSocket("ws://localhost:3001/?userId=world");
@@ -34,88 +35,87 @@ const App = () => {
     ws.current.addEventListener("message", (d) => console.log("msg:", JSON.stringify(d.data)));
   }, []);
 
-  // Begin performance timing
-  var startTime = performance.now();
-
-  var builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
-  builder
-    .withWorldInstance(new PlanckWorld())
-    .withEndpointInstance(new ClientEndpoint("localhost", 3001))
-    .withServiceInstance(DOMParser, new DOMParser())
-    .withService(Parser)
-    .withInputManager(DefaultInputManager)
-    .withSoundManager(SoundManager)
-    .withGameMode(ExampleTopDownRPGGameMode)
-    .withResourceManager(DefaultResourceManager)
-    .withActor(DemoActor)
-    .withActor(GameTileMapActor)
-    .withActor(BombActor)
-    .withActor(WallActor)
-    .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
-    .withDebugLogging()
-    .asSinglePlayer("LocalPlayer", "local_player");
-
-  const e = builder.build(ClientEngine);
-  e.run(false);
-
-  // Log time to startup
-  const endTime = performance.now();
-  console.log(`Engine built in ${(endTime - startTime).toFixed(4)} ms`);
-
-  const [engine] = useState(e);
-  const [level] = useState(new GrasslandsMap(builder.container));
-
   useEffect(() => {
+    // Begin performance timing
+    const startTime = performance.now();
+    
     const demoActor = new DemoActor();
-
     demoActor.layer = 5;
 
+    const builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
+    builder
+      .withWorldInstance(new PlanckWorld())
+      .withEndpointInstance(new ClientEndpoint("localhost", 3001))
+      .withServiceInstance(DOMParser, new DOMParser())
+      .withService(Parser)
+      .withInputManager(DefaultInputManager)
+      .withSoundManager(SoundManager)
+      .withGameMode(ExampleTopDownRPGGameMode)
+      .withResourceManager(DefaultResourceManager)
+      .withActor(DemoActor)
+      .withActor(GameTileMapActor)
+      .withActor(BombActor)
+      .withActor(WallActor)
+      .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
+      .withDebugLogging()
+      .asSinglePlayer("LocalPlayer", "local_player");
+
+    const e = builder.build(ClientEngine);
+    e.run(false);
+
+    // Log time to startup
+    const endTime = performance.now();
+    console.log(`Engine built in ${(endTime - startTime).toFixed(4)} ms`);
+    
+    const level = new GrasslandsMap(builder.container);
     level.addActor(demoActor);
 
     const setupLevel = async () => {
       try {
-        startTime = performance.now();
-        // Begin performance timing
-        await engine.loadLevelObject(level);
+        const levelStartTime = performance.now();
+        await e.loadLevelObject(level);
 
         const worldSize = level.getWorldSize();
 
         if (worldSize) {
           const camera = new OrthoCamera(new Vector2(worldSize.x / 2, worldSize.y / 2), 1, 40);
-          engine.setCurrentCamera(camera);
+          e.setCurrentCamera(camera);
         } else {
-          engine.setCurrentCamera(new OrthoCamera(new Vector2(0, 0), 1));
+          e.setCurrentCamera(new OrthoCamera(new Vector2(0, 0), 1));
         }
         
         // Log time to load level 
-        const endTime = performance.now();
-        console.log(`Level loaded in ${(endTime - startTime).toFixed(2)} ms`);
+        const levelEndTime = performance.now();
+        console.log(`Level loaded in ${(levelEndTime - levelStartTime).toFixed(2)} ms`);
 
+        e.addPlayer(new PlayerState("local_player", "LocalPlayer"));
+        console.log(e.getLocalPlayerState());
+        e.getLocalPlayerState()?.getController()?.possess(demoActor);
+        
+        // Set engine state only after everything is set up
+        setEngine(e);
       } catch (error) {
         console.error("Failed to initialize level", error);
       }
-
-      engine.addPlayer(new PlayerState("local_player", "LocalPlayer"));
-
-      console.log(engine.getLocalPlayerState())
-
-      engine.getLocalPlayerState()?.getController()?.possess(demoActor);
     };
 
     setupLevel();
 
     return () => {
+      // Cleanup if needed
     };
-  }, [engine, level]);
+  }, []);
 
   const compile = (gl: WebGL2RenderingContext | null) => {
-    if (gl) {
+    if (gl && engine) {
       engine.compileMaterials(gl);
     }
   }
 
   const draw = (gl: WebGL2RenderingContext | null) => {
-
+    if (!engine) {
+      return;
+    }
     engine.tick();
 
     if (gl) {

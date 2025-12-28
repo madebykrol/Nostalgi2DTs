@@ -11,7 +11,7 @@ export default defineConfig({
       },
     }),
   ],
-  base: "/Nostalgi2DTs/client/",
+  base: "/",
   server: {
     port: 5174
   },

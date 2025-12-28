@@ -114,10 +114,7 @@ export class Engine<TSocket, TReq> {
         includeDynamic: boolean = true,
         ctor?: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)
     ): T[] {
-        if (!this.world) {
-            return [];
-        }
-        const targetCtor = (ctor ?? (Actor as unknown as new (...args: any[]) => T));
+        const targetCtor = Engine.getActorCtor<T>(ctor);
         return this.world.aabbCast(point, includeStatic, includeDynamic, targetCtor) as T[];
     }
 
@@ -128,11 +125,7 @@ export class Engine<TSocket, TReq> {
         includeDynamic: boolean = true,
         ctor?: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)
     ): T[] {
-        if (!this.world) {
-            return [];
-        }
-
-        const targetCtor = (ctor ?? (Actor as unknown as new (...args: any[]) => T));
+        const targetCtor = Engine.getActorCtor<T>(ctor);
         return this.world.rayCast(start, end, includeStatic, includeDynamic, targetCtor) as T[];
     }
 
@@ -143,11 +136,8 @@ export class Engine<TSocket, TReq> {
         includeDynamic: boolean = true,
         ctor?: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)
     ): T[] {
-        if (!this.world) {
-            return [];
-        }
-        const targetCtor = (ctor ?? (Actor as unknown as new (...args: any[]) => T));
-        return this.world.radialCast(start, radius, includeStatic, includeDynamic, targetCtor) as T[];
+        const targetCtor = Engine.getActorCtor<T>(ctor);
+        return this.world.radialCast<T>(start, radius, includeStatic, includeDynamic, targetCtor) as T[];
     }
 
     getDebugPhysics(): boolean { return this.debugMeshes; }
@@ -160,6 +150,7 @@ export class Engine<TSocket, TReq> {
 
     callClientRpc<T>(name: string, ...args: any[]): T | null {
         const rpc = this.clientRpcs.get(name);
+        
         if (rpc) {
             return rpc(...args) as T;
         }
@@ -184,26 +175,35 @@ export class Engine<TSocket, TReq> {
         this.ensureInputManager();
         this.configurePlayerControllers();
 
-        if (!this.asEditor) {
-            if (this.networkMode === "server") {
-                this.netEndpoint?.connect((_socket: any, req: any) => {
-                    console.log(`New connection: ${req.socket.remoteAddress}`);
-                });
-
-                this.netEndpoint?.onMessage<any>("input", (data) => {
-                    console.log("Received player input:", data);
-                });
-
-                // Start server timers
-                this.timerManager.setTimer(() => {
-                    this.handleNetworkTick();
-                }, 1000 / this.netTickRate, true); // 60 Hz server tick);
-            }
-        } else {
+        if (this.asEditor) {
             console.log("Running in editor mode");
+            return;
+        }
+
+        if (this.networkMode === "server") {
+            this.runServer();
         }
     }
 
+    private runServer(): void {
+
+        if (!this.netEndpoint) {
+            console.error("No network endpoint defined for server mode");
+            return;
+        }
+        this.netEndpoint.connect((_socket: any, req: any) => {
+            console.log(`New connection: ${req.socket.remoteAddress}`);
+        });
+
+        this.netEndpoint.onMessage<any>("input", (data) => {
+            console.log("Received player input:", data);
+        });
+
+        // Start server timers
+        this.timerManager.setTimer(() => {
+            this.handleNetworkTick();
+        }, 1000 / this.netTickRate, true);
+    }
     
     // this is called to render the current state of the world
     // Should be called as often as possible usualy after every tick
@@ -222,11 +222,10 @@ export class Engine<TSocket, TReq> {
         const camera = this.currentCamera;
         const canvasWidth = gl.canvas.width || 1;
         const canvasHeight = gl.canvas.height || 1;
+        const aspectRatio = canvasHeight === 0 ? 1 : canvasWidth / canvasHeight;
 
         camera.setViewportSize(canvasWidth, canvasHeight);
-        const aspectRatio = canvasHeight === 0 ? 1 : canvasWidth / canvasHeight;
         camera.getViewProjectionMatrix(aspectRatio);
-        const frustum = camera.getFrustum();
 
         const postProcessComponents: MeshComponent[] = [];
 
@@ -242,7 +241,6 @@ export class Engine<TSocket, TReq> {
                 postProcessComponents.push(component);
             }
         }
-        
 
         const usePostProcess = postProcessComponents.length > 0;
         let postProcessTarget = undefined as typeof this.postProcessTarget;
@@ -262,10 +260,20 @@ export class Engine<TSocket, TReq> {
 
         // Loop actors: frustum cull and render main pass immediately
         for (const actor of sortedActors) {
-            const shouldRender = this.world.checkWithinBounds(actor, frustum);
+
+            const shouldRender = camera.getFrustum().checkWithinBounds(actor);
+
             if (shouldRender) {
+
                 actor.setIsRendering(true);
-                this.renderActor(actor, gl, camera);
+                const meshComponents = actor.getComponentsOfType(MeshComponent);
+                for (const component of meshComponents) {
+                    if (component.getRenderPass() !== "forward") {
+                        continue;
+                    }
+                    component.render(gl, camera);
+                }
+
             } else {
                 actor.setIsRendering(false);
             }
@@ -493,6 +501,11 @@ export class Engine<TSocket, TReq> {
         this.controllerTypeForPlayer = controllerCtor;
     }
 
+    private static getActorCtor<T extends Actor>(ctor: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T) | undefined) {
+        return ctor ?? (Actor as unknown as new (...args: any[]) => T);
+    }
+
+
     private getEditorActorsFlattened(actor: BaseObject): Actor[] {
         const actors: Actor[] = [];
 
@@ -567,16 +580,6 @@ export class Engine<TSocket, TReq> {
             actors.push(...children);
         }
         return actors;
-    }
-
-    private renderActor(actor: Actor, gl: WebGL2RenderingContext, camera: Camera): void {
-        const meshComponents = actor.getComponentsOfType(MeshComponent);
-        for (const component of meshComponents) {
-            if (component.getRenderPass() !== "forward") {
-                continue;
-            }
-            component.render(gl, camera);
-        }
     }
 
     private ensurePostProcessTarget(gl: WebGL2RenderingContext, width: number, height: number) {

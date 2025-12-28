@@ -125,37 +125,7 @@ export class PlanckWorld extends World {
             .sort((a, b) => a[1] - b[1])
             .map(([actor]) => actor);
     }
-  
-
-    checkWorldBounds(actor: Actor, frustum: Frustum): boolean {
-        const collisionComponents = actor.getComponentsOfType(CollisionComponent);
-        if (collisionComponents.length === 0) return true;
-
-        const position = actor.position;
-        for (const component of collisionComponents) {
-            const localBounds = component.getBounds();
-            const worldMinX = localBounds.min.x + position.x;
-            const worldMinY = localBounds.min.y + position.y;
-            const worldMaxX = localBounds.max.x + position.x;
-            const worldMaxY = localBounds.max.y + position.y;
-
-            if (this.boundsOverlapFrustum(worldMinX, worldMinY, worldMaxX, worldMaxY, frustum)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private boundsOverlapFrustum(minX: number, minY: number, maxX: number, maxY: number, frustum: Frustum): boolean {
-        return !(maxX < frustum.left || minX > frustum.right || maxY < frustum.bottom || minY > frustum.top);
-    }
-
-    // Implement the abstract method from base World by delegating to the existing checkWorldBounds.
-    checkWithinBounds(actor: Actor, bounds: Frustum): boolean {
-        return this.checkWorldBounds(actor, bounds);
-    }
-
+    
     createPhysicsBody(actor: Actor, physics: PhysicsComponent): PhysicsBody {
         const body = new PlanckPhysicsBody(this, actor, physics, this.world);
 

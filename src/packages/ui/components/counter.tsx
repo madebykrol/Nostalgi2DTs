@@ -16,9 +16,13 @@ export const Counter = () => {
   const [lastMousePosition, setLastMousePosition] = useState<Vector2>(new Vector2(0,0));
 
   useEffect(() => {
-    const afterRenderHandle = engine!.onAfterRender(() => {
-      setFps(engine!.getFPS());
-      const localPlayerState = engine!.getLocalPlayerState();
+    if (!engine) {
+      return;
+    }
+
+    const afterRenderHandle = engine.onAfterRender(() => {
+      setFps(engine.getFPS());
+      const localPlayerState = engine.getLocalPlayerState();
       if(localPlayerState) {
         const controller = localPlayerState.getController() as any;
         if(controller && controller.lastMousePosition) {
@@ -28,7 +32,11 @@ export const Counter = () => {
 
     });
 
-    return () => engine!.offAfterRender(afterRenderHandle);
+    return () => {
+      if (engine) {
+        engine.offAfterRender(afterRenderHandle);
+      }
+    };
   }, [engine]);
 
   return (

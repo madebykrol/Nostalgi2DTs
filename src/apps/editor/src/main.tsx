@@ -3,7 +3,7 @@ import http from "http";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
-import { BaseActorRenderer, Canvas, UnlitMaterial } from "@repo/basicrenderer";
+import { Canvas, UnlitMaterial } from "@repo/basicrenderer";
 import { ContainerContext } from "./ioc/ioc";
 import { EngineContext } from "@repo/ui";
 import {
@@ -61,15 +61,8 @@ import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";
 import meshComponentDesignerPlugin from "./plugins/meshComponentDesignerPlugin";
 import type { EditorUIPlugin } from "@repo/engine";
-
-type ConsoleEntryType = "log" | "warn" | "error";
-
-type ConsoleEntry = {
-  id: number;
-  type: ConsoleEntryType;
-  message: string;
-  timestamp: string;
-};
+import { ConsoleTab, type ConsoleEntry, type ConsoleEntryType } from "./plugins/consoleTabPlugin";
+import { MetricsTab } from "./plugins/metricsTabPlugin";
 
 const formatConsoleArg = (arg: unknown): string => {
   if (typeof arg === "string") {
@@ -343,6 +336,7 @@ const App = () => {
   const [logs, setLogs] = useState<ConsoleEntry[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const [sceneGraph, setSceneGraph] = useState<SceneNode[]>([]);
+  const [activeBottomTab, setActiveBottomTab] = useState<"console" | "metrics">("console");
   const engineInitialized = useRef(false);
   const engineRef = useRef<ClientEngine | null>(null);
   const inputManagerRef = useRef<InputManager | null>(null);
@@ -1036,11 +1030,14 @@ const App = () => {
             <PanelResizeHandle className="h-1 hover:h-2 transition-all" style={{ backgroundColor: "rgba(8, 247, 254, 0.35)" }} />
 
             <Panel defaultSize={15} minSize={10} maxSize={35}>
-              <ConsolePanel
+              <BottomPanel
+                activeTab={activeBottomTab}
+                onTabChange={setActiveBottomTab}
                 logs={logs}
-                onClear={handleClearLogs}
+                onClearLogs={handleClearLogs}
                 autoScrollEnabled={autoScroll}
                 onToggleAutoScroll={() => setAutoScroll((previous) => !previous)}
+                engine={engine}
               />
             </Panel>
           </PanelGroup>
@@ -1057,32 +1054,29 @@ const App = () => {
 
 
 
-const severityStyles: Record<ConsoleEntryType, { label: string; color: string }> = {
-  log: { label: "Log", color: "#8bd3ff" },
-  warn: { label: "Warn", color: "#facc15" },
-  error: { label: "Error", color: "#f87171" },
-};
-
-type ConsolePanelProps = {
+type BottomPanelProps = {
+  activeTab: "console" | "metrics";
+  onTabChange: (tab: "console" | "metrics") => void;
   logs: ConsoleEntry[];
-  onClear: () => void;
+  onClearLogs: () => void;
   autoScrollEnabled: boolean;
   onToggleAutoScroll: () => void;
+  engine: ClientEngine | null;
 };
 
-const ConsolePanel = ({ logs, onClear, autoScrollEnabled, onToggleAutoScroll }: ConsolePanelProps) => {
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!autoScrollEnabled) {
-      return;
-    }
-    const container = scrollRef.current;
-    if (!container) {
-      return;
-    }
-    container.scrollTop = container.scrollHeight;
-  }, [logs, autoScrollEnabled]);
+const BottomPanel = ({
+  activeTab,
+  onTabChange,
+  logs,
+  onClearLogs,
+  autoScrollEnabled,
+  onToggleAutoScroll,
+  engine,
+}: BottomPanelProps) => {
+  const tabs = [
+    { id: "console" as const, label: "Console" },
+    { id: "metrics" as const, label: "Metrics" },
+  ];
 
   return (
     <div
@@ -1092,60 +1086,42 @@ const ConsolePanel = ({ logs, onClear, autoScrollEnabled, onToggleAutoScroll }: 
         borderColor: "rgba(8, 247, 254, 0.25)",
       }}
     >
+      {/* Tab Headers */}
       <div
-        className="flex items-center justify-between px-4 py-2 border-b"
+        className="flex items-center gap-1 px-4 py-2 border-b"
         style={{
           borderColor: "rgba(8, 247, 254, 0.2)",
-          color: theme.text,
         }}
       >
-        <span className="text-xs font-semibold tracking-wide" style={{ color: theme.neon.cyan }}>
-          Console
-        </span>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-[10px] uppercase tracking-wide" style={{ color: theme.text }}>
-            <input
-              type="checkbox"
-              checked={autoScrollEnabled}
-              onChange={onToggleAutoScroll}
-              className="h-3 w-3 accent-cyan-400"
-            />
-            Auto-scroll
-          </label>
+        {tabs.map((tab) => (
           <button
-            onClick={onClear}
-            className="px-2 py-1 text-[10px] uppercase tracking-wide rounded border border-white/10 hover:border-cyan-400/50 hover:bg-cyan-400/10 transition-colors"
-            style={{ color: theme.text }}
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            className={`px-3 py-1.5 text-xs font-semibold tracking-wide rounded transition-all ${
+              activeTab === tab.id
+                ? "border-b-2 border-cyan-400"
+                : "border-b-2 border-transparent hover:border-cyan-400/30"
+            }`}
+            style={{
+              color: activeTab === tab.id ? theme.neon.cyan : theme.text,
+            }}
           >
-            Clear
+            {tab.label}
           </button>
-        </div>
+        ))}
       </div>
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-3 space-y-2 text-xs font-mono"
-        style={{ color: theme.text }}
-      >
-        {logs.length === 0 ? (
-          <div className="opacity-60">Console output will appear here.</div>
-        ) : (
-          logs.map((entry) => (
-            <div key={entry.id} className="flex flex-col gap-1">
-              <div className="flex items-center gap-3 text-[10px] uppercase tracking-wide">
-                <span style={{ color: severityStyles[entry.type].color }}>
-                  {severityStyles[entry.type].label}
-                </span>
-                <span className="opacity-60">{entry.timestamp}</span>
-              </div>
-              <pre
-                className="whitespace-pre-wrap leading-relaxed text-xs"
-                style={{ color: theme.text }}
-              >
-                {entry.message}
-              </pre>
-            </div>
-          ))
+
+      {/* Tab Content */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "console" && (
+          <ConsoleTab
+            logs={logs}
+            onClear={onClearLogs}
+            autoScrollEnabled={autoScrollEnabled}
+            onToggleAutoScroll={onToggleAutoScroll}
+          />
         )}
+        {activeTab === "metrics" && <MetricsTab engine={engine} />}
       </div>
     </div>
   );

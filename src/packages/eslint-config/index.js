@@ -15,7 +15,6 @@ module.exports = {
   },
   rules: {
     "@typescript-eslint/no-non-null-assertion": "off",
-    "@typescript-eslint/complexity": ["error", { max: 5,  }],
-    "@typescript-eslint/max-depth": ["error", { max: 4 }]
+    "complexity": ["error", { max: 5 }]
   },
 };

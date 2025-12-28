@@ -19,7 +19,6 @@ export abstract class World {
     abstract getGravity(): Vector2|undefined;
     abstract setGravity(gravity: Vector2): void;
     abstract createPhysicsBody(actor: Actor, physics: PhysicsComponent): PhysicsBody;
-    abstract checkWithinBounds(actor: Actor, bounds: Frustum): boolean;
 
     spawnActor<T extends Actor>(actor: T, _position: Vector2|undefined): T {
 
