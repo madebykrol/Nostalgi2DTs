@@ -5,9 +5,6 @@ import { WallActor } from "./wall";
 export class GameTileMapActor extends TileMapActor {
   constructor(@inject(Parser) parser: Parser, @inject(Container) container: Container, @unmanaged() options: TileMapActorOptions = {}) {
     super(parser, container, options);
-
-    console.log(parser);
-
     const material = new TileMapMaterial();
     this.addComponent(new MeshComponent(new Quad(), material));
   }
@@ -15,14 +12,11 @@ export class GameTileMapActor extends TileMapActor {
   protected handleLayer(layer: TiledObjectLayer): boolean {
       const layerName = layer.name?.toLowerCase?.() ?? "";
       const typeProperty = layer.properties ? layer.properties["Type"] : undefined;
-
-      console.log(layerName, typeProperty);
       const layerType = typeof typeProperty === "string"
           ? typeProperty.toLowerCase()
           : "";
 
       if (layerName.includes("wall") || layerType === "walls") {
-          console.log("Handling walls for layer:", layer.name);
           this.handleWalls(layer);
           return true;
       }
@@ -36,9 +30,6 @@ export class GameTileMapActor extends TileMapActor {
 
       const scale = this.getWorldUnitsPerPixel();
       const translation = this.getRenderTranslation();
-
-      console.log("Processing walls for layer:", layer.name);
-
       layer.objects.forEach((object, _index) => {
           if (!object.visible) {
               return;
@@ -88,7 +79,7 @@ export class GameTileMapActor extends TileMapActor {
           const posX = (object.x + (layer.offsetX ?? 0)) * scale;
           const posY = -((object.y + (layer.offsetY ?? 0)) * scale);
           const worldPosition = new Vector2(posX + translation.x, posY + translation.y);
-          wallActor.setPosition(worldPosition);
+          wallActor.position = worldPosition;
 
           this.addChild(wallActor);
       });

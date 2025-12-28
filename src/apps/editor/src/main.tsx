@@ -55,7 +55,7 @@ import type {
   EditorComponentAssembler,
   MeshComponentAssetPayload,
 } from "@repo/engine";
-import transformPropertiesPlugin from "./plugins/transformPropertiesPlugin";
+import transformPropertiesPlugin from "../../../packages/editor-plugins/propertiesPlugin";
 import sceneGraphPanelPlugin from "./plugins/sceneGraphPanelPlugin";
 import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";

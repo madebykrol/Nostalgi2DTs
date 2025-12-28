@@ -33,7 +33,7 @@ export class SpatialGrid {
     }
 
     insert(actor: Actor): void {
-        const pos = actor.getPosition();
+        const pos = actor.position;
         const { gx, gy } = this.worldToGrid(pos);
         const k = this.key(gx, gy);
         let bucket = this.cells.get(k);
@@ -57,7 +57,7 @@ export class SpatialGrid {
     }
 
     update(actor: Actor): void {
-        const pos = actor.getPosition();
+        const pos = actor.position;
         const { gx, gy } = this.worldToGrid(pos);
         const newKey = this.key(gx, gy);
         const oldKey = this.actorCell.get(actor);

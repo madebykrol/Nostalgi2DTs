@@ -7,9 +7,13 @@ export default defineConfig({
     tailwindcss(),
     react({
       babel: {
-        parserOpts: {
-          plugins: ['decorators-legacy'],
-        },
+        babelrc: false,
+        configFile: false,
+        plugins: [
+          ["@babel/plugin-proposal-decorators", { legacy: true }],
+          ["@babel/plugin-proposal-class-properties", { loose: true }],
+          "babel-plugin-transform-typescript-metadata",
+        ],
       },
     }),
   ],

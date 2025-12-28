@@ -66,7 +66,7 @@ export class TranslationGizmoMaterial extends Material {
 
         const aspect = gl.canvas.height === 0 ? 1 : gl.canvas.width / gl.canvas.height;
         const vp = camera.getViewProjectionMatrix(aspect).elements as Float32Array;
-        const position = targetActor.getPosition();
+        const position = targetActor.position;
 
         const wasDepthEnabled = gl.isEnabled(gl.DEPTH_TEST);
         if (wasDepthEnabled) {

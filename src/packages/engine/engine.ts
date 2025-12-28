@@ -1,4 +1,4 @@
-import { Frustum, Camera } from "./camera";
+import { Camera } from "./camera";
 import { Actor, World, BaseObject } from "./world";
 import { Level } from "./level";
 import { PlayerState, Controller } from "./game";
@@ -15,6 +15,14 @@ class RootObject extends BaseObject {
 }
 
 export type EngineNetworkMode = "client" | "server" | "singleplayer";
+
+export type PostProcessingTarget = {
+    framebuffer: WebGLFramebuffer;
+    colorTexture: WebGLTexture;
+    depthBuffer: WebGLRenderbuffer;
+    width: number;
+    height: number;
+}
 
 @injectable()
 export class Engine<TSocket, TReq> {
@@ -42,6 +50,7 @@ export class Engine<TSocket, TReq> {
     protected currentMap: Level | undefined;
 
     protected netTickRate = 120;
+    protected maxFrames = 240;
 
     protected clientRpcs: Map<string, Function> = new Map();
     protected serverRpcs: Map<string, Function> = new Map();
@@ -51,13 +60,7 @@ export class Engine<TSocket, TReq> {
 
     protected frameTimes: number[] = [];
     private frameId: number = 0; // increments every render pass
-    private postProcessTarget?: {
-        framebuffer: WebGLFramebuffer;
-        colorTexture: WebGLTexture;
-        depthBuffer: WebGLRenderbuffer;
-        width: number;
-        height: number;
-    };
+    private postProcessTarget?: PostProcessingTarget;
     // private spatialGrid: SpatialGrid = new SpatialGrid(10);
     public debugMeshes: boolean = false; // show physics debug outlines
     public useDebugLogging: boolean = false;
@@ -73,7 +76,6 @@ export class Engine<TSocket, TReq> {
         protected world: World,
         protected netEndpoint: Endpoint<TSocket, TReq> | undefined,
         protected networkMode: EngineNetworkMode = "singleplayer",
-
         protected container: Container) {
     }
 
@@ -212,43 +214,46 @@ export class Engine<TSocket, TReq> {
         // Order actors based on their layer (lower layers drawn first)
         const sortedActors = actors.sort((a, b) => a.layer - b.layer);
 
+        if (!this.currentCamera) {
+            console.warn("No camera set for engine rendering. Skipping frame");
+            return;
+        }
+
         const camera = this.currentCamera;
         const canvasWidth = gl.canvas.width || 1;
         const canvasHeight = gl.canvas.height || 1;
 
-        let frustum: Frustum | undefined;
-        if (camera) {
-            camera.setViewportSize(canvasWidth, canvasHeight);
-            const aspectRatio = canvasHeight === 0 ? 1 : canvasWidth / canvasHeight;
-            camera.getViewProjectionMatrix(aspectRatio);
-            frustum = camera.getFrustum();
-        }
+        camera.setViewportSize(canvasWidth, canvasHeight);
+        const aspectRatio = canvasHeight === 0 ? 1 : canvasWidth / canvasHeight;
+        camera.getViewProjectionMatrix(aspectRatio);
+        const frustum = camera.getFrustum();
 
         const postProcessComponents: MeshComponent[] = [];
-        if (camera) {
-            for (const actor of sortedActors) {
-                const meshComponents = actor.getComponentsOfType(MeshComponent);
-                for (const component of meshComponents) {
-                    if (component.getRenderPass() !== "postprocess") {
-                        continue;
-                    }
-                    if (!this.shouldApplyPostProcess(component, camera)) {
-                        continue;
-                    }
-                    postProcessComponents.push(component);
+
+        for (const actor of sortedActors) {
+            const meshComponents = actor.getComponentsOfType(MeshComponent);
+            for (const component of meshComponents) {
+                if (component.getRenderPass() !== "postprocess") {
+                    continue;
                 }
+                if (!this.shouldApplyPostProcess(component, camera)) {
+                    continue;
+                }
+                postProcessComponents.push(component);
             }
         }
+        
 
-        const usePostProcess = postProcessComponents.length > 0 && !!camera;
+        const usePostProcess = postProcessComponents.length > 0;
         let postProcessTarget = undefined as typeof this.postProcessTarget;
 
-        if (usePostProcess && camera) {
+        if (usePostProcess) {
             postProcessTarget = this.ensurePostProcessTarget(gl, canvasWidth, canvasHeight);
             gl.bindFramebuffer(gl.FRAMEBUFFER, postProcessTarget.framebuffer);
         } else {
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         }
+
         gl.viewport(0, 0, canvasWidth, canvasHeight);
 
         if (usePostProcess) {
@@ -257,7 +262,7 @@ export class Engine<TSocket, TReq> {
 
         // Loop actors: frustum cull and render main pass immediately
         for (const actor of sortedActors) {
-            const shouldRender = !frustum || this.world.checkWithinBounds(actor, frustum);
+            const shouldRender = this.world.checkWithinBounds(actor, frustum);
             if (shouldRender) {
                 actor.setIsRendering(true);
                 this.renderActor(actor, gl, camera);
@@ -266,7 +271,7 @@ export class Engine<TSocket, TReq> {
             }
         }
 
-        if (usePostProcess && postProcessTarget && camera) {
+        if (usePostProcess && postProcessTarget) {
             const wasDepthEnabledForForward = gl.isEnabled(gl.DEPTH_TEST);
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl.viewport(0, 0, canvasWidth, canvasHeight);
@@ -317,7 +322,7 @@ export class Engine<TSocket, TReq> {
     }
     
     public finishFrame(): void {
-        const maxFrames = 240;
+        const maxFrames = this.maxFrames;
         const now = performance.now();
 
         if (this.lastFrameTime === 0) {
@@ -356,7 +361,6 @@ export class Engine<TSocket, TReq> {
     }
 
     // Should be called once every "frame" to progress the world
-    // If you calculate deltaTime yourself, you can pass it in as an argument
     tick(): void {
         if(this.asEditor)
             this.editorTick();
@@ -396,6 +400,25 @@ export class Engine<TSocket, TReq> {
         await this.spawnLevelActors();
     }
 
+    async loadLevelObject(level: Level): Promise<void> {
+        if (!level) {
+            throw new Error("Invalid level object");
+        }
+        
+        this.currentMap = level;
+
+        this.rootObject.addChildren(level.getActors());
+
+        await this.spawnLevelActors();
+        
+        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
+        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
+                
+        this.world.setGravity(level.getGravity());
+        
+        this.configurePlayerControllers();
+    }
+
     async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent?: Actor, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {
         if (!this.world) {
             throw new Error("No world loaded");
@@ -423,10 +446,10 @@ export class Engine<TSocket, TReq> {
             this.rootObject.addChild(actor);
 
         if(position !== undefined)
-            actor.setPosition(position);
+            actor.position = position;
 
 
-        this.world.spawnActor(actor, actor.getPosition());
+        this.world.spawnActor(actor, actor.position);
         const children = actor.getChildrenOfType(Actor);
         for(const child of children) {
             await this.spawnActorInstance(child, actor);
@@ -457,25 +480,6 @@ export class Engine<TSocket, TReq> {
 
     getCurrentLevel(): Level | undefined {
         return this.currentMap;
-    }
-
-    async loadLevelObject(level: Level): Promise<void> {
-        if (!level) {
-            throw new Error("Invalid level object");
-        }
-        
-        this.currentMap = level;
-
-        this.rootObject.addChildren(level.getActors());
-
-        await this.spawnLevelActors();
-        
-        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
-        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
-                
-        this.world.setGravity(level.getGravity());
-        
-        this.configurePlayerControllers();
     }
     
     protected handleNetworkTick(): void {
@@ -565,11 +569,7 @@ export class Engine<TSocket, TReq> {
         return actors;
     }
 
-    private renderActor(actor: Actor, gl: WebGL2RenderingContext, camera: Camera | undefined): void {
-        if (!camera) {
-            return;
-        }
-
+    private renderActor(actor: Actor, gl: WebGL2RenderingContext, camera: Camera): void {
         const meshComponents = actor.getComponentsOfType(MeshComponent);
         for (const component of meshComponents) {
             if (component.getRenderPass() !== "forward") {

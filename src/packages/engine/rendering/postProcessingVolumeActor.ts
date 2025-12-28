@@ -55,7 +55,7 @@ export class PostProcessingVolumeActor extends Actor {
     }
 
     public containsCamera(camera: Camera): boolean {
-        const center = this.getPosition();
+        const center = this.position;
         const halfWidth = this.extent.x * 0.5;
         const halfHeight = this.extent.y * 0.5;
         const cameraPos = camera.getPosition();

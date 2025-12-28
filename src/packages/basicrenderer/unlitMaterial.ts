@@ -99,9 +99,9 @@ export class UnlitMaterial extends Material {
 
         const aspect = gl.canvas.height === 0 ? 1 : gl.canvas.width / gl.canvas.height;
         const vp = camera.getViewProjectionMatrix(aspect).elements;
-        const position = actor.getPosition();
+        const position = actor.position;
         const halfSize = 1.0;
-        const rotation = actor.getRotation();
+        const rotation = actor.rotation;
 
         gl.useProgram(this.shaderProgram);
         this.setShaderProperties(gl, vp, position, halfSize, rotation);
@@ -334,9 +334,9 @@ export class UnlitMaterial extends Material {
 
         const aspect = gl.canvas.height === 0 ? 1 : gl.canvas.width / gl.canvas.height;
         const vp = camera.getViewProjectionMatrix(aspect).elements as Float32Array;
-        const position = actor.getPosition();
+        const position = actor.position;
         const halfSize = 1.0;
-        const rotation = actor.getRotation();
+        const rotation = actor.rotation;
 
         gl.useProgram(this.highlightProgram);
 

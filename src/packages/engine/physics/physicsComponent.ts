@@ -23,8 +23,8 @@ export class PhysicsComponent extends Component {
         body.setIsActive(this.simulated);
         const actor = this.getActor();
         if (actor) {
-            const position = actor.getPosition();
-            const rotation = actor.getRotation();
+            const position = actor.position;
+            const rotation = actor.rotation;
             body.setTransform(position, rotation);
         }
     }

@@ -92,14 +92,14 @@ export class ServerReplicationManager {
 
         this.replicatedActors.forEach((actor, actorId) => {
             const sequence = this.actorSequences.get(actorId) || 0;
-            const pos = actor.getPosition();
+            const pos = actor.position;
             
             updates.push({
                 actorId,
                 sequence,
                 state: {
                     position: { x: pos.x, y: pos.y },
-                    rotation: actor.getRotation()
+                    rotation: actor.rotation
                 }
             });
         });
@@ -121,14 +121,14 @@ export class ServerReplicationManager {
             // Only include server-owned actors (no possessedBy)
             if (actor.possessedBy === null) {
                 const sequence = this.actorSequences.get(actorId) || 0;
-                const pos = actor.getPosition();
+                const pos = actor.position;
                 
                 updates.push({
                     actorId,
                     sequence,
                     state: {
                         position: { x: pos.x, y: pos.y },
-                        rotation: actor.getRotation()
+                        rotation: actor.rotation
                     }
                 });
             }
@@ -156,7 +156,7 @@ export class ServerReplicationManager {
      */
     private applyInputToActor(actor: Actor, input: InputState): void {
         const speed = 5.0; // Movement speed
-        const currentPos = actor.getPosition();
+        const currentPos = actor.position;
         let dx = 0;
         let dy = 0;
 
@@ -177,7 +177,7 @@ export class ServerReplicationManager {
         // Apply movement
         if (dx !== 0 || dy !== 0) {
             const newPos = new Vector2(currentPos.x + dx, currentPos.y + dy);
-            actor.setPosition(newPos);
+            actor.position = newPos;
         }
 
         // Process mouse input for rotation
@@ -186,7 +186,7 @@ export class ServerReplicationManager {
                 input.mouse.position.y - currentPos.y,
                 input.mouse.position.x - currentPos.x
             );
-            actor.setRotation(angle);
+            actor.rotation = angle;
         }
     }
 

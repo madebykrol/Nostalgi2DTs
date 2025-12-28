@@ -125,8 +125,8 @@ export class ClientReplicationManager {
             input: this.currentInputBuffer[this.currentInputBuffer.length - 1],
             predictedState: {
                 sequence: this.clientSequence,
-                position: new Vector2(this.ownedActor.getPosition().x, this.ownedActor.getPosition().y),
-                rotation: this.ownedActor.getRotation()
+                position: new Vector2(this.ownedActor.position.x, this.ownedActor.position.y),
+                rotation: this.ownedActor.rotation
             }
         });
 
@@ -179,8 +179,8 @@ export class ClientReplicationManager {
 
         if (!predicted) {
             // No history for this sequence, just accept server state
-            this.ownedActor.setPosition(new Vector2(update.state.position.x, update.state.position.y));
-            this.ownedActor.setRotation(update.state.rotation);
+            this.ownedActor.position = new Vector2(update.state.position.x, update.state.position.y);
+            this.ownedActor.rotation = update.state.rotation;
             return;
         }
 
@@ -192,8 +192,8 @@ export class ClientReplicationManager {
             console.log(`Reconciliation needed: error ${positionError}`);
 
             // Server disagrees, reconcile
-            this.ownedActor.setPosition(serverPosition);
-            this.ownedActor.setRotation(update.state.rotation);
+            this.ownedActor.position = serverPosition;
+            this.ownedActor.rotation = update.state.rotation;
 
             // Replay inputs after this sequence
             const inputsToReplay = Array.from(this.inputHistory.entries())
@@ -204,10 +204,10 @@ export class ClientReplicationManager {
                 this.applyInputToActor(this.ownedActor, data.input);
                 // Update predicted state
                 data.predictedState.position = new Vector2(
-                    this.ownedActor.getPosition().x,
-                    this.ownedActor.getPosition().y
+                    this.ownedActor.position.x,
+                    this.ownedActor.position.y
                 );
-                data.predictedState.rotation = this.ownedActor.getRotation();
+                data.predictedState.rotation = this.ownedActor.rotation;
             }
         }
 
@@ -224,8 +224,8 @@ export class ClientReplicationManager {
      */
     private applyRemoteUpdate(actor: Actor, state: ActorState): void {
         // Simple direct update (could add interpolation here)
-        actor.setPosition(new Vector2(state.position.x, state.position.y));
-        actor.setRotation(state.rotation);
+        actor.position = new Vector2(state.position.x, state.position.y);
+        actor.rotation = state.rotation;
     }
 
     /**
@@ -233,7 +233,7 @@ export class ClientReplicationManager {
      */
     private applyInputToActor(actor: Actor, input: InputState): void {
         const speed = 5.0;
-        const currentPos = actor.getPosition();
+        const currentPos = actor.position;
         let dx = 0;
         let dy = 0;
 
@@ -252,7 +252,7 @@ export class ClientReplicationManager {
 
         if (dx !== 0 || dy !== 0) {
             const newPos = new Vector2(currentPos.x + dx, currentPos.y + dy);
-            actor.setPosition(newPos);
+            actor.position = newPos;
         }
 
         if (input.mouse) {

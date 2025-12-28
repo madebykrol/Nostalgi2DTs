@@ -72,8 +72,8 @@ export class SoundActor extends Actor {
     if (!playerActor) return;
 
     // Calculate distance between this actor and the player
-    const playerPosition = playerActor.getPosition();
-    const myPosition = this.getPosition();
+    const playerPosition = playerActor.position;
+    const myPosition = this.position;
     const distance = Math.sqrt(
       Math.pow(playerPosition.x - myPosition.x, 2) + 
       Math.pow(playerPosition.y - myPosition.y, 2)

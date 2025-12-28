@@ -17,6 +17,11 @@ const isActorConstructor = (ctor: unknown): ctor is new () => Actor => {
   return Boolean(ctor.prototype && ctor.prototype instanceof Actor && ctor !== Actor);
 };
 
+const formatActorName = (rawName: string, fallback: string) => {
+  const source = rawName || fallback;
+  return source.replace(/\d+$/, "").replace(/Actor$/, "");
+};
+
 const discoverActorTypes = (engine: Engine<unknown, unknown>): ActorRegistryEntry[] => {
   const container = (engine as any)?.container as { identifierBindingMap?: Map<string, unknown> } | undefined;
   const bindings = container?.identifierBindingMap;
@@ -31,7 +36,7 @@ const discoverActorTypes = (engine: Engine<unknown, unknown>): ActorRegistryEntr
     }
     entries.push({
       id: identifier,
-      name: (ctor.name || identifier).replace(/Actor$/, ""),
+      name: formatActorName(ctor.name, identifier),
     });
   }
 

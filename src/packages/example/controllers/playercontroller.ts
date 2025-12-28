@@ -109,7 +109,7 @@ export class PlayerController<TSocket, TRequest> extends Controller {
   }
 
   tick(_deltaTime: number): void {
-    this.engine.getCurrentCamera()?.setPosition(this.possessedActor?.getPosition() || new Vector2(0, 0));
+    this.engine.getCurrentCamera()?.setPosition(this.possessedActor?.position || new Vector2(0, 0));
   }
 
    protected moveLeft(): void {

@@ -33,7 +33,7 @@ export abstract class TranslationHandle extends GizmoHandle {
         const targetActors = Array.from(this.gizmo.getTargetActors());
         for (const actor of targetActors) {
             
-            const startWorld = actor.getPosition();
+            const startWorld = actor.position;
             const newWorld = new Vector2(startWorld.x + offset.x, startWorld.y + offset.y);
 
             let newLocalPosition = newWorld;
@@ -42,10 +42,10 @@ export abstract class TranslationHandle extends GizmoHandle {
 
             
             if (parent instanceof Actor) {
-                const parentWorld = parent.getPosition();
+                const parentWorld = parent.position;
                 newLocalPosition = new Vector2(newWorld.x - parentWorld.x, newWorld.y - parentWorld.y);
             }
-            actor.setPosition(newLocalPosition);
+            actor.position = newLocalPosition;
         }
     }
 }
@@ -124,7 +124,7 @@ export class TranslationGizmoActor extends GizmoActor {
 
     public getHandle(worldPoint: Vector2, cameraZoom: number): GizmoHandle | null {
         const { axisLength, arrowWidth, pivotHalfSize } = this.material.computeTranslationGizmoDimensions(cameraZoom);
-        const gizmoOrigin = this.getPosition();
+        const gizmoOrigin = this.position;
         const localX = worldPoint.x - gizmoOrigin.x;
         const localY = worldPoint.y - gizmoOrigin.y;
 

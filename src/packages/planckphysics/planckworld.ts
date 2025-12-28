@@ -131,7 +131,7 @@ export class PlanckWorld extends World {
         const collisionComponents = actor.getComponentsOfType(CollisionComponent);
         if (collisionComponents.length === 0) return true;
 
-        const position = actor.getPosition();
+        const position = actor.position;
         for (const component of collisionComponents) {
             const localBounds = component.getBounds();
             const worldMinX = localBounds.min.x + position.x;

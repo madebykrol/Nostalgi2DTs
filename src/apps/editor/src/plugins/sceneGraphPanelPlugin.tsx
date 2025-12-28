@@ -11,9 +11,18 @@ type SceneNode = {
 };
 
 const buildSceneGraph = (actors: Actor[]): SceneNode[] => {
+  const formatActorName = (actor: Actor) => {
+    const explicitName = (actor as any).name;
+    if (typeof explicitName === "string" && explicitName.trim().length > 0) {
+      return explicitName;
+    }
+    const ctorName = actor.constructor?.name ?? "Actor";
+    return ctorName.replace(/\d+$/, "");
+  };
+
   const traverse = (actor: Actor): SceneNode => ({
     id: actor.getId(),
-    name: (actor as any).name ?? actor.constructor?.name ?? "Actor",
+    name: formatActorName(actor),
     actor,
     children: actor.getChildrenOfType(Actor).map(traverse),
   });

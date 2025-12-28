@@ -13,7 +13,7 @@ export class PlanckPhysicsBody extends PhysicsBody {
     constructor(world: World, protected actor: Actor, physics: PhysicsComponent, planckWorld: PWorld) {
         super(world, actor);
         this.body = planckWorld.createBody({ userData: { actor: this.actor, component: physics }, type: physics.getBodyType(), awake: true });
-        this.body.setPosition(new Vec2(actor.getPosition().x, actor.getPosition().y));
+        this.body.setPosition(new Vec2(actor.position.x, actor.position.y));
         this.body.setActive(physics.isSimulated());
     }
     

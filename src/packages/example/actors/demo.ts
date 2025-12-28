@@ -25,7 +25,7 @@ export class BombActor extends Actor {
 
 
 export class DemoActor extends Actor {
-    
+
     constructor() {
         super();
         this.shouldTick = true;

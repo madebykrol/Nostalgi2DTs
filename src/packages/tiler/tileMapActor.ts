@@ -1,4 +1,4 @@
-import { Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container } from "@repo/engine";
+import { Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container, property } from "@repo/engine";
 import { Parser, TiledMap, type TiledObject, TiledObjectLayer } from "./parser";
 
 export interface TileMapActorOptions {
@@ -59,9 +59,10 @@ export class TileMapActor extends Actor {
     private normalizedMapUrl: string | null = null;
     private basePath: string | null = null;
     private isRemote: boolean | null = null;
+
     private mapWorldSize: Vector2 | null = null;
     private renderTranslation: Vector2 = new Vector2(0, 0);
-    private mapUrl: string = "";
+    private _mapUrl: string = "";
 
     constructor(
         private readonly parser: Parser,
@@ -75,11 +76,16 @@ export class TileMapActor extends Actor {
         console.log(parser);
     }
 
-    public setMapUrl(map: string): void {
-        this.mapUrl = map;
-        this.normalizedMapUrl = this.mapUrl.replace(/\\/g, "/");
+    @property
+    public get mapUrl(): string {
+        return this._mapUrl;
+    }
+
+    public set mapUrl(map: string) {
+        this._mapUrl = map;
+        this.normalizedMapUrl = this._mapUrl.replace(/\\/g, "/");
         this.basePath = this.computeBasePath(this.normalizedMapUrl);
-        this.isRemote = this.isRemoteUrl(this.mapUrl);
+        this.isRemote = this.isRemoteUrl(this._mapUrl);
     }
 
     async onLoad(): Promise<void> {
@@ -87,7 +93,7 @@ export class TileMapActor extends Actor {
             return;
         }
 
-        this.mapData = await this.parser.parse(this.mapUrl);
+        this.mapData = await this.parser.parse(this._mapUrl);
         this.worldUnitsPerPixel = this.computeWorldUnitsPerPixel();
         this.updateWorldSize();
 
@@ -98,10 +104,6 @@ export class TileMapActor extends Actor {
 
     getMap(): TiledMap | null {
         return this.mapData;
-    }
-
-    getMapUrl(): string {
-        return this.mapUrl;
     }
 
     getWorldUnitsPerPixel(): number {
@@ -130,7 +132,7 @@ export class TileMapActor extends Actor {
         if (!this.mapWorldSize) {
             return null;
         }
-        const origin = this.getPosition();
+        const origin = this.position;
         const topLeft = new Vector2(origin.x + this.renderTranslation.x, origin.y + this.renderTranslation.y);
         const min = new Vector2(topLeft.x, topLeft.y - this.mapWorldSize.y);
         const max = new Vector2(topLeft.x + this.mapWorldSize.x, topLeft.y);
@@ -167,7 +169,7 @@ export class TileMapActor extends Actor {
         if (resource.startsWith("/")) {
             if (this.isRemote) {
                 try {
-                    return new URL(resource, this.mapUrl).toString();
+                    return new URL(resource, this._mapUrl).toString();
                 } catch {
                     return resource;
                 }
@@ -177,7 +179,7 @@ export class TileMapActor extends Actor {
 
         if (this.isRemote) {
             try {
-                return new URL(resource, this.mapUrl).toString();
+                return new URL(resource, this._mapUrl).toString();
             } catch {
                 return `${this.basePath}${resource}`;
             }
@@ -287,8 +289,8 @@ export class TileMapActor extends Actor {
             actorsToAdd.forEach((actorToAdd) => {
                 const localX = posX + this.renderTranslation.x;
                 const localY = posY + this.renderTranslation.y;
-                actorToAdd.setPosition(new Vector2(localX, localY));
-                actorToAdd.setRotation(rotation);
+                actorToAdd.position = new Vector2(localX, localY);
+                actorToAdd.rotation = rotation;
                 this.addChild(actorToAdd);
             });
         });

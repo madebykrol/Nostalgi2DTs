@@ -18,10 +18,8 @@ export class GrasslandsMap extends Level {
 
     this.name = "Grasslands";
 
-    console.log(container);
     this.tileMapActor = container.get(GameTileMapActor);
-    console.log(this.tileMapActor);
-    this.tileMapActor.setMapUrl("/assets/maps/grasslands/grasslands.tmx");
+    this.tileMapActor.mapUrl = "/assets/maps/grasslands/grasslands.tmx";
 
     this.container = container;
 
@@ -30,7 +28,7 @@ export class GrasslandsMap extends Level {
     const sphereMaterial = new SphereWarpPostProcessMaterial();
     const postVolume = new PostProcessingVolumeActor(sphereMaterial);
     postVolume.setExtent(new Vector2(1000, 1000));
-    postVolume.setPosition(new Vector2(0, 0));
+    postVolume.position = new Vector2(0, 0);
     postVolume.layer = Number.MAX_SAFE_INTEGER; // ensure evaluated after world actors
     this.addActor(postVolume);
     // const mapCenter = tileMapActor.getWorldCenter();

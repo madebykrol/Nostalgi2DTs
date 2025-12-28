@@ -68,7 +68,7 @@ export class TileMapMaterial extends Material {
             gl.uniformMatrix3fv(this.uniformLocations.viewProj, false, viewProjection);
         }
 
-        const actorPos = actor.getPosition();
+        const actorPos = actor.position;
         const translation = actorPos.add(actor.getRenderTranslation());
         if (this.uniformLocations.translation) {
             gl.uniform2f(this.uniformLocations.translation, translation.x, translation.y);
