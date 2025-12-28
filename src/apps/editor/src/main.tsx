@@ -50,10 +50,8 @@ import {
   activateEditorPlugins,
 } from "./plugins/pluginSystem";
 import type {
-  ComponentAsset,
   ComponentAssetStorage,
   EditorComponentAssembler,
-  MeshComponentAssetPayload,
 } from "@repo/engine";
 import transformPropertiesPlugin from "../../../packages/editor-plugins/propertiesPlugin";
 import sceneGraphPanelPlugin from "./plugins/sceneGraphPanelPlugin";
@@ -61,274 +59,25 @@ import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";
 import meshComponentDesignerPlugin from "./plugins/meshComponentDesignerPlugin";
 import type { EditorUIPlugin } from "@repo/engine";
-import { ConsoleTab, type ConsoleEntry, type ConsoleEntryType } from "./plugins/consoleTabPlugin";
-import { MetricsTab } from "./plugins/metricsTabPlugin";
+import consoleTabPlugin, { type ConsoleEntry, type ConsoleEntryType } from "./plugins/consoleTabPlugin";
+import metricsTabPlugin from "./plugins/metricsTabPlugin";
 
-const formatConsoleArg = (arg: unknown): string => {
-  if (typeof arg === "string") {
-    return arg;
-  }
-
-  if (arg instanceof Error) {
-    const stack = arg.stack ? `\n${arg.stack}` : "";
-    return `${arg.name}: ${arg.message}${stack}`;
-  }
-
-  try {
-    return StringUtils.cleanStringify(arg);
-  } catch (_error) {
-    return String(arg);
-  }
-};
-
-type SceneNode = {
-  id: string;
-  name: string;
-  actor: Actor;
-  children: SceneNode[];
-};
+// Extracted utilities
+import { type SceneNode, areSceneGraphsEqual} from "./utils/sceneGraph";
+import { formatConsoleArg } from "./utils/consoleFormatter";
 
 
-const areSceneNodesEqual = (a: SceneNode, b: SceneNode): boolean => {
-  if (a.id !== b.id || a.name !== b.name) {
-    return false;
-  }
-  return areSceneGraphsEqual(a.children, b.children);
-};
-const areSceneGraphsEqual = (a: SceneNode[], b: SceneNode[]): boolean => {
-  if (a.length !== b.length) {
-    return false;
-  }
-  for (let i = 0; i < a.length; i++) {
-    if (!areSceneNodesEqual(a[i], b[i])) {
-      return false;
-    }
-  }
-  return true;
-};
+// Extracted components
+import { MenuButton, IconButton, ToolButton } from "./components/UIButtons";
+import { BottomPanel } from "./components/BottomPanel";
+import { PanelInstance } from "./components/PanelInstance";
 
-const cloneComponentAsset = (asset: ComponentAsset): ComponentAsset => ({
-  ...asset,
-  payload: asset.payload ? JSON.parse(JSON.stringify(asset.payload)) : null,
-});
+// Extracted services
+import { createPrototypeComponentAssetStorage, createPrototypeComponentAssembler } from "./services/assetService";
 
-type MeshMetadataVertex = { x: number; y: number };
-
-type MeshMetadata = {
-  vertices: MeshMetadataVertex[];
-};
-
-const DEFAULT_MESH_VERTICES: MeshMetadataVertex[] = [
-  { x: -0.5, y: -0.5 },
-  { x: 0.5, y: -0.5 },
-  { x: 0.5, y: 0.5 },
-  { x: -0.5, y: 0.5 },
-];
-
-const cloneMeshVertices = (vertices: MeshMetadataVertex[]): MeshMetadataVertex[] =>
-  vertices.map((vertex) => ({ x: vertex.x, y: vertex.y }));
-
-const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
-
-const normalizeMeshMetadataPayload = (metadata: unknown): MeshMetadata => {
-  if (!metadata || typeof metadata !== "object") {
-    return { vertices: cloneMeshVertices(DEFAULT_MESH_VERTICES) };
-  }
-
-  const rawVertices = Array.isArray((metadata as any).vertices) ? (metadata as any).vertices : [];
-  const normalized = rawVertices
-    .map((entry: unknown) => {
-      if (Array.isArray(entry) && entry.length >= 2 && isFiniteNumber(entry[0]) && isFiniteNumber(entry[1])) {
-        return { x: Number(entry[0]), y: Number(entry[1]) };
-      }
-      if (entry && typeof entry === "object" && isFiniteNumber((entry as any).x) && isFiniteNumber((entry as any).y)) {
-        return { x: Number((entry as any).x), y: Number((entry as any).y) };
-      }
-      return null;
-    })
-    .filter((value: any): value is MeshMetadataVertex => value !== null);
-
-  if (normalized.length >= 3) {
-    return { vertices: cloneMeshVertices(normalized) };
-  }
-
-  return { vertices: cloneMeshVertices(DEFAULT_MESH_VERTICES) };
-};
-
-const computePolygonIndices = (vertexCount: number): Uint16Array => {
-  if (vertexCount < 3) {
-    return new Uint16Array();
-  }
-  const result = new Uint16Array((vertexCount - 2) * 3);
-  let offset = 0;
-  for (let index = 1; index < vertexCount - 1; index++) {
-    result[offset++] = 0;
-    result[offset++] = index;
-    result[offset++] = index + 1;
-  }
-  return result;
-};
-
-const computePolygonUvs = (vertices: MeshMetadataVertex[]): Float32Array => {
-  if (vertices.length === 0) {
-    return new Float32Array();
-  }
-
-  let minX = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-  for (const vertex of vertices) {
-    minX = Math.min(minX, vertex.x);
-    maxX = Math.max(maxX, vertex.x);
-    minY = Math.min(minY, vertex.y);
-    maxY = Math.max(maxY, vertex.y);
-  }
-
-  const width = maxX - minX;
-  const height = maxY - minY;
-  const uvs = new Float32Array(vertices.length * 2);
-  vertices.forEach((vertex, index) => {
-    const u = width === 0 ? 0.5 : (vertex.x - minX) / width;
-    const v = height === 0 ? 0.5 : 1 - (vertex.y - minY) / height;
-    uvs[index * 2] = u;
-    uvs[index * 2 + 1] = v;
-  });
-  return uvs;
-};
-
-class EditorPolygonMesh extends Mesh {
-  constructor(vertices: Float32Array, indices: Uint16Array, uvs: Float32Array) {
-    super();
-    this.vertices = vertices;
-    this.indices = indices;
-    this.uvs = uvs;
-  }
-
-  rotate(angle: number): void {
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    for (let index = 0; index < this.vertices.length; index += 2) {
-      const x = this.vertices[index];
-      const y = this.vertices[index + 1];
-      this.vertices[index] = x * cos - y * sin;
-      this.vertices[index + 1] = x * sin + y * cos;
-    }
-  }
-
-  scale(sx: number, sy: number): void {
-    for (let index = 0; index < this.vertices.length; index += 2) {
-      this.vertices[index] *= sx;
-      this.vertices[index + 1] *= sy;
-    }
-  }
-
-  translate(tx: number, ty: number): void {
-    for (let index = 0; index < this.vertices.length; index += 2) {
-      this.vertices[index] += tx;
-      this.vertices[index + 1] += ty;
-    }
-  }
-
-  clone(): Mesh {
-    return new EditorPolygonMesh(new Float32Array(this.vertices), new Uint16Array(this.indices), new Float32Array(this.uvs));
-  }
-
-  getVertexCount(): number {
-    return this.vertices.length / 2;
-  }
-}
-
-const buildMeshFromMetadata = (metadata: unknown): { mesh: Mesh; metadata: MeshMetadata } => {
-  const normalized = normalizeMeshMetadataPayload(metadata);
-  const vertices = normalized.vertices;
-
-  if (vertices.length < 3) {
-    return {
-      metadata: normalized,
-      mesh: new Quad(),
-    };
-  }
-
-  const vertexArray = new Float32Array(vertices.length * 2);
-  vertices.forEach((vertex, index) => {
-    vertexArray[index * 2] = vertex.x;
-    vertexArray[index * 2 + 1] = vertex.y;
-  });
-
-  const indices = computePolygonIndices(vertices.length);
-  const uvs = computePolygonUvs(vertices);
-
-  return {
-    metadata: normalized,
-    mesh: new EditorPolygonMesh(vertexArray, indices, uvs),
-  };
-};
-
-type RegisteredPanelInstance = ReturnType<PanelRegistry["resolve"]>[number];
-
-const PanelInstance = ({ panel, editor }: { panel: RegisteredPanelInstance; editor: Editor }) => {
-  return <>{panel.render({ editor })}</>;
-};
-
-const createPrototypeComponentAssetStorage = (): ComponentAssetStorage => {
-  let store: ComponentAsset[] = [];
-  return {
-    getAssets: () => store.map(cloneComponentAsset),
-    saveAsset: async (asset) => {
-      const copy = cloneComponentAsset(asset);
-      const index = store.findIndex((entry) => entry.id === asset.id);
-      if (index >= 0) {
-        store = [...store.slice(0, index), copy, ...store.slice(index + 1)];
-      } else {
-        store = [...store, copy];
-      }
-    },
-    deleteAsset: async (assetId) => {
-      store = store.filter((asset) => asset.id !== assetId);
-    },
-  };
-};
-
-const hashStringToColor = (value: string): [number, number, number, number] => {
-  let hash = 0;
-  for (let index = 0; index < value.length; index++) {
-    hash = (hash << 5) - hash + value.charCodeAt(index);
-    hash |= 0;
-  }
-  const r = ((hash >> 16) & 0xff) / 255;
-  const g = ((hash >> 8) & 0xff) / 255;
-  const b = (hash & 0xff) / 255;
-  return [r, g, b, 1];
-};
-
-const createPrototypeComponentAssembler = (): EditorComponentAssembler => ({
-  attachComponentToActor: async (actor, asset) => {
-    if (asset.type !== "mesh") {
-      console.warn(`Unsupported component type "${asset.type}" for attachment.`);
-      return;
-    }
-
-    const payload = asset.payload as MeshComponentAssetPayload | undefined;
-    if (!payload) {
-      console.warn("Mesh asset payload missing; cannot attach component.");
-      return;
-    }
-
-    const material = new UnlitMaterial();
-    material.setColor(hashStringToColor(`${payload.meshId ?? "mesh"}:${payload.materialId ?? "material"}`));
-
-    const { mesh, metadata } = buildMeshFromMetadata(payload.metadata);
-    const component = new MeshComponent(mesh, material);
-    (component as any).editorAssetId = asset.id;
-    (component as any).editorMeshMetadata = metadata;
-    actor.addComponent(component);
-
-    console.log(
-      `Attached mesh component asset "${asset.name}" to actor ${actor.getId()} (vertices=${metadata.vertices.length})`
-    );
-  },
-});
+// Contexts
+import { ConsoleContext } from "./contexts/ConsoleContext";
+import { EditorEngineContext } from "./contexts/EngineContext";
 
 const App = () => {
   const [engine, setEngine] = useState<ClientEngine | null>(null);
@@ -336,7 +85,6 @@ const App = () => {
   const [logs, setLogs] = useState<ConsoleEntry[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const [sceneGraph, setSceneGraph] = useState<SceneNode[]>([]);
-  const [activeBottomTab, setActiveBottomTab] = useState<"console" | "metrics">("console");
   const engineInitialized = useRef(false);
   const engineRef = useRef<ClientEngine | null>(null);
   const inputManagerRef = useRef<InputManager | null>(null);
@@ -397,6 +145,7 @@ const App = () => {
   }, [rightPanels]);
 
   useEffect(() => {
+
     type ConsoleMethods = {
       log: typeof console.log;
       warn: typeof console.warn;
@@ -570,11 +319,7 @@ const App = () => {
       .withSoundManager(SoundManager)
       .withGameMode(ExampleTopDownRPGGameMode)
       .withResourceManager(DefaultResourceManager)
-      .withActor(DemoActor)
-      .withActor(GameTileMapActor)
-      .withActor(BombActor)
-      .withActor(WallActor)
-      .withActor(TranslationGizmoActor)
+      .withDecoratedActors()
       .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
       .withDebugLogging()
       .asSinglePlayer("LocalPlayer", "local_player");
@@ -617,6 +362,7 @@ const App = () => {
     const sceneContextMenuRegistry = sceneContextMenuRegistryRef.current;
     const sceneDragDropRegistry = sceneDragDropRegistryRef.current;
     const modalTriggerRegistry = modalTriggerRegistryRef.current;
+    
     panelRegistry.clear();
     sceneContextMenuRegistry.clear();
     sceneDragDropRegistry.clear();
@@ -636,9 +382,12 @@ const App = () => {
           simpleModalPlugin,
           meshComponentDesignerPlugin,
           tileMapEditorPlugin,
+          consoleTabPlugin,
+          metricsTabPlugin,
         ];
         const dynamicPlugins = (await editorRef.current?.loadEnabledEditorPlugins()) ?? [];
         const activePlugins = [...builtInPlugins, ...dynamicPlugins];
+
         if (cancelled || !editorRef.current) {
           return;
         }
@@ -799,18 +548,27 @@ const App = () => {
 
   return (
     <ContainerContext.Provider value={container}>
-      {container ? (
-      <div
-        className="w-screen h-screen"
-        style={{
-          backgroundColor: theme.bg,
-          backgroundImage:
-            "radial-gradient(1200px 800px at -10% -20%, rgba(8, 247, 254, 0.08), transparent 60%)," +
-            "radial-gradient(1000px 700px at 120% 10%, rgba(254, 83, 187, 0.08), transparent 60%)," +
-            "radial-gradient(800px 600px at 50% 120%, rgba(157, 78, 221, 0.06), transparent 60%)",
+      <ConsoleContext.Provider
+        value={{
+          logs,
+          clearLogs: handleClearLogs,
+          autoScrollEnabled: autoScroll,
+          toggleAutoScroll: () => setAutoScroll((previous) => !previous),
         }}
       >
-        {/* Top Menu Bar */}
+        <EditorEngineContext.Provider value={{ engine }}>
+          {container ? (
+          <div
+            className="w-screen h-screen"
+            style={{
+              backgroundColor: theme.bg,
+              backgroundImage:
+                "radial-gradient(1200px 800px at -10% -20%, rgba(8, 247, 254, 0.08), transparent 60%)," +
+                "radial-gradient(1000px 700px at 120% 10%, rgba(254, 83, 187, 0.08), transparent 60%)," +
+                "radial-gradient(800px 600px at 50% 120%, rgba(157, 78, 221, 0.06), transparent 60%)",
+            }}
+          >
+            {/* Top Menu Bar */}
         <div
           className="h-12 flex items-center px-4 border-b"
           style={{
@@ -1031,13 +789,9 @@ const App = () => {
 
             <Panel defaultSize={15} minSize={10} maxSize={35}>
               <BottomPanel
-                activeTab={activeBottomTab}
-                onTabChange={setActiveBottomTab}
-                logs={logs}
-                onClearLogs={handleClearLogs}
-                autoScrollEnabled={autoScroll}
-                onToggleAutoScroll={() => setAutoScroll((previous) => !previous)}
-                engine={engine}
+                panelRegistry={panelRegistryRef.current}
+                panelRevision={panelRevision}
+                editor={editorRef.current!}
               />
             </Panel>
           </PanelGroup>
@@ -1048,135 +802,10 @@ const App = () => {
           Editor not initialized.
         </div>
       )}
+        </EditorEngineContext.Provider>
+      </ConsoleContext.Provider>
     </ContainerContext.Provider>
   );
 };
-
-
-
-type BottomPanelProps = {
-  activeTab: "console" | "metrics";
-  onTabChange: (tab: "console" | "metrics") => void;
-  logs: ConsoleEntry[];
-  onClearLogs: () => void;
-  autoScrollEnabled: boolean;
-  onToggleAutoScroll: () => void;
-  engine: ClientEngine | null;
-};
-
-const BottomPanel = ({
-  activeTab,
-  onTabChange,
-  logs,
-  onClearLogs,
-  autoScrollEnabled,
-  onToggleAutoScroll,
-  engine,
-}: BottomPanelProps) => {
-  const tabs = [
-    { id: "console" as const, label: "Console" },
-    { id: "metrics" as const, label: "Metrics" },
-  ];
-
-  return (
-    <div
-      className="h-full flex flex-col border-t"
-      style={{
-        backgroundColor: theme.panel,
-        borderColor: "rgba(8, 247, 254, 0.25)",
-      }}
-    >
-      {/* Tab Headers */}
-      <div
-        className="flex items-center gap-1 px-4 py-2 border-b"
-        style={{
-          borderColor: "rgba(8, 247, 254, 0.2)",
-        }}
-      >
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={`px-3 py-1.5 text-xs font-semibold tracking-wide rounded transition-all ${
-              activeTab === tab.id
-                ? "border-b-2 border-cyan-400"
-                : "border-b-2 border-transparent hover:border-cyan-400/30"
-            }`}
-            style={{
-              color: activeTab === tab.id ? theme.neon.cyan : theme.text,
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 overflow-hidden">
-        {activeTab === "console" && (
-          <ConsoleTab
-            logs={logs}
-            onClear={onClearLogs}
-            autoScrollEnabled={autoScrollEnabled}
-            onToggleAutoScroll={onToggleAutoScroll}
-          />
-        )}
-        {activeTab === "metrics" && <MetricsTab engine={engine} />}
-      </div>
-    </div>
-  );
-};
-
-// Helper Components
-const MenuButton = ({ label, onClick }: { label: string; onClick?: (event: MouseEvent<HTMLButtonElement>) => void }) => (
-  <button
-    className="px-3 py-1.5 text-xs rounded-lg transition-all border border-transparent hover:border-cyan-400/30 hover:bg-cyan-400/10"
-    style={{ color: theme.text }}
-    onClick={onClick}
-  >
-    {label}
-  </button>
-);
-
-const IconButton = ({ icon: Icon, tooltip }: { icon: React.ComponentType<{ className?: string }>; tooltip: string }) => (
-  <button
-    className="p-2 rounded-lg transition-all border border-transparent hover:border-cyan-400/50 hover:bg-cyan-400/10"
-    style={{ color: theme.text }}
-    title={tooltip}
-  >
-    <Icon className="h-4 w-4" />
-  </button>
-);
-
-const ToolButton = ({
-  icon: Icon,
-  label,
-  onClick,
-  disabled,
-  active,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  active?: boolean;
-}) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={`flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
-      active
-        ? "border-cyan-400/60 bg-cyan-400/20 text-white"
-        : "border-white/10 text-slate-200 hover:border-cyan-400/40 hover:bg-cyan-400/10 hover:text-white"
-    } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-    style={{
-      boxShadow: active ? "0 0 12px rgba(8, 247, 254, 0.35)" : undefined,
-    }}
-    aria-pressed={active ?? false}
-  >
-    <Icon className="h-4 w-4" />
-    {label}
-  </button>
-);
 
 createRoot(document.getElementById("app")!).render(<App />);

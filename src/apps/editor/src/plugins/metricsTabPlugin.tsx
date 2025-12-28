@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { theme } from "../theme";
 import type { ClientEngine } from "@repo/client";
+import type { EditorUIPlugin } from "@repo/engine";
+import { useEditorEngine } from "../contexts/EngineContext";
 
 // Extend Performance type to include memory (Chrome-specific)
 interface PerformanceMemory {
@@ -146,3 +148,24 @@ export const MetricsTab = ({ engine }: MetricsTabProps) => {
     </div>
   );
 };
+
+const MetricsPanel = () => {
+  const { engine } = useEditorEngine();
+  return <MetricsTab engine={engine} />;
+};
+
+// Plugin Definition
+const metricsTabPlugin: EditorUIPlugin = {
+  id: "metrics-tab",
+  activate(context) {
+    context.panels.register({
+      id: "metrics",
+      title: "Metrics",
+      location: "bottom",
+      order: 1,
+      render: () => <MetricsPanel />,
+    });
+  },
+};
+
+export default metricsTabPlugin;

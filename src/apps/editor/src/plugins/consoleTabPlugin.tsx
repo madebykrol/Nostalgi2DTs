@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { theme } from "../theme";
+import type { EditorUIPlugin } from "@repo/engine";
+import { useConsole } from "../contexts/ConsoleContext";
 
 export type ConsoleEntryType = "log" | "warn" | "error";
 
@@ -94,3 +96,31 @@ export const ConsoleTab = ({ logs, onClear, autoScrollEnabled, onToggleAutoScrol
     </div>
   );
 };
+
+const ConsolePanel = () => {
+  const { logs, clearLogs, autoScrollEnabled, toggleAutoScroll } = useConsole();
+  return (
+    <ConsoleTab
+      logs={logs}
+      onClear={clearLogs}
+      autoScrollEnabled={autoScrollEnabled}
+      onToggleAutoScroll={toggleAutoScroll}
+    />
+  );
+};
+
+// Plugin Definition
+const consoleTabPlugin: EditorUIPlugin = {
+  id: "console-tab",
+  activate(context) {
+    context.panels.register({
+      id: "console",
+      title: "Console",
+      location: "bottom",
+      order: 0,
+      render: () => <ConsolePanel />,
+    });
+  },
+};
+
+export default consoleTabPlugin;

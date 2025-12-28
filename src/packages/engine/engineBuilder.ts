@@ -2,6 +2,7 @@ import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
 import { Endpoint } from "./network";
 import { Constructor, Container, InversifyContainer, ResourceManager } from "./utils";
+import { registerDecoratedActors } from "./actorRegistry.js";
 import { Actor, World } from "./world";
 import { InputManager } from "./input";
 import { GameMode } from "./game/gameMode";
@@ -110,6 +111,11 @@ export class EngineBuilder<TSocket, TReq> {
 
     withActor<TActor extends Actor>(ctor: Constructor<TActor>): EngineBuilder<TSocket, TReq> {
         this.container.registerSelf<TActor>(ctor, ctor.name);
+        return this;
+    }
+
+    withDecoratedActors(): EngineBuilder<TSocket, TReq> {
+        registerDecoratedActors(this.container);
         return this;
     }
 

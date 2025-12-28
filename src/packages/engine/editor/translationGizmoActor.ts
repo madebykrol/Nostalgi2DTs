@@ -1,3 +1,4 @@
+import { actor } from "../actorRegistry";
 import { Vector2 } from "../math";
 import { Mesh, MeshComponent} from "../rendering";
 import { Actor } from "../world";
@@ -93,6 +94,7 @@ class TranslationPivotHandle extends TranslationHandle {
 
 }
 
+@actor()
 export class TranslationGizmoActor extends GizmoActor {
     private readonly meshComponent: MeshComponent;
     private readonly material: TranslationGizmoMaterial;

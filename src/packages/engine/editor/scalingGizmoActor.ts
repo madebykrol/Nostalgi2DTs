@@ -1,7 +1,9 @@
+import { actor } from "../actorRegistry";
 import { Vector2 } from "../math";
 import { GizmoActor } from "./gizmoActor";
 import { GizmoHandle } from "./gizmoHandle";
 
+@actor()
 export class ScalingGizmoActor extends GizmoActor {
     /**
      *

@@ -4,6 +4,7 @@ import { GizmoActor } from "./gizmoActor";
 import { GizmoHandle } from "./gizmoHandle";
 import { RotationGizmoHandle, RotationGizmoMaterial } from "./rotationGizmoMaterial";
 import { Actor } from "../world";
+import { actor } from "../actorRegistry";
 
 class RotationGizmoMesh extends Mesh {
 	constructor() {
@@ -113,6 +114,7 @@ class CounterClockwiseRotationHandle extends BaseRotationHandle {
 	}
 }
 
+@actor()
 export class RotationGizmoActor extends GizmoActor {
 	private readonly meshComponent: MeshComponent;
 	private readonly material: RotationGizmoMaterial;

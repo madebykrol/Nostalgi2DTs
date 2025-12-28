@@ -1,5 +1,6 @@
-import { Actor, PhysicsComponent, PolygonCollisionComponent, Vertex2 } from "@repo/engine";
+import { actor, Actor, PhysicsComponent, PolygonCollisionComponent, Vertex2 } from "@repo/engine";
 
+@actor()
 export class WallActor extends Actor {
 
   vertices: Vertex2[] | undefined;
