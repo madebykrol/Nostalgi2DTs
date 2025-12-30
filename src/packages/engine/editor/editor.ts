@@ -160,13 +160,13 @@ export class Editor {
         if (actor.isSpawned)
             return;
 
-        this.engine.spawnActorInstance(actor);
+        this.engine.getWorld().spawnActorInstance(actor);
     }
 
     private async ensureGizmoInstance<T extends GizmoActor>(ctor: new () => T): Promise<T> {
         if (!(this.activeGizmoActor instanceof ctor)) {
             if (this.activeGizmoActor) {
-                this.engine.despawnActor(this.activeGizmoActor);
+                this.engine.getWorld().despawnActor(this.activeGizmoActor);
             }
             this.activeGizmoActor = new ctor();
         }

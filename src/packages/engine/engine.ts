@@ -231,7 +231,7 @@ export class Engine<TSocket, TReq> {
         camera.setViewportSize(canvasWidth, canvasHeight);
         camera.getViewProjectionMatrix(aspectRatio);
 
-    const postProcessComponents: MeshComponent[] = [];
+        const postProcessComponents: MeshComponent[] = [];
 
         for (const actor of sortedActors) {
             const meshComponents = actor.getComponentsOfType(MeshComponent);
@@ -427,44 +427,10 @@ export class Engine<TSocket, TReq> {
         this.configurePlayerControllers();
     }
 
-    async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent?: Actor, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {
+    private async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
         if (!this.world) {
             throw new Error("No world loaded");
         }
-
-        const actor = this.container.get<TActor>(ctor);
-        if (properties)
-            actor.applyProperties(properties);
-
-        actor.initialize();
-
-        await this.spawnActorInstance(actor, parent, position);
-
-        return actor;
-    }
-
-    async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
-        if (!this.world) {
-            throw new Error("No world loaded");
-        }
-
-        if(parent)
-            parent.addChild(actor);
-        else
-            this.rootObject.addChild(actor);
-
-        if(position !== undefined)
-            actor.position = position;
-
-
-        this.world.spawnActor(actor, actor.position);
-        const children = actor.getChildrenOfType(Actor);
-        for(const child of children) {
-            await this.spawnActorInstance(child, actor);
-        }
-        actor.onSpawned();
-
-        actor.isSpawned = true;
     }
 
     public getActorsCount(): number {
@@ -472,15 +438,12 @@ export class Engine<TSocket, TReq> {
         return flattenedActors.length;
     }
 
-    public despawnActor(actor: Actor): void {
-        for (const child of actor.getChildrenOfType(Actor)) {
-            this.despawnActor(child);
-        }
-        actor.onDespawned();
-        actor.getParent()?.removeChild(actor);
+    public getRootObject(): BaseObject {
+        return this.rootObject;
+    }
+
+    private  despawnActor(actor: Actor): void {
         this.world?.despawnActor(actor);
-        actor.setWorld(null);
-        actor.isSpawned = false;
     }
 
     getCurrentLevel(): Level | undefined {
@@ -761,7 +724,7 @@ export class Engine<TSocket, TReq> {
         await Promise.all(actors.map(actor => actor.onLoad()));
 
         for (const actor of actors) {
-            await this.spawnActorInstance(actor);
+            await this.world.spawnActorInstance(actor);
         }
     }
 }

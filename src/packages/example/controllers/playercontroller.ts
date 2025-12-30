@@ -50,7 +50,7 @@ export class PlayerController<TSocket, TRequest> extends Controller {
       return;
     }
 
-    await this.engine.spawnActor(DemoActor, undefined, new Vector2(data.worldX, data.worldY));
+    await this.engine.getWorld().spawnActor(DemoActor, this.engine.getRootObject(), new Vector2(data.worldX, data.worldY));
 
     if(!this.boink) {
       this.boink = this.soundManager.loadSoundFromBuffer("boinkSound", createBoinkSound(this.soundManager.getAudioContext()!), GainChannel.Effects);

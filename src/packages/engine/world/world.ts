@@ -1,4 +1,5 @@
 
+import { BaseObject, Constructor, Container } from "..";
 import { Frustum } from "../camera/frustum";
 import { Vector2 } from "../math/vector2";
 import { PhysicsBody, PhysicsComponent } from "../physics";
@@ -12,7 +13,7 @@ export interface WorldSettings {
 export abstract class World {
     
 
-    constructor(protected settings: WorldSettings|undefined) {
+    constructor(protected settings: WorldSettings|undefined, protected container: Container) {
 
     }
 
@@ -20,8 +21,40 @@ export abstract class World {
     abstract setGravity(gravity: Vector2): void;
     abstract createPhysicsBody(actor: Actor, physics: PhysicsComponent): PhysicsBody;
 
-    spawnActor<T extends Actor>(actor: T, _position: Vector2|undefined): T {
+    async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent: BaseObject, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {
 
+        const actor = this.container.get<TActor>(ctor);
+        if (properties)
+            actor.applyProperties(properties);
+
+        actor.initialize();
+
+        await this.spawnActorInstance(actor, parent, position);
+
+        return actor;
+    }
+
+    async spawnActorInstance(actor: Actor, parent?: BaseObject, position?: Vector2): Promise<void> {
+        if(parent)
+            parent.addChild(actor);
+        // else
+        //     this.rootObject.addChild(actor);
+
+        if(position !== undefined)
+            actor.position = position;
+
+
+        this.spawnActorInternal(actor, actor.position);
+        const children = actor.getChildrenOfType(Actor);
+        for(const child of children) {
+            await this.spawnActorInstance(child, actor);
+        }
+        actor.onSpawned();
+
+        actor.isSpawned = true;
+    }
+
+    private spawnActorInternal<T extends Actor>(actor: T, position: Vector2|undefined): T {
         actor.setWorld(this);
 
         const physicsComponents = actor.getComponentsOfType(PhysicsComponent);
@@ -33,10 +66,17 @@ export abstract class World {
 
         return actor;
     }
-
     
 
     despawnActor(actor: Actor): void {
+
+        for (const child of actor.getChildrenOfType(Actor)) {
+            this.despawnActor(child);
+        }
+        actor.onDespawned();
+        actor.getParent()?.removeChild(actor);
+
+
         const physicsComponents = actor.getComponentsOfType(PhysicsComponent);
         for (const physics of physicsComponents) {
             const body = physics.getBody();
@@ -45,6 +85,9 @@ export abstract class World {
             }
             physics.setBody(null);
         }
+
+        actor.setWorld(null);
+        actor.isSpawned = false;
     }
 
     abstract aabbCast<T extends Actor>(point: Vector2, includeStatic: boolean, includeDynamic: boolean, ctor: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)): Actor[];

@@ -41,7 +41,7 @@ function spawnAndReplicateActor(actor: Actor, actorType: string): void {
   const actorId = generateUniqueId();
   
   // Spawn locally on server
-  engine.spawnActor(actor);
+  engine.getWorld().spawnActor(actor);
   
   // Register for replication
   server.registerReplicatedActor(actor, actorId);

@@ -178,7 +178,7 @@ const actorPalettePlugin: EditorUIPlugin = {
         const worldPos = camera.screenToWorld(screenPos, targetCanvas.width, targetCanvas.height);
 
         try {
-          const spawnedActor = await engine.spawnActor(ctor as any, undefined, worldPos);
+          const spawnedActor = await engine.getWorld().spawnActor(ctor as any, undefined, worldPos);
           editor.selectActors([spawnedActor], spawnedActor);
           return true;
         } catch (error) {
