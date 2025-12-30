@@ -5,17 +5,30 @@ import { CollisionComponent } from "./collisioncomponent";
 import { Component } from "./component";
 import { World } from "./world";
 import { PhysicsComponent } from "../physics";
+import type { EngineNetworkMode } from "../engine";
+import { property } from "../utils/decorators";
+
+const TICK_GROUP_OPTIONS = ["default", "post-physics"] as const;
+type TickGroup = typeof TICK_GROUP_OPTIONS[number];
 
 export abstract class Actor extends BaseObject {
+    isOwnedBy<TController extends Controller>(controller: TController|null): boolean {
+        return this.possessedBy === controller;
+    }
+    willSpawn() {
+        throw new Error("Method not implemented.");
+    }
     // If true, this actor will tick its children when it ticks
     tickComponents: boolean = true;
 
+    @property()
     // If true, this actor will tick
     shouldTick: boolean = false;
 
+    @property({ choices: TICK_GROUP_OPTIONS })
     // The tick group this actor belongs to
     // Actors in the "physics" group will tick after the physics simulation step
-    tickGroup: "default" | "post-physics" = "default";
+    tickGroup: TickGroup = "default";
     
     // All components attached to this actor
     // Components can be used to add functionality to actors
@@ -27,23 +40,53 @@ export abstract class Actor extends BaseObject {
     // In server mode, this is the controller of the player owning this actor.
     possessedBy: Controller | null = null;
 
+    @property()
+    // If true, this actor will replicate over the network
     shouldReplicate: boolean = false;
-    layer: number = 0; // Rendering layer, higher layers are rendered on top of lower layers
-    isMarkedForDespawn: any;
+    
+    // Rendering layer, higher layers are rendered on top of lower layers
+    layer: number = 0; 
 
-    private position:Vector2;
-    private rotation: number = 0; // in radians
+    // If true, the actor will be hidden in-game (not rendered) but visible in editor collision still apply
+    isHiddenInGame: boolean = false;
+
+    // Position of the actor in world space
+    private _position:Vector2;
+
+    // Rotation of the actor in radians
+    private _rotation: number = 0; // in radians
+
+    // Reference to the world this actor belongs to
     private world: World | null = null;
+
+    // Internal flag to track if the actor is currently rendering
     private isRendering: boolean = false;
 
-    constructor(public name:string) {
-        super(name);
+        // Internal flag used to mark the actor for despawning by the engine
+    private isMarkedForDespawn: boolean = false;
+
+    public isSpawned: boolean = false;
+
+    protected name: string|undefined = undefined;
+
+    constructor() {
+        super();
         this.components = [];
-        this.position = new Vector2(0, 0);
+        this._position = new Vector2(0, 0);
     }
 
+    /**
+     * This method is called before the actor is being spawned.
+     * Used to load any necessary resources.
+     */
     async onLoad(): Promise<void> {
         
+    }
+
+    public setName(name: string): void {
+        if (this.name !== name) {
+            this.name = name;
+        }
     }
 
     setIsRendering(rendering: boolean): void {
@@ -55,11 +98,7 @@ export abstract class Actor extends BaseObject {
         if (rendering) {
             this.onStartRendering();
         } else {
-            this.onStopRendering
-    /**
-     * This method is called before the actor is being spawned.
-     * Used to load any necessary resources.
-     */();
+            this.onStopRendering();
         }
 
         this.isRendering = rendering;
@@ -78,7 +117,15 @@ export abstract class Actor extends BaseObject {
         
     }
 
-    setWorld(world: World): void {
+    markForDespawn(): void {
+        this.isMarkedForDespawn = true;
+    }
+
+    isMarkedForDespawned(): boolean {
+        return this.isMarkedForDespawn;
+    }
+
+    setWorld(world: World | null): void {
         this.world = world;
     }
 
@@ -86,30 +133,31 @@ export abstract class Actor extends BaseObject {
         return this.world;
     }
 
-    getRotation(): number { return this.rotation; }
-    setRotation(rotation: number): void {
-        this.rotation = rotation;
+    get rotation(): number { return this._rotation; }
+    set rotation(rotation: number) {
+        this._rotation = rotation;
         this.syncPhysicsTransform();
     }
 
-    getPosition(): Vector2 {
+    get position(): Vector2 {
         const parentActor = this.getParent() as Actor
 
         if(parentActor && parentActor instanceof Actor) {
-            const parentPos = parentActor.getPosition();
+            const parentPos = parentActor.position;
             
-            return new Vector2(parentPos.x + this.position.x, parentPos.y + this.position.y);
+            return new Vector2(parentPos.x + this._position.x, parentPos.y + this._position.y);
         }
-        return new Vector2(this.position.x, this.position.y);
+        return new Vector2(this._position.x, this._position.y);
     }
 
-    setPosition(position: Vector2): void {
-        this.position = new Vector2(position.x, position.y);
+    @property()
+    set position(position: Vector2) {
+        this._position = position;
         this.syncPhysicsTransform();
     }
 
     setTransformFromPhysics(position: Vector2, rotation: number): void {
-        this.position = new Vector2(position.x, position.y);
+        this._position = position;
         this.rotation = rotation;
     }
 
@@ -150,6 +198,17 @@ export abstract class Actor extends BaseObject {
 
         return bounds;
     }
+    
+    initialize(): void {}
+
+    // Called after the actor has been spawned in the world
+    // Override this to implement custom behavior
+    onSpawned(): void {}
+    
+    // Called when the game starts or when the actor is spawned
+    // Override this to implement custom behavior
+    onBeginPlay(): void {}
+    
 
     private syncPhysicsTransform(): void {
         const physicsComponents = this.getComponentsOfType(PhysicsComponent);
@@ -157,7 +216,7 @@ export abstract class Actor extends BaseObject {
             return;
         }
 
-        const worldPosition = this.getPosition();
+        const worldPosition = this.position;
         const rotation = this.rotation;
 
         for (const physics of physicsComponents) {
@@ -208,7 +267,7 @@ export abstract class Actor extends BaseObject {
 
     // Internal tick function, do not override
     // Calls tick on all components and then calls the actor's tick function
-    _tick(deltaTime: number, engineNetworkMode: "client" | "server" | "singleplayer"): void {
+    public readonly _tick = (deltaTime: number, engineNetworkMode: EngineNetworkMode): void => {
         if (!this.shouldTick) return;
 
         if(this.tickComponents) {
@@ -220,14 +279,6 @@ export abstract class Actor extends BaseObject {
         this.tick(deltaTime, engineNetworkMode);
     }
 
-    // Called after the actor has been spawned in the world
     // Override this to implement custom behavior
-    onSpawned(): void {}
-    
-    // Called when the game starts or when the actor is spawned
-    // Override this to implement custom behavior
-    onBeginPlay(): void {}
-    
-    // Override this to implement custom behavior
-    public tick(_deltaTime: number, _engineNetworkMode: "client" | "server" | "singleplayer"): void {}
+    public tick(_deltaTime: number, _engineNetworkMode: EngineNetworkMode): void {}
 }
