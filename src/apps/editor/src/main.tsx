@@ -543,6 +543,10 @@ const App = () => {
     editorInputRef.current?.dispose();
     editorInputRef.current = null;
     engine.run(false);
+    
+
+    // Load level from current editing state
+
     setIsPlaying(true);
   };
 
@@ -550,6 +554,9 @@ const App = () => {
     if (!engine) {
       return;
     }
+
+    // Load level from current editing state
+
     engine.run(true);
     if (inputManagerRef.current) {
       const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);

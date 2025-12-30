@@ -1,4 +1,4 @@
-import { Container, MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor } from "@repo/engine";
+import { Container, MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine } from "@repo/engine";
 import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, TileMapMaterial, type TileMapActorOptions } from "@repo/tiler";
 import { WallActor } from "./wall";
 
@@ -82,7 +82,7 @@ export class GameTileMapActor extends TileMapActor {
           const worldPosition = new Vector2(posX + translation.x, posY + translation.y);
           wallActor.position = worldPosition;
 
-          this.addChild(wallActor);
+          this.engine.spawnActor(wallActor);
       });
   }
 

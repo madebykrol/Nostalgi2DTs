@@ -10,7 +10,7 @@
       "id": "543d789a-84fd-43d3-838e-3d222523c273",
       "type": "GameTileMapActor",
       "position": {
-        "x": 10.413616104658358,
+        "x": 0,
         "y": 0
       },
       "rotation": 0,
@@ -19,7 +19,7 @@
         "tickGroup": "default",
         "shouldReplicate": false,
         "position": {
-          "x": 10.413616104658358,
+          "x": 0,
           "y": 0
         },
         "mapUrl": "/assets/maps/grasslands/grasslands.tmx"

@@ -34,6 +34,8 @@ export abstract class World {
         return actor;
     }
 
+    
+
     despawnActor(actor: Actor): void {
         const physicsComponents = actor.getComponentsOfType(PhysicsComponent);
         for (const physics of physicsComponents) {

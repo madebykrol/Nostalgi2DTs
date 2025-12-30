@@ -96,10 +96,12 @@ export class TileMapActor extends Actor {
         this.mapData = await this.parser.parse(this._mapUrl);
         this.worldUnitsPerPixel = this.computeWorldUnitsPerPixel();
         this.updateWorldSize();
+    }
 
-        if (this.options.spawnObjects ?? true) {
+    onBeginPlay(): void {
+        
             this.createObjectActors();
-        }
+        
     }
 
     getMap(): TiledMap | null {

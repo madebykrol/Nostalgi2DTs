@@ -175,6 +175,10 @@ export class Engine<TSocket, TReq> {
         this.ensureInputManager();
         this.configurePlayerControllers();
 
+        for (const actor of this.getFlattenedActors()) {
+            actor.onBeginPlay();
+        }
+
         if (this.asEditor) {
             console.log("Running in editor mode");
             return;
