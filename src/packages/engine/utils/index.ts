@@ -9,7 +9,6 @@ export * from "./resourcemanager";
 export * from "./stringUtils";
 export * from "./decorators";
 
-
 export const isServer = () =>
   typeof process !== 'undefined' &&
   !!process.versions &&

@@ -379,4 +379,4 @@ const transformPropertiesPlugin: EditorUIPlugin = {
 	},
 };
 
-export default transformPropertiesPlugin;
+export { transformPropertiesPlugin };

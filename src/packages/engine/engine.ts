@@ -227,7 +227,7 @@ export class Engine<TSocket, TReq> {
         camera.setViewportSize(canvasWidth, canvasHeight);
         camera.getViewProjectionMatrix(aspectRatio);
 
-        const postProcessComponents: MeshComponent[] = [];
+    const postProcessComponents: MeshComponent[] = [];
 
         for (const actor of sortedActors) {
             const meshComponents = actor.getComponentsOfType(MeshComponent);
@@ -242,23 +242,17 @@ export class Engine<TSocket, TReq> {
             }
         }
 
-        const usePostProcess = postProcessComponents.length > 0;
-        let postProcessTarget = undefined as typeof this.postProcessTarget;
+        const hasPostProcess = postProcessComponents.length > 0;
+        const postProcessTarget = hasPostProcess
+            ? this.ensurePostProcessTarget(gl, canvasWidth, canvasHeight)
+            : undefined;
 
-        if (usePostProcess) {
-            postProcessTarget = this.ensurePostProcessTarget(gl, canvasWidth, canvasHeight);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, postProcessTarget.framebuffer);
-        } else {
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        }
-
+        // Bind the appropriate framebuffer: offscreen when post-processing, otherwise default
+        gl.bindFramebuffer(gl.FRAMEBUFFER, hasPostProcess ? postProcessTarget!.framebuffer : null);
         gl.viewport(0, 0, canvasWidth, canvasHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        if (usePostProcess) {
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        }
-
-        // Loop actors: frustum cull and render main pass immediately
+        // Render forward pass into the current framebuffer (FBO if post-process, default otherwise)
         for (const actor of sortedActors) {
 
             const shouldRender = camera.getFrustum().checkWithinBounds(actor);
@@ -279,8 +273,10 @@ export class Engine<TSocket, TReq> {
             }
         }
 
-        if (usePostProcess && postProcessTarget) {
+        if (hasPostProcess) {
             const wasDepthEnabledForForward = gl.isEnabled(gl.DEPTH_TEST);
+
+            // Resolve to default framebuffer for post-processing pass
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl.viewport(0, 0, canvasWidth, canvasHeight);
             if (wasDepthEnabledForForward) {
@@ -293,7 +289,7 @@ export class Engine<TSocket, TReq> {
                 if (material instanceof PostProcessMaterial) {
                     material.prepare(gl, camera, sortedActors, sceneSize);
                 }
-                component.renderPostProcess(gl, camera, postProcessTarget.colorTexture, sceneSize);
+                component.renderPostProcess(gl, camera, postProcessTarget!.colorTexture, sceneSize);
             }
 
             if (wasDepthEnabledForForward) {
@@ -463,9 +459,6 @@ export class Engine<TSocket, TReq> {
             await this.spawnActorInstance(child, actor);
         }
         actor.onSpawned();
-        // if (this.spatialEnabled) {
-        //     this.spatialGrid.insert(actor);
-        // }
 
         actor.isSpawned = true;
     }

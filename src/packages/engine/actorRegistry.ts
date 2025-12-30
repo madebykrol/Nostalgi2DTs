@@ -11,7 +11,13 @@ const ACTOR_REGISTRY: ActorRegistration[] = [];
 /** Decorator to mark an Actor for auto-registration. */
 export function actor(id?: string) {
   return function <T extends Constructor<Actor>>(ctor: T) {
-    ACTOR_REGISTRY.push({ ctor, id: id ?? ctor.name });
+    // If the class name was suffixed during bundling (e.g., Foo2), strip trailing digits for the default id.
+    const defaultId = ctor.name.replace(/\d+$/, "");
+    const resolvedId = id ?? defaultId;
+    const alreadyRegistered = ACTOR_REGISTRY.some((entry) => entry.id === resolvedId);
+    if (!alreadyRegistered) {
+      ACTOR_REGISTRY.push({ ctor, id: resolvedId });
+    }
   };
 }
 

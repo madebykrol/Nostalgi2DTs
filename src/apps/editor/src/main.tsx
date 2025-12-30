@@ -3,7 +3,7 @@ import http from "http";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
-import { Canvas, UnlitMaterial } from "@repo/basicrenderer";
+import { Canvas } from "@repo/basicrenderer";
 import { ContainerContext } from "./ioc/ioc";
 import { EngineContext } from "@repo/ui";
 import {
@@ -15,29 +15,24 @@ import {
   DefaultResourceManager,
   InputManager,
   Actor,
-  StringUtils,
-  TranslationGizmoActor,
   Container,
-  MeshComponent,
-  Mesh,
-  Quad,
+  Level,
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import {
-  BombActor,
-  DemoActor,
   ExampleTopDownRPGGameMode,
-  GameTileMapActor,
   GrasslandsMap,
   PlayerController,
-  WallActor,
 } from "@repo/example";
+import { loadResourceLevel, DEFAULT_LEVEL_PATH, saveResourceLevel } from "./services/resourceLoader";
+import { parseLevelFromJson} from "./services/levelParser";
+import { serializeLevelToJson } from "./services/levelSerializer";
 import { Parser, tileMapEditorPlugin } from "@repo/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { FolderOpen, Play, Save, Square, Undo, Redo } from "lucide-react";
 import { EditorInputResponder } from "./editorInputResponder";
-import { Editor } from "../../../packages/engine/editor/editor";
+import { Editor } from "@repo/engine";
 import { theme } from "./theme";
 import {
   ModalHost,
@@ -53,7 +48,7 @@ import type {
   ComponentAssetStorage,
   EditorComponentAssembler,
 } from "@repo/engine";
-import transformPropertiesPlugin from "../../../packages/editor-plugins/propertiesPlugin";
+import { transformPropertiesPlugin } from "@repo/editor-plugins";
 import sceneGraphPanelPlugin from "./plugins/sceneGraphPanelPlugin";
 import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";
@@ -82,11 +77,13 @@ import { EditorEngineContext } from "./contexts/EngineContext";
 const App = () => {
   const [engine, setEngine] = useState<ClientEngine | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [logs, setLogs] = useState<ConsoleEntry[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const [sceneGraph, setSceneGraph] = useState<SceneNode[]>([]);
   const engineInitialized = useRef(false);
   const engineRef = useRef<ClientEngine | null>(null);
+  const sceneGraphRaf = useRef<number | null>(null);
   const inputManagerRef = useRef<InputManager | null>(null);
   const editorInputRef = useRef<EditorInputResponder | null>(null);
   const logIdRef = useRef(0);
@@ -199,16 +196,19 @@ const App = () => {
   const handleClearLogs = () => setLogs([]);
 
   const buildSceneGraph = useCallback((rootActors: Actor[]): SceneNode[] => {
-    const traverse = (actor: Actor): SceneNode => {
+    const traverse = (actor: Actor): SceneNode | null => {
+      if ((actor as any).persistable === false) {
+        return null;
+      }
       const children = actor.getChildrenOfType(Actor).map(traverse);
       return {
         id: actor.getId(),
         name: (actor as any).name ?? actor.constructor?.name ?? "Actor",
         actor,
-        children,
+        children: children.filter((child): child is SceneNode => Boolean(child)),
       };
     };
-    return rootActors.map(traverse);
+    return rootActors.map(traverse).filter((node): node is SceneNode => Boolean(node));
   }, []);
 
   const handleSceneDragOver = useCallback(
@@ -362,7 +362,7 @@ const App = () => {
     const sceneContextMenuRegistry = sceneContextMenuRegistryRef.current;
     const sceneDragDropRegistry = sceneDragDropRegistryRef.current;
     const modalTriggerRegistry = modalTriggerRegistryRef.current;
-    
+
     panelRegistry.clear();
     sceneContextMenuRegistry.clear();
     sceneDragDropRegistry.clear();
@@ -417,37 +417,59 @@ const App = () => {
     const endTime = performance.now();
     console.log(`Engine built in ${(endTime - startTime).toFixed(4)} ms`);
 
-    const newLevel = new GrasslandsMap(builder.container);
+  const fallbackLevel: Level = new GrasslandsMap(builder.container);
     setEngine(e);
     setIsPlaying(false);
-
-    const demoActor = new DemoActor();
-    demoActor.layer = 5;
-    newLevel.addActor(demoActor);
 
     const setupLevel = async () => {
       try {
         const levelStartTime = performance.now();
-        await e.loadLevelObject(newLevel);
+  let levelToLoad: Level = fallbackLevel;
+        //let possessTarget: Actor = demoActor;
 
-        const worldSize = newLevel.getWorldSize();
+        try {
+          const levelData = await loadResourceLevel(DEFAULT_LEVEL_PATH);
+          console.log("Loaded level JSON", { bytes: levelData.length });
+          const parsedLevel = parseLevelFromJson(levelData, builder.container);
+
+          if (parsedLevel.getActors().length === 0) {
+            console.warn("Parsed level contained no actors; using fallback level");
+          }
+
+          if (parsedLevel.getActors().length === 0) {
+            //parsedLevel.addActor(demoActor);
+          } else {
+            //possessTarget = parsedLevel.getActors()[0];
+          }
+
+          levelToLoad = parsedLevel;
+          console.log("Loaded and parsed level data from resource API", levelData.length, "bytes");
+        } catch (err) {
+          console.warn("Failed to load level from resource API, falling back to default", err);
+        }
+
+        await e.loadLevelObject(levelToLoad);
+
+        const worldSize = levelToLoad.getWorldSize();
 
         if (worldSize) {
           const camera = new OrthoCamera(new Vector2(worldSize.x / 2, worldSize.y / 2), 1, 40);
           e.setCurrentCamera(camera);
         } else {
+          // Fallback to a sensible default if level doesn't report a world size
           e.setCurrentCamera(new OrthoCamera(new Vector2(0, 0), 1));
         }
 
         const levelEndTime = performance.now();
         console.log(`Level loaded in ${(levelEndTime - levelStartTime).toFixed(2)} ms`);
+
+        e.addPlayer(new PlayerState("local_player", "LocalPlayer"));
+        //e.getLocalPlayerState()?.getController()?.possess(possessTarget);
       } catch (error) {
         console.error("Failed to initialize level", error);
       }
 
-      e.addPlayer(new PlayerState("local_player", "LocalPlayer"));
       console.log(e.getLocalPlayerState());
-      e.getLocalPlayerState()?.getController()?.possess(demoActor);
     };
 
     setupLevel();
@@ -456,13 +478,19 @@ const App = () => {
     engineRef.current = e;
 
     const updateSceneGraph = () => {
-      const activeEngine = engineRef.current;
-      if (!activeEngine) {
+      if (sceneGraphRaf.current !== null) {
         return;
       }
-      const rootActors = activeEngine.getRootActors();
-      const nextGraph = buildSceneGraph(rootActors);
-      setSceneGraph((previous) => (areSceneGraphsEqual(previous, nextGraph) ? previous : nextGraph));
+      sceneGraphRaf.current = requestAnimationFrame(() => {
+        sceneGraphRaf.current = null;
+        const activeEngine = engineRef.current;
+        if (!activeEngine) {
+          return;
+        }
+        const rootActors = activeEngine.getRootActors();
+        const nextGraph = buildSceneGraph(rootActors);
+        setSceneGraph((previous) => (areSceneGraphsEqual(previous, nextGraph) ? previous : nextGraph));
+      });
     };
 
     updateSceneGraph();
@@ -491,6 +519,10 @@ const App = () => {
       engineRef.current = null;
       containerRef.current = null;
       setContainer(null);
+      if (sceneGraphRaf.current !== null) {
+        cancelAnimationFrame(sceneGraphRaf.current);
+        sceneGraphRaf.current = null;
+      }
     };
   }, [buildSceneGraph]);
 
@@ -619,7 +651,29 @@ const App = () => {
 
           <div className="flex items-center gap-2">
             <IconButton icon={FolderOpen} tooltip="Open Map" />
-            <IconButton icon={Save} tooltip="Save Map" />
+            <IconButton
+              icon={Save}
+              tooltip={isSaving ? "Saving..." : "Save Map"}
+              onClick={async () => {
+                if (!engineRef.current) return;
+                const level = engineRef.current.getCurrentLevel();
+                if (!level) {
+                  console.warn("No level loaded to save");
+                  return;
+                }
+                setIsSaving(true);
+                try {
+                  const json = serializeLevelToJson(level);
+                  await saveResourceLevel(DEFAULT_LEVEL_PATH, json);
+                  console.log("Level saved", DEFAULT_LEVEL_PATH);
+                } catch (err) {
+                  console.error("Failed to save level", err);
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={!engine || isSaving}
+            />
           </div>
         </div>
 

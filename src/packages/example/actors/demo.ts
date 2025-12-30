@@ -2,7 +2,7 @@ import { actor, Actor, CircleCollisionComponent, MeshComponent, PhysicsComponent
 import { UnlitMaterial } from "@repo/basicrenderer";
 import { PolygonCollisionComponent } from "../../engine/world/circleCollisionComponent";
 
-@actor()
+@actor("BombActor")
 export class BombActor extends Actor {
     tick(_deltaTime: number): void {
         
@@ -25,7 +25,7 @@ export class BombActor extends Actor {
 }
 
 
-@actor()
+@actor("DemoActor")
 export class DemoActor extends Actor {
 
     constructor() {

@@ -7,7 +7,6 @@ import {
 import { World as PWorld, Vec2, Fixture, AABB } from "planck";
 import { Actor, World } from "@repo/engine";
 import { PhysicsBody } from "@repo/engine";
-import { Frustum } from "../engine/camera/frustum";
 import { PlanckPhysicsBody } from "./planckPhysicsBody";
 
 export class PlanckWorld extends World {
@@ -125,7 +124,8 @@ export class PlanckWorld extends World {
             .sort((a, b) => a[1] - b[1])
             .map(([actor]) => actor);
     }
-    
+
+
     createPhysicsBody(actor: Actor, physics: PhysicsComponent): PhysicsBody {
         const body = new PlanckPhysicsBody(this, actor, physics, this.world);
 

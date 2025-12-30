@@ -4,7 +4,8 @@ import {
   SoundManager, 
   SoundHandle,
   createBoinkSound,
-  GainChannel
+  GainChannel,
+  actor
 } from "@repo/engine";
 import { inject, injectable } from 'inversify';
 
@@ -12,6 +13,7 @@ import { inject, injectable } from 'inversify';
  * SoundActor plays a continuous sound with volume based on proximity to the player
  */
 @injectable()
+@actor("SoundActor")
 export class SoundActor extends Actor {
   private soundHandle: SoundHandle | null = null;
   private audioSource: AudioBufferSourceNode | null = null;

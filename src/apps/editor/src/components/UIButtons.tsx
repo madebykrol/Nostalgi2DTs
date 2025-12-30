@@ -11,11 +11,25 @@ export const MenuButton = ({ label, onClick }: { label: string; onClick?: (event
   </button>
 );
 
-export const IconButton = ({ icon: Icon, tooltip }: { icon: React.ComponentType<{ className?: string }>; tooltip: string }) => (
+export const IconButton = ({
+  icon: Icon,
+  tooltip,
+  onClick,
+  disabled,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  tooltip: string;
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+}) => (
   <button
-    className="p-2 rounded-lg transition-all border border-transparent hover:border-cyan-400/50 hover:bg-cyan-400/10"
+    className={`p-2 rounded-lg transition-all border border-transparent hover:border-cyan-400/50 hover:bg-cyan-400/10 ${
+      disabled ? "opacity-50 cursor-not-allowed" : ""
+    }`}
     style={{ color: theme.text }}
     title={tooltip}
+    onClick={disabled ? undefined : onClick}
+    disabled={disabled}
   >
     <Icon className="h-4 w-4" />
   </button>
