@@ -44,7 +44,7 @@ const App = () => {
 
     const builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
     builder
-      .withWorldInstance(new PlanckWorld())
+      .withWorldInstance(new PlanckWorld(undefined, builder.container))
       .withEndpointInstance(new ClientEndpoint("localhost", 3001))
       .withServiceInstance(DOMParser, new DOMParser())
       .withService(Parser)

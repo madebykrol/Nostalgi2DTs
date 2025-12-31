@@ -108,7 +108,7 @@ export class TranslationGizmoActor extends GizmoActor {
 
     constructor() {
         super();
-        this.setName("TranslationGizmo");
+        this.name = "TranslationGizmo";
         this.layer = Number.MAX_SAFE_INTEGER;
 
         this.material = new TranslationGizmoMaterial();

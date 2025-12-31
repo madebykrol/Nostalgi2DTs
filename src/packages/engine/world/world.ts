@@ -12,7 +12,6 @@ export interface WorldSettings {
 
 export abstract class World {
     
-
     constructor(protected settings: WorldSettings|undefined, protected container: Container) {
 
     }
@@ -37,8 +36,6 @@ export abstract class World {
     async spawnActorInstance(actor: Actor, parent?: BaseObject, position?: Vector2): Promise<void> {
         if(parent)
             parent.addChild(actor);
-        // else
-        //     this.rootObject.addChild(actor);
 
         if(position !== undefined)
             actor.position = position;
@@ -46,9 +43,11 @@ export abstract class World {
 
         this.spawnActorInternal(actor, actor.position);
         const children = actor.getChildrenOfType(Actor);
+        
         for(const child of children) {
             await this.spawnActorInstance(child, actor);
         }
+
         actor.onSpawned();
 
         actor.isSpawned = true;

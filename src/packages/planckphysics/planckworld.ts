@@ -2,7 +2,8 @@ import {
     Vector2,
     CollisionComponent,
     WorldSettings,
-    PhysicsComponent
+    PhysicsComponent,
+    Container
 } from "@repo/engine";
 import { World as PWorld, Vec2, Fixture, AABB } from "planck";
 import { Actor, World } from "@repo/engine";
@@ -13,8 +14,8 @@ export class PlanckWorld extends World {
     
     private world: PWorld;
 
-    constructor(settings?: WorldSettings|undefined) {
-        super(settings);
+    constructor(settings?: WorldSettings|undefined, container?: Container) {
+        super(settings, container!);
 
         this.world = new PWorld({
             gravity: settings?.gravity ? new Vec2(settings.gravity.x, settings.gravity.y) : new Vec2(0, 0),
@@ -24,7 +25,6 @@ export class PlanckWorld extends World {
 
     aabbCast<T extends Actor>(point: Vector2, includeStatic: boolean, includeDynamic: boolean, ctor: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)): Actor[] {
         const hits = new Map<T, number>();
-
         const epsilon = 1e-5;
         const lower = new Vec2(point.x - epsilon, point.y - epsilon);
         const upper = new Vec2(point.x + epsilon, point.y + epsilon);

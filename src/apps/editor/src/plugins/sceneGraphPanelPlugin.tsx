@@ -148,7 +148,7 @@ const SceneNodeEntry = ({ node, depth, selectedIds, onSelect, onDoubleClick }: S
         onClick={() => onSelect(node.actor)}
         onDoubleClick={() => onDoubleClick?.(node.actor)}
       >
-        <span className="truncate">{node.name}</span>
+        <span className="truncate">{node.name} <span className="text-white/60 text-xs">({node.id})</span></span>
       </button>
       {node.children.length > 0 && (
         <div className="space-y-1">

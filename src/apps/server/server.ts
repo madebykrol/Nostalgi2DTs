@@ -337,7 +337,7 @@ class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
 
 var builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
 builder
-  .withWorldInstance(new PlanckWorld())
+  .withWorldInstance(new PlanckWorld(undefined, builder.container))
   .withEndpointInstance(server)
   .withActor(DemoActor)
   .withServiceInstance(DOMParser, new DOMParser())

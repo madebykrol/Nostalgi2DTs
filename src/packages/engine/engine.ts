@@ -412,6 +412,12 @@ export class Engine<TSocket, TReq> {
         if (!level) {
             throw new Error("Invalid level object");
         }
+
+        const existing = this.rootObject.getChildrenOfType(Actor);
+        for (const actor of existing) {
+            this.world?.despawnActor(actor);
+        }
+
         
         this.currentMap = level;
 
@@ -425,12 +431,6 @@ export class Engine<TSocket, TReq> {
         this.world.setGravity(level.getGravity());
         
         this.configurePlayerControllers();
-    }
-
-    private async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
-        if (!this.world) {
-            throw new Error("No world loaded");
-        }
     }
 
     public getActorsCount(): number {

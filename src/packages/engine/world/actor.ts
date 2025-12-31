@@ -56,6 +56,8 @@ export abstract class Actor extends BaseObject {
     // Rotation of the actor in radians
     private _rotation: number = 0; // in radians
 
+    private _name: string|undefined = undefined;
+
     // Reference to the world this actor belongs to
     private world: World | null = null;
 
@@ -66,8 +68,6 @@ export abstract class Actor extends BaseObject {
     private isMarkedForDespawn: boolean = false;
 
     public isSpawned: boolean = false;
-
-    protected name: string|undefined = undefined;
 
     constructor() {
         super();
@@ -83,10 +83,15 @@ export abstract class Actor extends BaseObject {
         
     }
 
-    public setName(name: string): void {
-        if (this.name !== name) {
-            this.name = name;
+    public set name(name: string){
+        if (this._name !== name) {
+            this._name = name;
         }
+    }
+
+    @property
+    public get name(): string | undefined {
+        return this._name;
     }
 
     setIsRendering(rendering: boolean): void {

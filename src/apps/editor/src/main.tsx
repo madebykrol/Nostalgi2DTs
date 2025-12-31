@@ -73,6 +73,7 @@ import { createPrototypeComponentAssetStorage, createPrototypeComponentAssembler
 // Contexts
 import { ConsoleContext } from "./contexts/ConsoleContext";
 import { EditorEngineContext } from "./contexts/EngineContext";
+// Snapshotting uses serialize/parse instead of cloning live instances
 
 const App = () => {
   const [engine, setEngine] = useState<ClientEngine | null>(null);
@@ -90,6 +91,7 @@ const App = () => {
   const editorRef = useRef<Editor | null>(null);
   const panelRegistryRef = useRef(new PanelRegistry());
   const modalManagerRef = useRef(new ModalManager());
+  const levelSnapshotRef = useRef<string | null>(null);
   const sceneContextMenuRegistryRef = useRef(new SceneContextMenuRegistry());
   const sceneDragDropRegistryRef = useRef(new SceneDragDropRegistry());
   const modalTriggerRegistryRef = useRef(new ModalTriggerRegistry());
@@ -310,7 +312,7 @@ const App = () => {
 
     const builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
     builder
-      .withWorldInstance(new PlanckWorld())
+      .withWorldInstance(new PlanckWorld(undefined, builder.container))
       .withEndpointInstance(new ClientEndpoint("localhost", 3001))
       .withServiceInstance(DOMParser, new DOMParser())
       .withService(Editor)
@@ -424,7 +426,7 @@ const App = () => {
     const setupLevel = async () => {
       try {
         const levelStartTime = performance.now();
-  let levelToLoad: Level = fallbackLevel;
+        let levelToLoad: Level = fallbackLevel;
         //let possessTarget: Actor = demoActor;
 
         try {
@@ -518,6 +520,7 @@ const App = () => {
       e.offAfterRender(afterRenderId);
       engineRef.current = null;
       containerRef.current = null;
+      levelSnapshotRef.current = null;
       setContainer(null);
       if (sceneGraphRaf.current !== null) {
         cancelAnimationFrame(sceneGraphRaf.current);
@@ -536,28 +539,52 @@ const App = () => {
     };
   }, []);
 
-  const handlePlay = () => {
-    if (!engine) {
+  const handlePlay = async () => {
+    if (!engine || !containerRef.current) {
       return;
     }
+
+    const currentLevel = engine.getCurrentLevel();
+    if (!currentLevel) {
+      console.warn("No current level to play");
+      return;
+    }
+
+    // Snapshot editor state as JSON to avoid cloning runtime instances
+    levelSnapshotRef.current = serializeLevelToJson(currentLevel);
+
+    try {
+      const playableLevel = parseLevelFromJson(levelSnapshotRef.current, containerRef.current);
+      await engine.loadLevelObject(playableLevel);
+    } catch (error) {
+      console.error("Failed to load playable level from editor snapshot", error);
+      return;
+    }
+
     editorInputRef.current?.dispose();
     editorInputRef.current = null;
+
     engine.run(false);
-    
-
-    // Load level from current editing state
-
     setIsPlaying(true);
   };
 
-  const handleStop = () => {
-    if (!engine) {
+  const handleStop = async () => {
+    if (!engine || !containerRef.current) {
       return;
     }
 
-    // Load level from current editing state
+    const snapshot = levelSnapshotRef.current;
+    if (snapshot) {
+      try {
+        const editorLevel = parseLevelFromJson(snapshot, containerRef.current);
+        await engine.loadLevelObject(editorLevel);
+      } catch (error) {
+        console.error("Failed to restore editor level from snapshot", error);
+      }
+    }
 
     engine.run(true);
+    // Reload editor input and gizmos
     if (inputManagerRef.current) {
       const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);
       responder.activate();

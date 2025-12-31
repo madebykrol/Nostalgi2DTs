@@ -1,5 +1,5 @@
 import { Actor, Level } from "@repo/engine";
-import { getRegisteredPropertiesForInstance } from "@repo/engine/utils/decorators";
+import { getRegisteredPropertiesForInstance } from "@repo/engine";
 import type { LevelData, LevelActorDefinition } from "./levelParser";
 
 const stripSuffix = (value: string) => value.replace(/\d+$/, "");
@@ -23,7 +23,6 @@ const serializeActor = (actor: Actor): LevelActorDefinition => {
   const def: LevelActorDefinition = {
     id: actor.getId(),
     type: stripSuffix(actor.constructor?.name ?? "Actor"),
-    name: (actor as any).name,
     position: { x: actor.position.x, y: actor.position.y },
     rotation: actor.rotation,
     properties: Object.keys(props).length ? props : undefined,

@@ -16,7 +16,6 @@ export class Editor {
     private editorPluginManifest: EditorPluginManifestEntry[] = [];
 
     eventListeners: Map<string, Set<Function>> = new Map();
-
     /**
      *
      */
@@ -80,7 +79,7 @@ export class Editor {
             return;
         }
 
-        this.engine.despawnActor(this.activeGizmoActor);
+        this.engine.getWorld().despawnActor(this.activeGizmoActor);
         this.activeGizmoActor = null;
     }
 
@@ -153,14 +152,18 @@ export class Editor {
     }
 
     private async spawnIfNeeded(actor: GizmoActor): Promise<void> {
-        if (actor.getWorld()) {
+        const parent = this.engine.getRootObject();
+
+        // Ensure the gizmo lives under the engine root so it gets ticked and rendered.
+        if (actor.getParent() !== parent) {
+            parent.addChild(actor);
+        }
+
+        if (actor.getWorld() && actor.isSpawned) {
             return;
         }
-        
-        if (actor.isSpawned)
-            return;
 
-        this.engine.getWorld().spawnActorInstance(actor);
+        await this.engine.getWorld().spawnActorInstance(actor, parent);
     }
 
     private async ensureGizmoInstance<T extends GizmoActor>(ctor: new () => T): Promise<T> {

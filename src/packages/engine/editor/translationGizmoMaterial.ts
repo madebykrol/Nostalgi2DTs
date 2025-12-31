@@ -56,6 +56,11 @@ export class TranslationGizmoMaterial extends Material {
     public override render(context: MaterialRenderContext): void {
         const { actor, camera, gl } = context;
         if (!this.program || !this.positionBuffer || !this.vao) {
+            // Gizmos can be spawned after the initial material compilation pass; compile lazily on first render.
+            this.compile(gl);
+        }
+
+        if (!this.program || !this.positionBuffer || !this.vao) {
             return;
         }
 

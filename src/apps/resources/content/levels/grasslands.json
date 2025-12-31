@@ -7,7 +7,7 @@
   "gameMode": "ExampleTopDownRPGGameMode",
   "actors": [
     {
-      "id": "543d789a-84fd-43d3-838e-3d222523c273",
+      "id": "269bc233-5f47-47a6-ab59-2f808f791eb1",
       "type": "GameTileMapActor",
       "position": {
         "x": 0,
@@ -23,8 +23,7 @@
           "y": 0
         },
         "mapUrl": "/assets/maps/grasslands/grasslands.tmx"
-      },
-      "children": []
+      }
     }
   ]
 }

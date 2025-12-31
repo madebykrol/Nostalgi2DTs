@@ -19,9 +19,6 @@ export abstract class GameMode {
     tick(_deltaTime: number): void {}
 
     public readonly _onGameStart = (): void => {
-        
-        
-     
         this.onGameStart();
     }
 
