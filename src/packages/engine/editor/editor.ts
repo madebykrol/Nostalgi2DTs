@@ -1,4 +1,4 @@
-import { Actor, Engine, GizmoActor, inject, injectable, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
+import { Actor, Engine, getRegisteredProperties, getRegisteredPropertiesForInstance, GizmoActor, inject, injectable, Level, normalizeClassName, Property, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
 import { EditorPluginManifestEntry, EditorUIPlugin } from "./";
 
 export type GizmoType = "translation" | "rotation" | "scaling";
@@ -28,6 +28,83 @@ export class Editor {
 
     public registerPlugin(plugin: EditorPluginManifestEntry): void {
         this.editorPluginManifest.push(plugin);
+    }
+
+    public getPropertiesForInstance(actor: Object): Property[] {
+        return getRegisteredPropertiesForInstance(actor);
+    }
+
+    public getPropertyValue(actor: Object, property: Property): any {
+        return Reflect.get(actor, property.key);
+    }
+
+    public setPropertyValue(actor: Object, property: Property, value: any): void {
+        Reflect.set(actor, property.key, value);
+    }
+
+    public serializeLevel<T extends Level>(level: T): string {
+        // First we create a new structure that is safe to 
+        var levelProperties = this.getPropertiesForInstance(level);
+        console.log(`Level has ${levelProperties.length} registered properties.`);
+        for(const levelProperty of levelProperties) {
+            const propertyValue = this.getPropertyValue(level, levelProperty);
+            console.log(`Level Property: ${String(levelProperty.key)}, value = ${propertyValue}`);
+
+            const levelPropertyProperties = this.getPropertiesForInstance(levelProperty);
+            console.log(`-- Property has ${levelPropertyProperties.length} registered properties.`);
+            for(const propProperty of levelPropertyProperties) {
+                const propPropertyValue = this.getPropertyValue(levelProperty, propProperty);
+                console.log(`---- Level Property Property: ${String(propProperty.key)}, value = ${propPropertyValue}`);
+            }
+        }
+
+        for(const actor of level.getActors()) {
+            const actorProperties = this.getPropertiesForInstance(actor);
+            console.log(`Actor ${actor.getId()} has ${actorProperties.length} registered properties.`);
+            for(const actorProperty of actorProperties) {
+                const propertyValue = this.getPropertyValue(actor, actorProperty);
+                console.log(`Actor Property: ${String(actorProperty.key)}, value = ${propertyValue}`);
+            }
+        }
+
+        const serializedLevel = new SerializedLevel();
+        serializedLevel.properties = levelProperties.map(prop => {
+            const serializedProp = new SerializedProperty();
+            serializedProp.key = typeof prop.key === "string" ? prop.key : String(prop.key);
+            serializedProp.value = this.getPropertyValue(level, prop);
+            serializedProp.type = normalizeClassName(prop.type ?? "unknown");
+            return serializedProp;
+        });
+        serializedLevel.type = normalizeClassName(level.constructor.name);
+        
+        for(const actor of level.getActors()) {
+            const actorNode = new SerializedNode();
+            actorNode.type = normalizeClassName(actor.constructor.name);
+            actorNode.properties = this.getPropertiesForInstance(actor);
+            serializedLevel.actors.push(actorNode);
+        }
+
+        return JSON.stringify(serializedLevel, null, 2);
+    }
+
+    protected recursiveSerializeProperty(prop: Property, value: any): SerializedProperty {
+        const serializedProp = new SerializedProperty();
+        serializedProp.key = typeof prop.key === "string" ? prop.key : String(prop.key);
+        serializedProp.type = normalizeClassName(prop.type ?? "unknown");
+        value = this.getPropertyValue(value, prop);
+        return serializedProp;
+    }
+
+    public deserializeLevel<T extends Level>(levelData: string): T | null {
+        var parsedData: SerializedNode;
+        try {
+            parsedData = JSON.parse(levelData) as SerializedNode;
+        } catch (error) {
+            console.error("Failed to parse level data:", error);
+            return null;
+        }
+
+        return null;
     }
 
     public loadEnabledEditorPlugins = async (): Promise<EditorUIPlugin[]> => {
@@ -178,5 +255,23 @@ export class Editor {
         await this.spawnIfNeeded(gizmo);
         return gizmo;
     }
+
+}
+
+export class SerializedNode {
+    type: string|null = null;
+    properties: SerializedProperty[] = [];
+}
+
+export class SerializedLevel {
+    type: string|null = null;
+    properties: SerializedProperty[] = [];
+    actors: SerializedNode[] = [];
+}
+
+export class SerializedProperty {
+    type: string|null = null;
+    key: string|null = null;
+    value: SerializedNode|null = null;
 
 }

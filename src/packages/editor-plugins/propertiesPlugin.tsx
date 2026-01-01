@@ -5,14 +5,14 @@ import {
 	EditorUIPlugin,
 	Vector2,
 	getRegisteredPropertiesForInstance,
-	RegisteredProperty,
+	Property,
 } from "@repo/engine";
 import { Number } from "@repo/ui";
 
 const radiansToDegrees = (value: number): number => (value * 180) / Math.PI;
 const degreesToRadians = (value: number): number => (value * Math.PI) / 180;
 
-const formatPropertyLabel = (property: RegisteredProperty) => {
+const formatPropertyLabel = (property: Property) => {
 	if (property.label) {
 		return property.label;
 	}
@@ -180,9 +180,9 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 	const actor = selection[0];
 	const position = actor.position;
 	const rotationDegrees = radiansToDegrees(actor.rotation);
-	const registeredProperties = actor ? getRegisteredPropertiesForInstance(actor) : [];
-	const propertyGroups: Array<{ owner: string; properties: RegisteredProperty[] }> = [];
-	const groupLookup = new Map<string, RegisteredProperty[]>();
+	const registeredProperties = actor ? editor.getPropertiesForInstance(actor) : [];
+	const propertyGroups: Array<{ owner: string; properties: Property[] }> = [];
+	const groupLookup = new Map<string, Property[]>();
 
 	const formatOwner = (target: Function | undefined) => {
 		if (!target) {
@@ -212,14 +212,14 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 		group.push(property);
 	}
 
-	const renderPropertyControl = (property: RegisteredProperty) => {
+	const renderPropertyControl = (property: Property) => {
 		if (typeof property.key === "symbol") {
 			return null;
 		}
 		const key = property.key;
 		const label = formatPropertyLabel(property);
 		const description = property.description;
-		const currentValue = Reflect.get(actor, key);
+		const currentValue = editor.getPropertyValue(actor, property);
 		const applyValue = (nextValue: unknown) => {
 			if (Object.is(currentValue, nextValue)) {
 				return;

@@ -73,7 +73,7 @@ import { createPrototypeComponentAssetStorage, createPrototypeComponentAssembler
 // Contexts
 import { ConsoleContext } from "./contexts/ConsoleContext";
 import { EditorEngineContext } from "./contexts/EngineContext";
-// Snapshotting uses serialize/parse instead of cloning live instances
+import clone from "clone";
 
 const App = () => {
   const [engine, setEngine] = useState<ClientEngine | null>(null);
@@ -91,7 +91,7 @@ const App = () => {
   const editorRef = useRef<Editor | null>(null);
   const panelRegistryRef = useRef(new PanelRegistry());
   const modalManagerRef = useRef(new ModalManager());
-  const levelSnapshotRef = useRef<string | null>(null);
+  const levelSnapshotRef = useRef<Level | null>(null);
   const sceneContextMenuRegistryRef = useRef(new SceneContextMenuRegistry());
   const sceneDragDropRegistryRef = useRef(new SceneDragDropRegistry());
   const modalTriggerRegistryRef = useRef(new ModalTriggerRegistry());
@@ -539,58 +539,36 @@ const App = () => {
     };
   }, []);
 
-  const handlePlay = async () => {
-    if (!engine || !containerRef.current) {
+  const handlePlay = () => {
+    if (!engine) {
       return;
     }
-
-    const currentLevel = engine.getCurrentLevel();
-    if (!currentLevel) {
-      console.warn("No current level to play");
-      return;
-    }
-
-    // Snapshot editor state as JSON to avoid cloning runtime instances
-    levelSnapshotRef.current = serializeLevelToJson(currentLevel);
-
-    try {
-      const playableLevel = parseLevelFromJson(levelSnapshotRef.current, containerRef.current);
-      await engine.loadLevelObject(playableLevel);
-    } catch (error) {
-      console.error("Failed to load playable level from editor snapshot", error);
-      return;
-    }
-
     editorInputRef.current?.dispose();
     editorInputRef.current = null;
 
+    levelSnapshotRef.current = clone(engine.getCurrentLevel() ?? null);
+
     engine.run(false);
+    
     setIsPlaying(true);
   };
 
-  const handleStop = async () => {
-    if (!engine || !containerRef.current) {
+  const handleStop = () => {
+    if (!engine) {
       return;
     }
 
-    const snapshot = levelSnapshotRef.current;
-    if (snapshot) {
-      try {
-        const editorLevel = parseLevelFromJson(snapshot, containerRef.current);
-        await engine.loadLevelObject(editorLevel);
-      } catch (error) {
-        console.error("Failed to restore editor level from snapshot", error);
+    engine.loadLevelObject(levelSnapshotRef.current!).then(() => {
+      engine.run(true);
+      // Load level from current editing state
+      if (inputManagerRef.current) {
+        const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);
+        responder.activate();
+        editorInputRef.current = responder;
       }
-    }
+      setIsPlaying(false);
+    });
 
-    engine.run(true);
-    // Reload editor input and gizmos
-    if (inputManagerRef.current) {
-      const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);
-      responder.activate();
-      editorInputRef.current = responder;
-    }
-    setIsPlaying(false);
   };
 
   const draw = (gl: WebGL2RenderingContext | null) => {
@@ -691,6 +669,10 @@ const App = () => {
               onClick={async () => {
                 if (!engineRef.current) return;
                 const level = engineRef.current.getCurrentLevel();
+
+                var serializedLevel = editorRef.current?.serializeLevel(level!);
+
+                var level2 = editorRef.current?.deserializeLevel(serializedLevel!);
                 if (!level) {
                   console.warn("No level loaded to save");
                   return;

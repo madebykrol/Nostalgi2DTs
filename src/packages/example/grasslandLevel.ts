@@ -51,7 +51,7 @@ export class GrasslandsMap extends Level {
     );
   }
 
-  getGameMode(): Constructor<GameMode> | undefined {
+  get gameMode(): Constructor<GameMode> | undefined {
     console.log(this.tileMapActor.getMap()?.properties?.GameMode);
     return this.container.getTypeForIdentifier(this.tileMapActor.getMap()?.properties?.GameMode as string) as Constructor<GameMode> | undefined;
   }

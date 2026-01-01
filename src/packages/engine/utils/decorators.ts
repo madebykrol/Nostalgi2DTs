@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { normalizeClassName } from "./type";
 
 export type PropertyDecoratorOptions = {
     choices?: readonly unknown[];
@@ -6,8 +7,8 @@ export type PropertyDecoratorOptions = {
     description?: string;
 };
 
-export type RegisteredProperty = {
-    target: Function;
+export type Property = {
+    target: string;
     key: string | symbol;
     type: string | null;
     designType?: unknown;
@@ -18,7 +19,7 @@ export type RegisteredProperty = {
     description?: string;
 };
 
-const registry = new WeakMap<Function, Map<string | symbol, RegisteredProperty>>();
+const registry = new WeakMap<Function, Map<string | symbol, Property>>();
 
 const ensureRegistryEntry = (ctor: Function) => {
     let entry = registry.get(ctor);
@@ -54,10 +55,13 @@ const registerProperty = (target: object, propertyKey: string | symbol, options?
     if (!ctor || typeof ctor !== "function") {
         return;
     }
+
+    
+
     const { designType, typeName, valueType, valueTypeName } = readDesignType(target, propertyKey);
     const choices = options?.choices ? (Array.from(options.choices) as readonly unknown[]) : undefined;
-    const metadata: RegisteredProperty = {
-        target: ctor,
+    const metadata: Property = {
+        target: normalizeClassName(ctor.name),
         key: propertyKey,
         type: valueTypeName ?? typeName,
         designType,
@@ -70,9 +74,9 @@ const registerProperty = (target: object, propertyKey: string | symbol, options?
     ensureRegistryEntry(ctor).set(propertyKey, metadata);
 };
 
-export const getRegisteredProperties = (ctor: Function, { includeBase = true }: { includeBase?: boolean } = {}) => {
+export const getRegisteredProperties = (fn: Function, { includeBase = true }: { includeBase?: boolean } = {}) => {
     const chain: Function[] = [];
-    let current: Function | undefined | null = ctor;
+    let current: Function | undefined | null = fn;
     while (current && typeof current === "function") {
         chain.push(current);
         if (!includeBase) {
@@ -85,7 +89,7 @@ export const getRegisteredProperties = (ctor: Function, { includeBase = true }: 
         current = prototype.constructor;
     }
 
-    const ordered = new Map<string | symbol, RegisteredProperty>();
+    const ordered = new Map<string | symbol, Property>();
     for (let index = chain.length - 1; index >= 0; index -= 1) {
         const map = registry.get(chain[index]);
         if (!map) {
@@ -98,18 +102,18 @@ export const getRegisteredProperties = (ctor: Function, { includeBase = true }: 
     return Array.from(ordered.values());
 };
 
-export const getRegisteredProperty = (ctor: Function, propertyKey: string | symbol, { includeBase = true }: { includeBase?: boolean } = {}) => {
-    const properties = getRegisteredProperties(ctor, { includeBase });
+export const getRegisteredProperty = (fn: Function, propertyKey: string | symbol, { includeBase = true }: { includeBase?: boolean } = {}) => {
+    const properties = getRegisteredProperties(fn, { includeBase });
     return properties.find((entry) => entry.key === propertyKey);
 };
 
 export const getRegisteredPropertiesForInstance = (instance: object, options?: { includeBase?: boolean }) => {
     if (!instance || typeof instance !== "object") {
-        return [] as RegisteredProperty[];
+        return [] as Property[];
     }
     const ctor = (instance as { constructor?: Function }).constructor;
     if (!ctor || typeof ctor !== "function") {
-        return [] as RegisteredProperty[];
+        return [] as Property[];
     }
     return getRegisteredProperties(ctor, options);
 };

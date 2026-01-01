@@ -1,12 +1,10 @@
 import { AbstractConstructor, Constructor, Container } from "./container";
 
 import { Container as InvContainer } from "inversify"; 
+import { normalizeClassName } from "./type";
 
 // Normalize identifiers so suffixed names like Foo2 still resolve to Foo
-const normalizeIdentifier = (identifier: string | undefined): string | undefined => {
-  if (!identifier) return identifier;
-  return identifier.replace(/\d+$/, "");
-};
+
 
 export class InversifyContainer implements Container {
     private container: InvContainer;
@@ -19,7 +17,7 @@ export class InversifyContainer implements Container {
     }
 
     getTypeForIdentifier(identifier: string): Constructor<unknown> | AbstractConstructor<unknown> | null {
-      const normalized = normalizeIdentifier(identifier);
+      const normalized = normalizeClassName(identifier);
       return this.identifierBindingMap.get(identifier) || this.identifierBindingMap.get(normalized!) || null;
     }
 
@@ -31,7 +29,7 @@ export class InversifyContainer implements Container {
       try {
         return this.container.get<T>(identifier);
       } catch (e) {
-        const normalized = normalizeIdentifier(identifier);
+        const normalized = normalizeClassName(identifier);
         if (normalized && normalized !== identifier) {
           try {
             return this.container.get<T>(normalized);
@@ -46,7 +44,7 @@ export class InversifyContainer implements Container {
 
     registerSelf<T>(ctor: Constructor<T>, identifier: string|undefined = undefined): void {
         const id = identifier || ctor.name;
-        const normalized = normalizeIdentifier(id);
+        const normalized = normalizeClassName(id);
 
         this.container.bind(ctor).toSelf();
         this.container.bind(id).to(ctor);

@@ -1,4 +1,4 @@
-import { Constructor } from "../utils";
+import { type Constructor, property } from "../utils";
 import { Character } from "./character";
 import { Controller } from "./controller";
 import { PlayerState } from "./playerstate";
@@ -8,8 +8,13 @@ export abstract class GameMode {
     abstract start(): void;
     abstract stop(): void;
 
+    @property()
     public playerControllerType: Constructor<Controller> | undefined;
+
+    @property()
     public playerCharacterType: Constructor<Character> | undefined;
+
+    @property()
     public playerStateType: Constructor<PlayerState> | undefined;
 
     public readonly _tick = (deltaTime: number): void => {

@@ -33,8 +33,8 @@ const serializeActor = (actor: Actor): LevelActorDefinition => {
 };
 
 export const serializeLevelToJson = (level: Level): string => {
-  const gravity = level.getGravity?.();
-  const gameModeCtor = (level as any).getGameMode?.();
+  const gravity = level.gravity;
+  const gameModeCtor = (level as any).gameMode;
 
   const data: LevelData = {
     name: (level as any).name,
@@ -45,3 +45,4 @@ export const serializeLevelToJson = (level: Level): string => {
 
   return JSON.stringify(data, null, 2);
 };
+

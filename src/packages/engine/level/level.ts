@@ -1,13 +1,35 @@
 import { GameMode } from "../game/gameMode";
 import { Vector2 } from "../math";
-import { Constructor } from "../utils";
+import { type Constructor, property } from "../utils";
 import { Actor } from "../world";
 import { BaseObject } from "../world/baseobject";
 
 export class Level {
 
-    private gravity: Vector2 = new Vector2(0, 0);
+    private _gravity: Vector2 = new Vector2(0, 0);
+    
+    private _gameMode: Constructor<GameMode> | undefined = undefined;
+
+    @property()
     public name: string = "Unnamed Level";
+
+    protected set gravity(gravity: Vector2) {
+    this._gravity = gravity;
+    }
+
+    @property()
+    get gravity(): Vector2 {
+        return this._gravity;
+    }
+
+    protected set gameMode(gameMode: Constructor<GameMode> | undefined){
+        this._gameMode = gameMode;
+    }
+
+    @property()
+    get gameMode(): Constructor<GameMode> | undefined {
+        return this._gameMode;
+    }
 
     /**
      *
@@ -16,13 +38,6 @@ export class Level {
         
     }
 
-    protected setGravity(gravity: Vector2): void {
-        this.gravity = gravity;
-    }
-
-    getGravity(): Vector2 {
-        return this.gravity;
-    }
     protected objects: BaseObject[] = [];
 
     findActor(id:string): Actor | null {
@@ -37,10 +52,6 @@ export class Level {
         }
 
         return null;
-    }
-
-    getGameMode(): Constructor<GameMode> | undefined {
-        return;
     }
 
     getWorldSize(): Vector2 | null {

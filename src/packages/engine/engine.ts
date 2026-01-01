@@ -417,7 +417,6 @@ export class Engine<TSocket, TReq> {
         for (const actor of existing) {
             this.world?.despawnActor(actor);
         }
-
         
         this.currentMap = level;
 
@@ -425,10 +424,10 @@ export class Engine<TSocket, TReq> {
 
         await this.spawnLevelActors();
         
-        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.getGameMode()?.name ?? "DefaultGameMode");
+        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.gameMode?.name ?? "DefaultGameMode");
         this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
                 
-        this.world.setGravity(level.getGravity());
+        this.world.setGravity(level.gravity);
         
         this.configurePlayerControllers();
     }

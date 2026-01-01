@@ -1,3 +1,5 @@
+import { injectable } from "inversify";
+
 export class StringUtils {
 
     public static cleanStringify(object:any) {
@@ -14,4 +16,9 @@ export class StringUtils {
             return value;
         })
     }
+}
+
+@injectable()
+export class Serializer {
+    
 }

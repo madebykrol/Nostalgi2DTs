@@ -66,7 +66,6 @@ export abstract class World {
         return actor;
     }
     
-
     despawnActor(actor: Actor): void {
 
         for (const child of actor.getChildrenOfType(Actor)) {
