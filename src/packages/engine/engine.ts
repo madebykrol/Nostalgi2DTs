@@ -26,6 +26,9 @@ export type PostProcessingTarget = {
 
 @injectable()
 export class Engine<TSocket, TReq> {
+    getContainer(): Container {
+        return this.container;
+    }
 
     afterRenderCallbacks: Map<string, (() => void)> = new Map();
     currentGameMode: GameMode | undefined;
@@ -424,8 +427,19 @@ export class Engine<TSocket, TReq> {
 
         await this.spawnLevelActors();
         
-        this.currentGameMode = this.container.getByIdentifier<GameMode>(level.gameMode?.name ?? "DefaultGameMode");
-        this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
+        const requestedGameModeId = level.gameMode?.name ?? "DefaultGameMode";
+        try {
+            this.currentGameMode = this.container.getByIdentifier<GameMode>(requestedGameModeId);
+        } catch (error) {
+            console.warn(`Failed to resolve game mode '${requestedGameModeId}', falling back to null`, error);
+            this.currentGameMode = null;
+        }
+
+        if (this.currentGameMode) {
+            this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
+        } else {
+            this.setControllerTypeForPlayer(null);
+        }
                 
         this.world.setGravity(level.gravity);
         

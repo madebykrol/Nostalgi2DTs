@@ -1,51 +1,163 @@
 {
-  "name": "Grasslands",
-  "gravity": {
-    "x": 0,
-    "y": 0
-  },
-  "gameMode": "ExampleTopDownRPGGameMode",
-  "actors": [
+  "type": "GrasslandsMap",
+  "properties": [
     {
-      "id": "e0c8b92a-145c-45ec-86b3-e8349e3ae384",
-      "type": "GameTileMapActor",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "rotation": 0,
-      "properties": {
-        "shouldTick": false,
-        "tickGroup": "default",
-        "shouldReplicate": false,
-        "position": {
-          "x": 0,
-          "y": 0
-        },
-        "mapUrl": "/assets/maps/grasslands/grasslands.tmx"
-      }
+      "type": "String",
+      "key": "name",
+      "value": "Grasslands",
+      "node": null
     },
     {
-      "id": "849156c6-52a2-4b30-b903-125a758c5fb2",
-      "type": "PostProcessingVolumeActor",
-      "position": {
-        "x": 0,
-        "y": 0
-      },
-      "rotation": 0,
-      "properties": {
-        "shouldTick": false,
-        "tickGroup": "default",
-        "shouldReplicate": false,
-        "position": {
-          "x": 0,
-          "y": 0
+      "type": "Vector2",
+      "key": "gravity",
+      "value": null,
+      "properties": [
+        {
+          "type": "Number",
+          "key": "x",
+          "value": 0,
+          "node": null
         },
-        "extent": {
-          "x": 2,
-          "y": 2
+        {
+          "type": "Number",
+          "key": "y",
+          "value": 0,
+          "node": null
         }
-      }
+      ]
+    },
+    {
+      "type": "Type",
+      "key": "gameMode",
+      "value": "ExampleTopDownRPGGameMode",
+      "node": null
+    }
+  ],
+  "actors": [
+    {
+      "type": "GameTileMapActor",
+      "value": null,
+      "children": [],
+      "properties": [
+        {
+          "type": "Boolean",
+          "key": "shouldTick",
+          "value": false,
+          "node": null
+        },
+        {
+          "type": "Object",
+          "key": "tickGroup",
+          "value": "default",
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldReplicate",
+          "value": false,
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "name",
+          "value": null,
+          "node": null
+        },
+        {
+          "type": "Vector",
+          "key": "position",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": 0,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 0,
+              "node": null
+            }
+          ]
+        },
+        {
+          "type": "String",
+          "key": "mapUrl",
+          "value": "/assets/maps/grasslands/grasslands.tmx",
+          "node": null
+        }
+      ]
+    },
+    {
+      "type": "PostProcessingVolumeActor",
+      "value": null,
+      "children": [],
+      "properties": [
+        {
+          "type": "Boolean",
+          "key": "shouldTick",
+          "value": false,
+          "node": null
+        },
+        {
+          "type": "Object",
+          "key": "tickGroup",
+          "value": "default",
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldReplicate",
+          "value": false,
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "name",
+          "value": null,
+          "node": null
+        },
+        {
+          "type": "Vector2",
+          "key": "position",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": 0,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 0,
+              "node": null
+            }
+          ]
+        },
+        {
+          "type": "Vector2",
+          "key": "extent",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": 2,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 2,
+              "node": null
+            }
+          ]
+        }
+      ]
     }
   ]
 }

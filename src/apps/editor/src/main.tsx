@@ -26,7 +26,6 @@ import {
 } from "@repo/example";
 import { loadResourceLevel, DEFAULT_LEVEL_PATH, saveResourceLevel } from "./services/resourceLoader";
 import { parseLevelFromJson} from "./services/levelParser";
-import { serializeLevelToJson } from "./services/levelSerializer";
 import { Parser, tileMapEditorPlugin } from "@repo/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -320,6 +319,7 @@ const App = () => {
       .withInputManager(DefaultInputManager)
       .withSoundManager(SoundManager)
       .withGameMode(ExampleTopDownRPGGameMode)
+      .withLevel(GrasslandsMap)
       .withResourceManager(DefaultResourceManager)
       .withDecoratedActors()
       .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
@@ -432,19 +432,19 @@ const App = () => {
         try {
           const levelData = await loadResourceLevel(DEFAULT_LEVEL_PATH);
           console.log("Loaded level JSON", { bytes: levelData.length });
-          const parsedLevel = parseLevelFromJson(levelData, builder.container);
+          const parsedLevel = editorRef.current?.deserializeLevel(levelData);
 
-          if (parsedLevel.getActors().length === 0) {
-            console.warn("Parsed level contained no actors; using fallback level");
-          }
+          // if (parsedLevel.getActors().length === 0) {
+          //   console.warn("Parsed level contained no actors; using fallback level");
+          // }
 
-          if (parsedLevel.getActors().length === 0) {
-            //parsedLevel.addActor(demoActor);
-          } else {
-            //possessTarget = parsedLevel.getActors()[0];
-          }
+          // if (parsedLevel.getActors().length === 0) {
+          //   //parsedLevel.addActor(demoActor);
+          // } else {
+          //   //possessTarget = parsedLevel.getActors()[0];
+          // }
 
-          levelToLoad = parsedLevel;
+          // levelToLoad = parsedLevel;
           console.log("Loaded and parsed level data from resource API", levelData.length, "bytes");
         } catch (err) {
           console.warn("Failed to load level from resource API, falling back to default", err);
@@ -679,8 +679,7 @@ const App = () => {
                 }
                 setIsSaving(true);
                 try {
-                  const json = serializeLevelToJson(level);
-                  await saveResourceLevel(DEFAULT_LEVEL_PATH, json);
+                  await saveResourceLevel(DEFAULT_LEVEL_PATH, serializedLevel!);
                   console.log("Level saved", DEFAULT_LEVEL_PATH);
                 } catch (err) {
                   console.error("Failed to save level", err);

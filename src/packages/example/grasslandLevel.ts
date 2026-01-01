@@ -5,15 +5,18 @@ import {
   Level,
   Vector2,
   PostProcessingVolumeActor,
-  SphereWarpPostProcessMaterial
+  SphereWarpPostProcessMaterial,
+  injectable
 } from "@repo/engine";
 import { GameTileMapActor } from "@repo/example";
 
+
+@injectable()
 export class GrasslandsMap extends Level {
 
   private tileMapActor: GameTileMapActor;
   private container: Container;
-  constructor(container: Container, ) {
+  constructor(container: Container) {
     super();
 
     this.name = "Grasslands";
@@ -30,17 +33,17 @@ export class GrasslandsMap extends Level {
 
     this.container = container;
 
-    this.addActor(this.tileMapActor);
+    this.addChild(this.tileMapActor);
 
     const sphereMaterial = new SphereWarpPostProcessMaterial();
-    const postVolume = new PostProcessingVolumeActor(sphereMaterial);
+    const postVolume = new PostProcessingVolumeActor();
+
+    postVolume.setMaterial(sphereMaterial);
   
     postVolume.extent = new Vector2(2, 2);
     postVolume.position = new Vector2(0, 0);
     postVolume.layer = Number.MAX_SAFE_INTEGER; // ensure evaluated after world actors
-    this.addActor(postVolume);
-    // const mapCenter = tileMapActor.getWorldCenter();
-    // tileMapActor.setPosition(mapCenter);
+    this.addChild(postVolume);
   }
 
   // get
@@ -51,8 +54,8 @@ export class GrasslandsMap extends Level {
     );
   }
 
-  get gameMode(): Constructor<GameMode> | undefined {
-    console.log(this.tileMapActor.getMap()?.properties?.GameMode);
-    return this.container.getTypeForIdentifier(this.tileMapActor.getMap()?.properties?.GameMode as string) as Constructor<GameMode> | undefined;
-  }
+  // get gameMode(): Constructor<GameMode> | undefined {
+  //   console.log(this.tileMapActor.getMap()?.properties?.GameMode);
+  //   return this.container.getTypeForIdentifier(this.tileMapActor.getMap()?.properties?.GameMode as string) as Constructor<GameMode> | undefined;
+  // }
 }

@@ -14,6 +14,8 @@ export type Property = {
     designType?: unknown;
     valueType?: unknown;
     valueTypeName?: string | null;
+    returnType?: unknown;
+    returnTypeName?: string | null;
     choices?: readonly unknown[];
     label?: string;
     description?: string;
@@ -37,6 +39,8 @@ const readDesignType = (target: object, propertyKey: string | symbol) => {
             typeName: null,
             valueType: undefined,
             valueTypeName: null,
+            returnType: undefined,
+            returnTypeName: null,
         };
     }
     const designType = Reflect.getMetadata("design:type", target, propertyKey);
@@ -44,7 +48,9 @@ const readDesignType = (target: object, propertyKey: string | symbol) => {
     const paramTypes = Reflect.getMetadata("design:paramtypes", target, propertyKey) as unknown[] | undefined;
     const valueType = Array.isArray(paramTypes) && paramTypes.length > 0 ? paramTypes[0] : undefined;
     const valueTypeName = typeof valueType === "function" && valueType.name ? valueType.name : null;
-    return { designType, typeName, valueType, valueTypeName };
+    const returnType = Reflect.getMetadata("design:returntype", target, propertyKey);
+    const returnTypeName = typeof returnType === "function" && returnType.name ? returnType.name : null;
+    return { designType, typeName, valueType, valueTypeName, returnType, returnTypeName };
 };
 
 const registerProperty = (target: object, propertyKey: string | symbol, options?: PropertyDecoratorOptions) => {
@@ -58,15 +64,18 @@ const registerProperty = (target: object, propertyKey: string | symbol, options?
 
     
 
-    const { designType, typeName, valueType, valueTypeName } = readDesignType(target, propertyKey);
+    const { designType, typeName, valueType, valueTypeName, returnType, returnTypeName } = readDesignType(target, propertyKey);
+    const resolvedTypeName = returnTypeName ?? valueTypeName ?? typeName;
     const choices = options?.choices ? (Array.from(options.choices) as readonly unknown[]) : undefined;
     const metadata: Property = {
         target: normalizeClassName(ctor.name),
         key: propertyKey,
-        type: valueTypeName ?? typeName,
+        type: resolvedTypeName ? normalizeClassName(resolvedTypeName) : null,
         designType,
         valueType,
         valueTypeName,
+        returnType,
+        returnTypeName,
         choices,
         label: options?.label,
         description: options?.description,

@@ -6,6 +6,7 @@ import { Mesh } from "./mesh";
 import { Quad } from "./quad";
 import type { Material } from "./material";
 import { property } from "../utils";
+import { actor } from "..";
 
 function ensurePostProcessMaterial(material: Material): void {
     if (material.getRenderPass() !== "postprocess") {
@@ -13,16 +14,15 @@ function ensurePostProcessMaterial(material: Material): void {
     }
 }
 
+@actor()
 export class PostProcessingVolumeActor extends Actor {
     private _extent: Vector2 = new Vector2(20, 20);
     private meshComponent: MeshComponent | null = null;
     private readonly quad: Mesh = new Quad();
 
-    constructor(material?: Material) {
+    constructor() {
         super();
-        if (material) {
-            this.setMaterial(material);
-        }
+      
         this.shouldTick = false;
     }
 

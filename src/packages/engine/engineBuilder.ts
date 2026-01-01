@@ -7,8 +7,13 @@ import { Actor, World } from "./world";
 import { InputManager } from "./input";
 import { GameMode } from "./game/gameMode";
 import { Controller } from "./game";
+import { Level } from "./level";
 
 export class EngineBuilder<TSocket, TReq> {
+    withLevel<TLevel extends Level>(ctor: Constructor<TLevel>): EngineBuilder<TSocket, TReq> {
+        this.container.registerSelf<TLevel>(ctor, undefined);
+        return this;
+    }
    
     // Implementation of the EngineBuilder class
     private networkMode: EngineNetworkMode = "singleplayer";

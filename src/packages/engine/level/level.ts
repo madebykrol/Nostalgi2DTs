@@ -4,7 +4,7 @@ import { type Constructor, property } from "../utils";
 import { Actor } from "../world";
 import { BaseObject } from "../world/baseobject";
 
-export class Level {
+export class Level extends BaseObject {
 
     private _gravity: Vector2 = new Vector2(0, 0);
     
@@ -14,7 +14,7 @@ export class Level {
     public name: string = "Unnamed Level";
 
     protected set gravity(gravity: Vector2) {
-    this._gravity = gravity;
+        this._gravity = gravity;
     }
 
     @property()
@@ -22,7 +22,7 @@ export class Level {
         return this._gravity;
     }
 
-    protected set gameMode(gameMode: Constructor<GameMode> | undefined){
+    set gameMode(gameMode: Constructor<GameMode> | undefined){
         this._gameMode = gameMode;
     }
 
@@ -35,13 +35,13 @@ export class Level {
      *
      */
     constructor() {
-        
+        super();
     }
 
     protected objects: BaseObject[] = [];
 
     findActor(id:string): Actor | null {
-        for(const actor of this.objects.filter(o => o instanceof Actor)) {
+        for(const actor of this.children.filter(o => o instanceof Actor)) {
             if(actor.getId() === id) {
                 return actor;
             }
@@ -61,24 +61,8 @@ export class Level {
         return new Vector2(maxX, maxY);
     }
 
-    addActor(actor: Actor): void {
-        if (this.findActor(actor.getId())) {
-            return;
-        }
-        this.objects.push(actor);
-    }
-
-    addActors(actors: Actor[]): void {
-        for(const actor of actors) {
-            if (this.findActor(actor.getId())) {
-                continue;
-            }
-            this.objects.push(actor);
-        }
-    }
-
     getActors(): Actor[] {
-        return this.objects.filter(o => o instanceof Actor) as Actor[];
+        return this.children.filter(o => o instanceof Actor) as Actor[];
     }
 
     protected getChildActors(actor:Actor): Actor[] {

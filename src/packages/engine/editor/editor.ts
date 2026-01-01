@@ -1,5 +1,6 @@
 import { Actor, Engine, getRegisteredProperties, getRegisteredPropertiesForInstance, GizmoActor, inject, injectable, Level, normalizeClassName, Property, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
 import { EditorPluginManifestEntry, EditorUIPlugin } from "./";
+import { SerializedNode, SerializedProperty } from "../serialization";
 
 export type GizmoType = "translation" | "rotation" | "scaling";
 
@@ -71,7 +72,6 @@ export class Editor {
         serializedLevel.properties = levelProperties.map(prop => {
             const serializedProp = new SerializedProperty();
             serializedProp.key = typeof prop.key === "string" ? prop.key : String(prop.key);
-            serializedProp.value = this.getPropertyValue(level, prop);
             serializedProp.type = normalizeClassName(prop.type ?? "unknown");
             return serializedProp;
         });
@@ -80,7 +80,6 @@ export class Editor {
         for(const actor of level.getActors()) {
             const actorNode = new SerializedNode();
             actorNode.type = normalizeClassName(actor.constructor.name);
-            actorNode.properties = this.getPropertiesForInstance(actor);
             serializedLevel.actors.push(actorNode);
         }
 
@@ -95,10 +94,15 @@ export class Editor {
         return serializedProp;
     }
 
-    public deserializeLevel<T extends Level>(levelData: string): T | null {
+    public deserializeLevel(levelData: string): Level | null {
         var parsedData: SerializedNode;
         try {
             parsedData = JSON.parse(levelData) as SerializedNode;
+            const level = this.engine.getContainer().getByIdentifier(normalizeClassName(parsedData.type ?? "Level")) as Level;
+            const gameMode = this.engine.getContainer().getTypeForIdentifier(parsedData.properties.find(p => p.key === "gameMode")?.value as string) as (new () => unknown) | undefined;
+            console.log(`Deserialized level of type ${parsedData.type}`);
+            level.gameMode = gameMode as any;
+            return level;
         } catch (error) {
             console.error("Failed to parse level data:", error);
             return null;
@@ -258,10 +262,7 @@ export class Editor {
 
 }
 
-export class SerializedNode {
-    type: string|null = null;
-    properties: SerializedProperty[] = [];
-}
+
 
 export class SerializedLevel {
     type: string|null = null;
@@ -269,9 +270,3 @@ export class SerializedLevel {
     actors: SerializedNode[] = [];
 }
 
-export class SerializedProperty {
-    type: string|null = null;
-    key: string|null = null;
-    value: SerializedNode|null = null;
-
-}

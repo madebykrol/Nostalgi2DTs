@@ -13,6 +13,7 @@ export type LevelActorDefinition = {
 };
 
 export type LevelData = {
+  type: string;
   name?: string;
   gravity?: { x: number; y: number };
   actors?: LevelActorDefinition[];
@@ -27,7 +28,7 @@ class ParsedLevel extends Level {
   private gameModeType: Constructor<GameMode> | undefined;
   applyGravity(vec: Vector2): void {
     // setGravity is protected on Level
-    (this as any).setGravity(vec);
+    (this as any).gravity = vec;
   }
   setGameMode(gameMode: Constructor<GameMode> | undefined): void {
     this.gameModeType = gameMode;
@@ -72,13 +73,8 @@ function instantiateActor(def: LevelActorDefinition, container: Container): Acto
 export function parseLevelFromJson(json: string, container: Container): Level {
   const data = JSON.parse(json) as LevelData;
 
-  const level = new ParsedLevel();
-  level.setGameMode(container.getTypeForIdentifier(data.gameMode as string) as Constructor<GameMode> | undefined);
-  level.name = data.name ?? level.name;
-
-  if (data.gravity) {
-    level.applyGravity(new Vector2(data.gravity.x, data.gravity.y));
-  }
+  const level = container.getByIdentifier(data.type) as Level;
+  level.applyProperties(data);
 
   const actors = data.actors ?? [];
   for (const actorDef of actors) {
@@ -88,7 +84,7 @@ export function parseLevelFromJson(json: string, container: Container): Level {
     }
     try {
       const actor = instantiateActor(actorDef, container);
-      level.addActor(actor);
+      level.addChild(actor);
     } catch (err) {
       console.error(`Failed to instantiate actor '${actorDef.type}':`, err);
     }
