@@ -13,6 +13,7 @@ export class InversifyContainer implements Container {
     constructor() {
         this.container = new InvContainer({
             autobind: true,
+            
         });
     }
 

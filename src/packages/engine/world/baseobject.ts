@@ -1,11 +1,13 @@
 import { v4 as uuidv4 } from "uuid";
-import { SerializedNode } from "../serialization";
+import { property } from "../utils";
 
 export abstract class BaseObject {
 
     protected children: BaseObject[] = [];
 
     protected parent: BaseObject | null = null;
+
+    @property()
     protected readonly id: string = "";
 
     constructor() {

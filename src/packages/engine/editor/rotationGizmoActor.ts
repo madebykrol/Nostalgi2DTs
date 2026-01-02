@@ -123,7 +123,7 @@ export class RotationGizmoActor extends GizmoActor {
 
 	constructor() {
 		super();
-		this.setName("RotationGizmo");
+		this.name = "RotationGizmo";
 		this.layer = Number.MAX_SAFE_INTEGER;
 
 		this.material = new RotationGizmoMaterial();

@@ -17,16 +17,14 @@ export class Level extends BaseObject {
         this._gravity = gravity;
     }
 
-    @property()
     get gravity(): Vector2 {
         return this._gravity;
     }
 
+    @property()
     set gameMode(gameMode: Constructor<GameMode> | undefined){
         this._gameMode = gameMode;
     }
-
-    @property()
     get gameMode(): Constructor<GameMode> | undefined {
         return this._gameMode;
     }

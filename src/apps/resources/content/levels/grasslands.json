@@ -3,33 +3,23 @@
   "properties": [
     {
       "type": "String",
-      "key": "name",
-      "value": "Grasslands",
+      "key": "id",
+      "value": "53f1a6b0-344b-41ad-8d78-840f1f84752e",
+      "properties": null,
       "node": null
     },
     {
-      "type": "Vector2",
-      "key": "gravity",
-      "value": null,
-      "properties": [
-        {
-          "type": "Number",
-          "key": "x",
-          "value": 0,
-          "node": null
-        },
-        {
-          "type": "Number",
-          "key": "y",
-          "value": 0,
-          "node": null
-        }
-      ]
+      "type": "String",
+      "key": "name",
+      "value": "Grasslands",
+      "properties": null,
+      "node": null
     },
     {
-      "type": "Type",
+      "type": "Object",
       "key": "gameMode",
-      "value": "ExampleTopDownRPGGameMode",
+      "value": null,
+      "properties": null,
       "node": null
     }
   ],
@@ -37,86 +27,41 @@
     {
       "type": "GameTileMapActor",
       "value": null,
-      "children": [],
+      "items": [],
       "properties": [
+        {
+          "type": "String",
+          "key": "id",
+          "value": "c10ff636-ca8d-4d73-bc5e-bac282528505",
+          "properties": null,
+          "node": null
+        },
         {
           "type": "Boolean",
           "key": "shouldTick",
           "value": false,
+          "properties": null,
           "node": null
         },
         {
           "type": "Object",
           "key": "tickGroup",
           "value": "default",
+          "properties": null,
           "node": null
         },
         {
           "type": "Boolean",
           "key": "shouldReplicate",
           "value": false,
+          "properties": null,
           "node": null
         },
         {
           "type": "String",
           "key": "name",
-          "value": null,
-          "node": null
-        },
-        {
-          "type": "Vector",
-          "key": "position",
-          "value": null,
-          "properties": [
-            {
-              "type": "Number",
-              "key": "x",
-              "value": 0,
-              "node": null
-            },
-            {
-              "type": "Number",
-              "key": "y",
-              "value": 0,
-              "node": null
-            }
-          ]
-        },
-        {
-          "type": "String",
-          "key": "mapUrl",
-          "value": "/assets/maps/grasslands/grasslands.tmx",
-          "node": null
-        }
-      ]
-    },
-    {
-      "type": "PostProcessingVolumeActor",
-      "value": null,
-      "children": [],
-      "properties": [
-        {
-          "type": "Boolean",
-          "key": "shouldTick",
-          "value": false,
-          "node": null
-        },
-        {
-          "type": "Object",
-          "key": "tickGroup",
-          "value": "default",
-          "node": null
-        },
-        {
-          "type": "Boolean",
-          "key": "shouldReplicate",
-          "value": false,
-          "node": null
-        },
-        {
-          "type": "String",
-          "key": "name",
-          "value": null,
+          "value": "Actor",
+          "properties": null,
           "node": null
         },
         {
@@ -128,15 +73,90 @@
               "type": "Number",
               "key": "x",
               "value": 0,
+              "properties": null,
               "node": null
             },
             {
               "type": "Number",
               "key": "y",
               "value": 0,
+              "properties": null,
               "node": null
             }
-          ]
+          ],
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "mapUrl",
+          "value": "/assets/maps/grasslands/grasslands.tmx",
+          "properties": null,
+          "node": null
+        }
+      ],
+      "children": []
+    },
+    {
+      "type": "PostProcessingVolumeActor",
+      "value": null,
+      "items": [],
+      "properties": [
+        {
+          "type": "String",
+          "key": "id",
+          "value": "31e02d85-097c-40bf-b668-51686a1a309e",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldTick",
+          "value": false,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Object",
+          "key": "tickGroup",
+          "value": "default",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldReplicate",
+          "value": false,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "name",
+          "value": "Actor",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Vector2",
+          "key": "position",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": 0,
+              "properties": null,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 0,
+              "properties": null,
+              "node": null
+            }
+          ],
+          "node": null
         },
         {
           "type": "Vector2",
@@ -147,17 +167,86 @@
               "type": "Number",
               "key": "x",
               "value": 2,
+              "properties": null,
               "node": null
             },
             {
               "type": "Number",
               "key": "y",
               "value": 2,
+              "properties": null,
               "node": null
             }
-          ]
+          ],
+          "node": null
         }
-      ]
+      ],
+      "children": []
+    },
+    {
+      "type": "DemoActor",
+      "value": null,
+      "items": [],
+      "properties": [
+        {
+          "type": "String",
+          "key": "id",
+          "value": "439b248b-801b-435b-b3a8-177bb79d09ef",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldTick",
+          "value": true,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Object",
+          "key": "tickGroup",
+          "value": "default",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldReplicate",
+          "value": false,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "name",
+          "value": "Actor",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Vector2",
+          "key": "position",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": -0.35002144082332814,
+              "properties": null,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 5.454545454545454,
+              "properties": null,
+              "node": null
+            }
+          ],
+          "node": null
+        }
+      ],
+      "children": []
     }
   ]
 }

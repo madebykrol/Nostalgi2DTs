@@ -15,7 +15,6 @@ import { GameTileMapActor } from "@repo/example";
 export class GrasslandsMap extends Level {
 
   private tileMapActor: GameTileMapActor;
-  private container: Container;
   constructor(container: Container) {
     super();
 
@@ -30,20 +29,6 @@ export class GrasslandsMap extends Level {
     }
 
     this.tileMapActor.mapUrl = "/assets/maps/grasslands/grasslands.tmx";
-
-    this.container = container;
-
-    this.addChild(this.tileMapActor);
-
-    const sphereMaterial = new SphereWarpPostProcessMaterial();
-    const postVolume = new PostProcessingVolumeActor();
-
-    postVolume.setMaterial(sphereMaterial);
-  
-    postVolume.extent = new Vector2(2, 2);
-    postVolume.position = new Vector2(0, 0);
-    postVolume.layer = Number.MAX_SAFE_INTEGER; // ensure evaluated after world actors
-    this.addChild(postVolume);
   }
 
   // get

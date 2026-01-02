@@ -15,6 +15,7 @@ export abstract class Actor extends BaseObject {
     isOwnedBy<TController extends Controller>(controller: TController|null): boolean {
         return this.possessedBy === controller;
     }
+    
     willSpawn() {
         throw new Error("Method not implemented.");
     }
@@ -83,15 +84,15 @@ export abstract class Actor extends BaseObject {
         
     }
 
+    @property
     public set name(name: string){
         if (this._name !== name) {
             this._name = name;
         }
     }
 
-    @property
-    public get name(): string | undefined {
-        return this._name;
+    public get name(): string{
+        return this._name ?? "Actor";
     }
 
     setIsRendering(rendering: boolean): void {

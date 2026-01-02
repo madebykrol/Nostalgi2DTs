@@ -16,6 +16,8 @@ export type Property = {
     valueTypeName?: string | null;
     returnType?: unknown;
     returnTypeName?: string | null;
+    getterReturnType?: unknown;
+    getterReturnTypeName?: string | null;
     choices?: readonly unknown[];
     label?: string;
     description?: string;
@@ -41,16 +43,28 @@ const readDesignType = (target: object, propertyKey: string | symbol) => {
             valueTypeName: null,
             returnType: undefined,
             returnTypeName: null,
+            getterReturnType: undefined,
+            getterReturnTypeName: null,
         };
     }
     const designType = Reflect.getMetadata("design:type", target, propertyKey);
-    const typeName = typeof designType === "function" && designType.name ? designType.name : null;
+    let typeName = typeof designType === "function" && designType.name ? designType.name : null;
     const paramTypes = Reflect.getMetadata("design:paramtypes", target, propertyKey) as unknown[] | undefined;
     const valueType = Array.isArray(paramTypes) && paramTypes.length > 0 ? paramTypes[0] : undefined;
     const valueTypeName = typeof valueType === "function" && valueType.name ? valueType.name : null;
-    const returnType = Reflect.getMetadata("design:returntype", target, propertyKey);
+    // Metadata for accessors can be tricky: design:type is usually Function, and design:returntype
+    // may be defined on the accessor metadata (target + key) or on the getter function itself.
+    const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
+    const getter = descriptor?.get
+
+    const accessorReturnType = Reflect.getMetadata("design:returntype", target, propertyKey);
+    const getterReturnType = getter ? Reflect.getMetadata("design:returntype", getter) : undefined;
+    
+    const returnType = accessorReturnType ?? getterReturnType;
     const returnTypeName = typeof returnType === "function" && returnType.name ? returnType.name : null;
-    return { designType, typeName, valueType, valueTypeName, returnType, returnTypeName };
+    const getterReturnTypeName = typeof getterReturnType === "function" && getterReturnType.name ? getterReturnType.name : null;
+
+    return { designType, typeName, valueType, valueTypeName, returnType, returnTypeName, getterReturnType, getterReturnTypeName };
 };
 
 const registerProperty = (target: object, propertyKey: string | symbol, options?: PropertyDecoratorOptions) => {
@@ -61,10 +75,8 @@ const registerProperty = (target: object, propertyKey: string | symbol, options?
     if (!ctor || typeof ctor !== "function") {
         return;
     }
-
     
-
-    const { designType, typeName, valueType, valueTypeName, returnType, returnTypeName } = readDesignType(target, propertyKey);
+    const { designType, typeName, valueType, valueTypeName, returnType, returnTypeName, getterReturnType, getterReturnTypeName } = readDesignType(target, propertyKey);
     const resolvedTypeName = returnTypeName ?? valueTypeName ?? typeName;
     const choices = options?.choices ? (Array.from(options.choices) as readonly unknown[]) : undefined;
     const metadata: Property = {
@@ -76,6 +88,8 @@ const registerProperty = (target: object, propertyKey: string | symbol, options?
         valueTypeName,
         returnType,
         returnTypeName,
+        getterReturnType,
+        getterReturnTypeName,
         choices,
         label: options?.label,
         description: options?.description,

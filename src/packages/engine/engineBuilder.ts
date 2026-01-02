@@ -2,7 +2,7 @@ import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
 import { Endpoint } from "./network";
 import { Constructor, Container, InversifyContainer, ResourceManager } from "./utils";
-import { registerDecoratedActors } from "./actorRegistry.js";
+import { registerDecoratedActors, registerNObjects } from "./actorRegistry.js";
 import { Actor, World } from "./world";
 import { InputManager } from "./input";
 import { GameMode } from "./game/gameMode";
@@ -124,9 +124,8 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-
     build<TEngine extends Engine<TSocket, TReq>>(ctor: Constructor<TEngine>): TEngine {
-
+        registerNObjects(this.container);
         this.container.registerSingleton(Engine<TSocket, TReq>, ctor);
         const engine = this.container.get(Engine<TSocket, TReq>) as TEngine;
         engine.setNetworkMode(this.networkMode);

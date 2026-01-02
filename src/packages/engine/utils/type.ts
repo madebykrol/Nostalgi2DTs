@@ -8,7 +8,7 @@ export const normalizeClassName = (name: string) => {
         return name;
     }
     
-    return name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/\d+$/, "");;
+    return name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/\d{1}$/, "");;
 }
 
 export class LevelData {

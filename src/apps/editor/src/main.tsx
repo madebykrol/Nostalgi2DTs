@@ -25,7 +25,6 @@ import {
   PlayerController,
 } from "@repo/example";
 import { loadResourceLevel, DEFAULT_LEVEL_PATH, saveResourceLevel } from "./services/resourceLoader";
-import { parseLevelFromJson} from "./services/levelParser";
 import { Parser, tileMapEditorPlugin } from "@repo/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -46,6 +45,7 @@ import {
 import type {
   ComponentAssetStorage,
   EditorComponentAssembler,
+  Engine,
 } from "@repo/engine";
 import { transformPropertiesPlugin } from "@repo/editor-plugins";
 import sceneGraphPanelPlugin from "./plugins/sceneGraphPanelPlugin";
@@ -73,9 +73,10 @@ import { createPrototypeComponentAssetStorage, createPrototypeComponentAssembler
 import { ConsoleContext } from "./contexts/ConsoleContext";
 import { EditorEngineContext } from "./contexts/EngineContext";
 import clone from "clone";
+import { useEngineInitialization } from "./hooks/useEngineInitialization";
 
 const App = () => {
-  const [engine, setEngine] = useState<ClientEngine | null>(null);
+  // const [engine, setEngine] = useState<ClientEngine | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [logs, setLogs] = useState<ConsoleEntry[]>([]);
@@ -98,7 +99,7 @@ const App = () => {
   const componentAssemblerRef = useRef<EditorComponentAssembler | null>(null);
   const pluginCleanupRef = useRef<(() => void) | null>(null);
   const containerRef = useRef<Container | null>(null);
-  const [container, setContainer] = useState<Container | null>(null);
+  // const [container, setContainer] = useState<Container | null>(null);
   const [panelRevision, setPanelRevision] = useState(0);
   const [activeLeftPanelId, setActiveLeftPanelId] = useState<string | null>(null);
   const [activeRightPanelId, setActiveRightPanelId] = useState<string | null>(null);
@@ -128,9 +129,7 @@ const App = () => {
       }
       return leftPanels[0].id;
     });
-  }, [leftPanels]);
-
-  useEffect(() => {
+  
     setActiveRightPanelId((previous) => {
       if (rightPanels.length === 0) {
         return null;
@@ -140,7 +139,7 @@ const App = () => {
       }
       return rightPanels[0].id;
     });
-  }, [rightPanels]);
+  }, [rightPanels, leftPanels]);
 
   useEffect(() => {
 
@@ -195,6 +194,29 @@ const App = () => {
   }, []);
 
   const handleClearLogs = () => setLogs([]);
+
+  const init = useEngineInitialization<WebSocket, http.IncomingMessage>((builder) =>
+    builder
+      .withWorldInstance(new PlanckWorld(undefined, builder.container))
+      .withEndpointInstance(new ClientEndpoint("localhost", 3001))
+      .withServiceInstance(DOMParser, new DOMParser())
+      .withService(Editor)
+      .withService(Parser)
+      .withInputManager(DefaultInputManager)
+      .withSoundManager(SoundManager)
+      .withGameMode(ExampleTopDownRPGGameMode)
+      .withLevel(GrasslandsMap)
+      .withResourceManager(DefaultResourceManager)
+      .withDecoratedActors()
+      .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
+      .withDebugLogging()
+      .asSinglePlayer("LocalPlayer", "local_player")
+      .build(ClientEngine)
+  );
+
+  const engine = init?.engine ?? null;
+  const container = init?.container ?? null;
+
 
   const buildSceneGraph = useCallback((rootActors: Actor[]): SceneNode[] => {
     const traverse = (actor: Actor): SceneNode | null => {
@@ -301,43 +323,25 @@ const App = () => {
     []
   );
 
+  
   useEffect(() => {
-    
+    if (!engine || !container) return;
     if (engineInitialized.current) return;
     engineInitialized.current = true;
 
     // Begin performance timing
     const startTime = performance.now();
+    containerRef.current = container;
 
-    const builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
-    builder
-      .withWorldInstance(new PlanckWorld(undefined, builder.container))
-      .withEndpointInstance(new ClientEndpoint("localhost", 3001))
-      .withServiceInstance(DOMParser, new DOMParser())
-      .withService(Editor)
-      .withService(Parser)
-      .withInputManager(DefaultInputManager)
-      .withSoundManager(SoundManager)
-      .withGameMode(ExampleTopDownRPGGameMode)
-      .withLevel(GrasslandsMap)
-      .withResourceManager(DefaultResourceManager)
-      .withDecoratedActors()
-      .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
-      .withDebugLogging()
-      .asSinglePlayer("LocalPlayer", "local_player");
+    const e = engine;
 
-    const e = builder.build(ClientEngine);
-    // builder.container.registerSingletonInstance(ClientEngine, e);
-    containerRef.current = builder.container;
-    setContainer(builder.container);
-
-    const inputManager = builder.container.get(InputManager);
+    const inputManager = container!.get(InputManager);
     if (!inputManager) {
       console.warn("Editor failed to resolve InputManager instance");
     }
     inputManagerRef.current = inputManager;
 
-    editorRef.current = builder.container.get(Editor);
+    editorRef.current = container!.get(Editor);
     editorRef.current.initialize();
 
     const handleActorDoubleClick = (actor: Actor) => {
@@ -419,40 +423,29 @@ const App = () => {
     const endTime = performance.now();
     console.log(`Engine built in ${(endTime - startTime).toFixed(4)} ms`);
 
-  const fallbackLevel: Level = new GrasslandsMap(builder.container);
-    setEngine(e);
-    setIsPlaying(false);
+  const fallbackLevel: Level = new GrasslandsMap(container);
+  setIsPlaying(false);
 
     const setupLevel = async () => {
       try {
         const levelStartTime = performance.now();
-        let levelToLoad: Level = fallbackLevel;
+        let levelToLoad: Level | null = fallbackLevel;
         //let possessTarget: Actor = demoActor;
 
         try {
           const levelData = await loadResourceLevel(DEFAULT_LEVEL_PATH);
           console.log("Loaded level JSON", { bytes: levelData.length });
-          const parsedLevel = editorRef.current?.deserializeLevel(levelData);
+          const parsedLevel = editorRef.current?.deserializeLevel(levelData) ?? null;
 
-          // if (parsedLevel.getActors().length === 0) {
-          //   console.warn("Parsed level contained no actors; using fallback level");
-          // }
-
-          // if (parsedLevel.getActors().length === 0) {
-          //   //parsedLevel.addActor(demoActor);
-          // } else {
-          //   //possessTarget = parsedLevel.getActors()[0];
-          // }
-
-          // levelToLoad = parsedLevel;
+          levelToLoad = parsedLevel;
           console.log("Loaded and parsed level data from resource API", levelData.length, "bytes");
         } catch (err) {
           console.warn("Failed to load level from resource API, falling back to default", err);
         }
 
-        await e.loadLevelObject(levelToLoad);
+        await e.loadLevelObject(levelToLoad!);
 
-        const worldSize = levelToLoad.getWorldSize();
+        const worldSize = levelToLoad!.getWorldSize();
 
         if (worldSize) {
           const camera = new OrthoCamera(new Vector2(worldSize.x / 2, worldSize.y / 2), 1, 40);
@@ -519,15 +512,14 @@ const App = () => {
       editorRef.current = null;
       e.offAfterRender(afterRenderId);
       engineRef.current = null;
-      containerRef.current = null;
-      levelSnapshotRef.current = null;
-      setContainer(null);
+    containerRef.current = null;
+    levelSnapshotRef.current = null;
       if (sceneGraphRaf.current !== null) {
         cancelAnimationFrame(sceneGraphRaf.current);
         sceneGraphRaf.current = null;
       }
     };
-  }, [buildSceneGraph]);
+  }, [engine, container, buildSceneGraph]);
 
   useEffect(() => {
     const registry = panelRegistryRef.current;

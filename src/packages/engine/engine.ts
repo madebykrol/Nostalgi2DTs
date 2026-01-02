@@ -72,6 +72,7 @@ export class Engine<TSocket, TReq> {
     controllers: Controller[] = [];
 
     rootObject: BaseObject = new RootObject();
+    editorRootObject: BaseObject = new BaseObject();
 
     private controllerTypeForPlayer: Constructor<Controller> | null = null;
 
@@ -217,6 +218,10 @@ export class Engine<TSocket, TReq> {
     render(gl: WebGL2RenderingContext): void {
         this.frameId++;
         const actors = this.getFlattenedActors();
+
+        if (this.asEditor) {
+            actors.push(...this.getEditorActorsFlattened(this.editorRootObject));
+        }
 
         // Order actors based on their layer (lower layers drawn first)
         const sortedActors = actors.sort((a, b) => a.layer - b.layer);
@@ -423,7 +428,7 @@ export class Engine<TSocket, TReq> {
         
         this.currentMap = level;
 
-        this.rootObject.addChildren(level.getActors());
+        this.rootObject = level;
 
         await this.spawnLevelActors();
         
@@ -453,6 +458,10 @@ export class Engine<TSocket, TReq> {
 
     public getRootObject(): BaseObject {
         return this.rootObject;
+    }
+
+    public getEditorRoot():BaseObject {
+        return this.editorRootObject;
     }
 
     private  despawnActor(actor: Actor): void {
@@ -536,7 +545,7 @@ export class Engine<TSocket, TReq> {
     }
     private editorTick(): void {
         // Editor tick logic
-        const flattenedActors = this.getEditorActorsFlattened(this.rootObject);
+        const flattenedActors = this.getEditorActorsFlattened(this.editorRootObject);
         const tickingActors = flattenedActors
             .filter(a => a.shouldTick) || [];
 

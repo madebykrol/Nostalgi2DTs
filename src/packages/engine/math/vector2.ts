@@ -1,5 +1,7 @@
-import { property } from "../utils";
+import { nobject } from "..";
+import { property, unmanaged } from "../utils";
 
+@nobject()
 export class Vector2 {
 
     @property()
@@ -7,7 +9,8 @@ export class Vector2 {
 
     @property()
     public y: number;
-    constructor( x: number, y: number) {
+
+    constructor(@unmanaged() x: number, @unmanaged() y: number) {
         this.x = x;
         this.y = y;
     }

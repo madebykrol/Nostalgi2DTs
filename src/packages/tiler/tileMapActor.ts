@@ -76,11 +76,12 @@ export class TileMapActor extends Actor {
         console.log(parser);
     }
 
-    @property
+   
     public get mapUrl(): string {
         return this._mapUrl;
     }
 
+    @property
     public set mapUrl(map: string) {
         this._mapUrl = map;
         this.normalizedMapUrl = this._mapUrl.replace(/\\/g, "/");

@@ -1,59 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import { DOMParser } from "@xmldom/xmldom";
-import http from "http";
-import {
-  EngineBuilder,
-  SoundManager,
-  DefaultResourceManager,
-  type Container,
-} from "@repo/engine";
-import { PlanckWorld } from "@repo/planckphysics";
-import {
-  BombActor,
-  DemoActor,
-  ExampleTopDownRPGGameMode,
-  GameTileMapActor,
-  PlayerController,
-  WallActor,
-} from "@repo/example";
-import { Parser } from "@repo/tiler";
-import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
+import { useRef } from "react";
+import { EngineBuilder, type Container, Engine } from "@repo/engine";
 
-export const useEngineInitialization = () => {
-  const [engine, setEngine] = useState<ClientEngine | null>(null);
-  const [container, setContainer] = useState<Container | null>(null);
-  const engineInitialized = useRef(false);
+// Synchronous, one-time engine + container initialization. Avoids a null window between render phases.
+export const useEngineInitialization = <TSocket, TReq>(factory: (builder: EngineBuilder<TSocket, TReq>) => Engine<TSocket, TReq>) => {
+  const initialized = useRef<{ engine: Engine<TSocket, TReq>; container: Container } | null>(null);
 
-  useEffect(() => {
-    if (engineInitialized.current) {
-      return;
-    }
-    engineInitialized.current = true;
+  if (!initialized.current) {
+    const builder = new EngineBuilder<TSocket, TReq>();
+    const engineInstance = factory(builder);
+    initialized.current = { engine: engineInstance, container: builder.container };
+  }
 
-    const builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
-    builder
-      .withWorldInstance(new PlanckWorld(undefined, builder.container))
-      .withEndpointInstance(new ClientEndpoint("localhost", 3001))
-      .withServiceInstance(DOMParser, new DOMParser())
-      .withService(Parser)
-      .withInputManager(DefaultInputManager)
-      .withSoundManager(SoundManager)
-      .withGameMode(ExampleTopDownRPGGameMode)
-      .withResourceManager(DefaultResourceManager)
-      .withActor(DemoActor)
-      .withActor(GameTileMapActor)
-      .withActor(BombActor)
-      .withActor(WallActor)
-      .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
-      .withDebugLogging()
-      .asSinglePlayer("EditorPlayer", "editor_player");
-
-    const engineInstance = builder.build(ClientEngine);
-    engineInstance.run(false);
-
-    setEngine(engineInstance);
-    setContainer(builder.container);
-  }, []);
-
-  return { engine, container };
+  return initialized.current;
 };

@@ -11,7 +11,7 @@ export * from "./audio";
 export * from "./network";
 export * from "./editor";
 export { EngineBuilder } from "./engineBuilder";
-export { actor, registerDecoratedActors } from "./actorRegistry";
+export { actor, registerDecoratedActors, nobject, registerNObjects } from "./actorRegistry";
 export {GameInstance, Controller, PlayerState, GameMode} from "./game";
 export {InputManager} from "./input";
 
