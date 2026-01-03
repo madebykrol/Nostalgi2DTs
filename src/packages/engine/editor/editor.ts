@@ -56,12 +56,36 @@ export class Editor {
             value instanceof Date;
     }
 
+    private isTypeReference(value: unknown): value is Function {
+        if (typeof value !== "function") {
+            return false;
+        }
+        // Filter out plain bound accessors without a prototype
+        return Object.prototype.hasOwnProperty.call(value, "prototype") || value.prototype !== undefined;
+    }
+
+    private getTypeIdentifier(value: Function | undefined | null): string | null {
+        if (!value) {
+            return null;
+        }
+        const ctorName = typeof value.name === "string" && value.name.length > 0 ? value.name : "AnonymousType";
+        return normalizeClassName(ctorName);
+    }
+
     private serializePropertyRecursive(owner: Object, prop: Property): SerializedProperty {
         const serializedProp = new SerializedProperty();
         serializedProp.key = typeof prop.key === "string" ? prop.key : String(prop.key);
         const value = this.getPropertyValue(owner, prop);
         const resolvedType = prop.type ?? (value && (value as any).constructor?.name) ?? "Object";
         serializedProp.type = normalizeClassName(resolvedType);
+
+        if (this.isTypeReference(value)) {
+            serializedProp.type = "Type";
+            serializedProp.value = this.getTypeIdentifier(value);
+            serializedProp.properties = null;
+            serializedProp.node = null;
+            return serializedProp;
+        }
 
         if (this.isPrimitive(value)) {
             serializedProp.value = value as any;
@@ -113,6 +137,14 @@ export class Editor {
     }
 
     private deserializePropertyValue(serialized: SerializedProperty, container: any): any {
+        if (serialized.type === "Type" && typeof serialized.value === "string") {
+            try {
+                return container.getTypeForIdentifier(serialized.value) ?? null;
+            } catch {
+                return null;
+            }
+        }
+
         if (serialized.value !== null) {
             return serialized.value;
         }

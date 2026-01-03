@@ -58,7 +58,6 @@ export class Engine<TSocket, TReq> {
     protected clientRpcs: Map<string, Function> = new Map();
     protected serverRpcs: Map<string, Function> = new Map();
 
-    protected timerManager: TimerManager = new TimerManager();
     protected inputManager: InputManager | undefined = undefined;
 
     protected frameTimes: number[] = [];
@@ -72,7 +71,7 @@ export class Engine<TSocket, TReq> {
     controllers: Controller[] = [];
 
     rootObject: BaseObject = new RootObject();
-    editorRootObject: BaseObject = new BaseObject();
+    editorRootObject: BaseObject = new RootObject();
 
     private controllerTypeForPlayer: Constructor<Controller> | null = null;
 
@@ -80,7 +79,8 @@ export class Engine<TSocket, TReq> {
         protected world: World,
         protected netEndpoint: Endpoint<TSocket, TReq> | undefined,
         protected networkMode: EngineNetworkMode = "singleplayer",
-        protected container: Container) {
+        protected container: Container,
+        protected timerManager: TimerManager) {
     }
 
     setNetworkMode(networkMode: EngineNetworkMode): void {
@@ -162,7 +162,7 @@ export class Engine<TSocket, TReq> {
         return null;
     }
 
-    public compileMaterials(gl: WebGL2RenderingContext): void {
+    compileMaterials(gl: WebGL2RenderingContext): void {
         // Compile all materials in the engine
         const actors = this.getFlattenedActors();
 
@@ -179,17 +179,32 @@ export class Engine<TSocket, TReq> {
         this.ensureInputManager();
         this.configurePlayerControllers();
 
-        for (const actor of this.getFlattenedActors()) {
-            actor.onBeginPlay();
-        }
-
+       
         if (this.asEditor) {
             console.log("Running in editor mode");
             return;
         }
 
+        for (const actor of this.getFlattenedActors()) {
+            actor.onBeginPlay();
+        }
+
         if (this.networkMode === "server") {
             this.runServer();
+        }
+
+        var playerStart = this.currentGameMode?.pickPlayerStart();
+        if (playerStart) {
+            console.log(`Spawning local player at start: ${playerStart.getId()}`);
+            const localPlayer = this.getLocalPlayerState();
+            const playerPawnCtor = this.currentGameMode?.playerCharacterType;
+            if (localPlayer && playerPawnCtor) {
+                const pawn = this.container.get(playerPawnCtor);
+                const sceneRoot = this.currentMap ?? this.rootObject;
+                this.world.spawnActorInstance(pawn, sceneRoot, playerStart.position).then(() => {
+                    localPlayer.getController()?.possess(pawn);
+                });
+            }
         }
     }
 
@@ -365,7 +380,11 @@ export class Engine<TSocket, TReq> {
         }
     }
 
-    shutdown(): void { this.netEndpoint?.disconnect(); }
+    shutdown(): void { 
+        this.netEndpoint?.disconnect();
+        this.timerManager.clearAllTimers();
+        this.world.resetForces();
+     }
 
     callServerRpc<T>(name: string, ...args: any[]): T | null {
         const rpc = this.serverRpcs.get(name);
@@ -435,13 +454,15 @@ export class Engine<TSocket, TReq> {
         const requestedGameModeId = level.gameMode?.name ?? "DefaultGameMode";
         try {
             this.currentGameMode = this.container.getByIdentifier<GameMode>(requestedGameModeId);
+            
         } catch (error) {
             console.warn(`Failed to resolve game mode '${requestedGameModeId}', falling back to null`, error);
-            this.currentGameMode = null;
+            this.currentGameMode = undefined;
         }
 
         if (this.currentGameMode) {
             this.setControllerTypeForPlayer(this.currentGameMode.playerControllerType ?? null);
+            this.currentGameMode.setCurrentLevel(level);
         } else {
             this.setControllerTypeForPlayer(null);
         }
@@ -464,12 +485,28 @@ export class Engine<TSocket, TReq> {
         return this.editorRootObject;
     }
 
-    private  despawnActor(actor: Actor): void {
-        this.world?.despawnActor(actor);
-    }
-
     getCurrentLevel(): Level | undefined {
         return this.currentMap;
+    }
+
+    public dispose(): void {
+        this.shutdown();
+        this.inputManager?.dispose();
+        this.timerManager.dispose();
+
+        this.rootObject.getChildrenOfType(Actor).forEach(actor => { this.despawnActor(actor); });
+        this.rootObject.dispose();
+
+        this.rootObject = new RootObject();
+
+        this.rootObject.getChildrenOfType(Actor).forEach(actor => { this.despawnActor(actor); });
+        this.editorRootObject.dispose();
+        this.editorRootObject = new RootObject();
+    }
+    
+
+    private  despawnActor(actor: Actor): void {
+        this.world?.despawnActor(actor);
     }
     
     protected handleNetworkTick(): void {
@@ -526,6 +563,13 @@ export class Engine<TSocket, TReq> {
         this.deltaTime = (now - this.lastTickTime) / 1000; // seconds
         this.lastTickTime = now;
 
+        // despawn actors marked for despawn
+        const allActors = this.getFlattenedActors();
+        allActors.filter(a => a.isMarkedForDespawned()).forEach(a => {
+            this.despawnActor(a);
+            a.dispose();
+        });
+
         this.tickTimerManager(this.deltaTime);
 
         this.players.forEach(player => {
@@ -542,6 +586,8 @@ export class Engine<TSocket, TReq> {
         } else {
             this.singlePlayerTick(this.deltaTime);
         }
+
+        this.currentGameMode?._tick(this.deltaTime);
     }
     private editorTick(): void {
         // Editor tick logic

@@ -7,7 +7,7 @@ export type ActorRegistration = {
 };
 
 type ActorRegistryHost = typeof globalThis & {
-  __nostalgi_actor_registry__?: ActorRegistration[];
+  nostalgiActorRegistry?: ActorRegistration[];
 };
 
 export type ObjectRegistration = {
@@ -16,23 +16,23 @@ export type ObjectRegistration = {
 };
 
 type ObjectRegistryHost = typeof globalThis & {
-  __nostalgi_object_registry__?: ObjectRegistration[];
+  nostalgiObjectRegistry?: ObjectRegistration[];
 };
 
 function getActorRegistry(): ActorRegistration[] {
   const host = globalThis as ActorRegistryHost;
-  if (!host.__nostalgi_actor_registry__) {
-    host.__nostalgi_actor_registry__ = [];
+  if (!host.nostalgiActorRegistry) {
+    host.nostalgiActorRegistry = [];
   }
-  return host.__nostalgi_actor_registry__;
+  return host.nostalgiActorRegistry;
 }
 
 function getObjectRegistry(): ObjectRegistration[] {
   const host = globalThis as ObjectRegistryHost;
-  if (!host.__nostalgi_object_registry__) {
-    host.__nostalgi_object_registry__ = [];
+  if (!host.nostalgiObjectRegistry) {
+    host.nostalgiObjectRegistry = [];
   }
-  return host.__nostalgi_object_registry__;
+  return host.nostalgiObjectRegistry;
 }
 
 /** Decorator to mark an Actor for auto-registration. */

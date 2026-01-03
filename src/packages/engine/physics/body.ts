@@ -23,6 +23,8 @@ export abstract class PhysicsBody {
     abstract setBodyType(type: BodyType): void;
     abstract setTransform(position: Vector2, rotation: number): void;
     abstract setCollisionFilter(filterFunction: (actor: Actor) => boolean): void;
+    abstract applyLinearDamping(damping: number, deltaTime: number): void;
+    abstract applyAngularDamping(damping: number, deltaTime: number): void;
 }
 
 

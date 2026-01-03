@@ -1,5 +1,6 @@
 import { GameMode } from "@repo/engine";
 import { PlayerController } from "./controllers/playercontroller";
+import { DemoCharacter } from "./actors/demo";
 
 export class ExampleTopDownRPGGameMode extends GameMode {
   start(): void {
@@ -9,5 +10,6 @@ export class ExampleTopDownRPGGameMode extends GameMode {
     throw new Error("Method not implemented.");
   }
   playerControllerType: typeof PlayerController = PlayerController;
+  playerCharacterType: typeof DemoCharacter = DemoCharacter;
 
 }

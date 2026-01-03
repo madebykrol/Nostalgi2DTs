@@ -20,6 +20,10 @@ export abstract class World {
     abstract setGravity(gravity: Vector2): void;
     abstract createPhysicsBody(actor: Actor, physics: PhysicsComponent): PhysicsBody;
 
+    public resetForces() {
+        
+    }
+
     async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent: BaseObject, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {
 
         const actor = this.container.get<TActor>(ctor);
@@ -34,8 +38,13 @@ export abstract class World {
     }
 
     async spawnActorInstance(actor: Actor, parent?: BaseObject, position?: Vector2): Promise<void> {
-        if(parent)
-            parent.addChild(actor);
+        let resolvedParent = parent ?? actor.getParent();
+
+        if (resolvedParent) {
+            if (actor.getParent() !== resolvedParent) {
+                resolvedParent.addChild(actor);
+            }
+        }
 
         if(position !== undefined)
             actor.position = position;

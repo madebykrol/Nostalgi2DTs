@@ -16,9 +16,9 @@
       "node": null
     },
     {
-      "type": "Object",
+      "type": "Type",
       "key": "gameMode",
-      "value": null,
+      "value": "ExampleTopDownRPGGameMode",
       "properties": null,
       "node": null
     }
@@ -231,14 +231,295 @@
             {
               "type": "Number",
               "key": "x",
-              "value": -0.35002144082332814,
+              "value": 10.877284952367592,
               "properties": null,
               "node": null
             },
             {
               "type": "Number",
               "key": "y",
-              "value": 5.454545454545454,
+              "value": 7.203085042934059,
+              "properties": null,
+              "node": null
+            }
+          ],
+          "node": null
+        }
+      ],
+      "children": []
+    },
+    {
+      "type": "PlayerStart",
+      "value": null,
+      "items": [],
+      "properties": [
+        {
+          "type": "String",
+          "key": "id",
+          "value": "87baf7c0-b082-425d-be30-941ed312ed0f",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldTick",
+          "value": false,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Object",
+          "key": "tickGroup",
+          "value": "default",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldReplicate",
+          "value": false,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "name",
+          "value": "PlayerStart2",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Vector2",
+          "key": "position",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": 4.476952842028342,
+              "properties": null,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 1.2698470416303547,
+              "properties": null,
+              "node": null
+            }
+          ],
+          "node": null
+        }
+      ],
+      "children": []
+    },
+    {
+      "type": "BombActor",
+      "value": null,
+      "items": [],
+      "properties": [
+        {
+          "type": "String",
+          "key": "id",
+          "value": "b5bad8a5-b013-4969-a23c-215f72bc53da",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldTick",
+          "value": true,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Object",
+          "key": "tickGroup",
+          "value": "default",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldReplicate",
+          "value": false,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "name",
+          "value": "BombActor2",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Vector2",
+          "key": "position",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": 7.512848706276531,
+              "properties": null,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 7.020128626880595,
+              "properties": null,
+              "node": null
+            }
+          ],
+          "node": null
+        },
+        {
+          "type": "Number",
+          "key": "fuseTimer",
+          "value": 1980,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Number",
+          "key": "blastRadius",
+          "value": 4,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Number",
+          "key": "blastForce",
+          "value": 68,
+          "properties": null,
+          "node": null
+        }
+      ],
+      "children": []
+    },
+    {
+      "type": "DemoActor",
+      "value": null,
+      "items": [],
+      "properties": [
+        {
+          "type": "String",
+          "key": "id",
+          "value": "fc646208-33dd-4c4e-80e4-06ddcc2f6ff2",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldTick",
+          "value": true,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Object",
+          "key": "tickGroup",
+          "value": "default",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldReplicate",
+          "value": false,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "name",
+          "value": "DemoActor2",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Vector2",
+          "key": "position",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": 9.041104032157106,
+              "properties": null,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 10.218909353180763,
+              "properties": null,
+              "node": null
+            }
+          ],
+          "node": null
+        }
+      ],
+      "children": []
+    },
+    {
+      "type": "DemoActor",
+      "value": null,
+      "items": [],
+      "properties": [
+        {
+          "type": "String",
+          "key": "id",
+          "value": "0ee563cd-1a95-49c2-8c1e-ced58f326859",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldTick",
+          "value": true,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Object",
+          "key": "tickGroup",
+          "value": "default",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Boolean",
+          "key": "shouldReplicate",
+          "value": false,
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "String",
+          "key": "name",
+          "value": "DemoActor2",
+          "properties": null,
+          "node": null
+        },
+        {
+          "type": "Vector2",
+          "key": "position",
+          "value": null,
+          "properties": [
+            {
+              "type": "Number",
+              "key": "x",
+              "value": 2.9646144994246253,
+              "properties": null,
+              "node": null
+            },
+            {
+              "type": "Number",
+              "key": "y",
+              "value": 8.883774453394707,
               "properties": null,
               "node": null
             }

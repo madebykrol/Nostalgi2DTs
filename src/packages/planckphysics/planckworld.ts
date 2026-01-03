@@ -23,6 +23,16 @@ export class PlanckWorld extends World {
         });
     }
 
+    public resetForces(): void {
+        let body = this.world.getBodyList();
+        this.world.clearForces();
+        while (body) {
+            body.setLinearVelocity(new Vec2(0, 0));
+            body.setAngularVelocity(0);
+            body = body.getNext();
+        }
+    }
+
     aabbCast<T extends Actor>(point: Vector2, includeStatic: boolean, includeDynamic: boolean, ctor: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)): Actor[] {
         const hits = new Map<T, number>();
         const epsilon = 1e-5;
@@ -105,7 +115,7 @@ export class PlanckWorld extends World {
     radialCast<T extends Actor>(start: Vector2, radius: number, includeStatic: boolean, includeDynamic: boolean, ctor: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)): Actor[] {
         // Cast a ray in multiple directions to simulate a radial cast
         const hits = new Map<T, number>();
-        const segments = 16;
+        const segments = 32;
         const angleStep = (Math.PI * 2) / segments;
         const startVec = new Vec2(start.x, start.y);
 

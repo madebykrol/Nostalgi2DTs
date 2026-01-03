@@ -91,7 +91,7 @@ const App = () => {
   const editorRef = useRef<Editor | null>(null);
   const panelRegistryRef = useRef(new PanelRegistry());
   const modalManagerRef = useRef(new ModalManager());
-  const levelSnapshotRef = useRef<Level | null>(null);
+  const levelSnapshotRef = useRef<string | null>(null);
   const sceneContextMenuRegistryRef = useRef(new SceneContextMenuRegistry());
   const sceneDragDropRegistryRef = useRef(new SceneDragDropRegistry());
   const modalTriggerRegistryRef = useRef(new ModalTriggerRegistry());
@@ -538,7 +538,7 @@ const App = () => {
     editorInputRef.current?.dispose();
     editorInputRef.current = null;
 
-    levelSnapshotRef.current = clone(engine.getCurrentLevel() ?? null);
+    levelSnapshotRef.current = editorRef.current?.serializeLevel(engine.getCurrentLevel()!) ?? null;
 
     engine.run(false);
     
@@ -549,16 +549,17 @@ const App = () => {
     if (!engine) {
       return;
     }
+    engine.shutdown();
 
-    engine.loadLevelObject(levelSnapshotRef.current!).then(() => {
-      engine.run(true);
-      // Load level from current editing state
-      if (inputManagerRef.current) {
-        const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);
-        responder.activate();
-        editorInputRef.current = responder;
-      }
-      setIsPlaying(false);
+    engine.loadLevelObject(editorRef.current?.deserializeLevel(levelSnapshotRef.current!)! ).then(() => {
+    engine.run(true);
+    // Load level from current editing state
+    if (inputManagerRef.current) {
+      const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);
+      responder.activate();
+      editorInputRef.current = responder;
+    }
+    setIsPlaying(false);
     });
 
   };

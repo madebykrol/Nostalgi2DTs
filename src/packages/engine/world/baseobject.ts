@@ -97,4 +97,14 @@ export abstract class BaseObject {
             }
         }
     }
+
+    dispose(): void {
+        for(const child of this.children) {
+            child.dispose();
+            this.removeChild(child);
+        }
+
+        this.children = [];
+        this.parent = null;
+    }
 }

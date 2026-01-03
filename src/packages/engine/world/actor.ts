@@ -92,7 +92,7 @@ export abstract class Actor extends BaseObject {
     }
 
     public get name(): string{
-        return this._name ?? "Actor";
+        return this._name ?? this.constructor.name;
     }
 
     setIsRendering(rendering: boolean): void {
@@ -109,6 +109,13 @@ export abstract class Actor extends BaseObject {
 
         this.isRendering = rendering;
 
+    }
+
+    applyImpulse(impulse: Vector2): void {
+        const physicsComponents = this.getComponentsOfType(PhysicsComponent);
+        for (const physics of physicsComponents) {
+            physics.addImpulse(impulse);
+        }
     }
 
     onDespawned() {

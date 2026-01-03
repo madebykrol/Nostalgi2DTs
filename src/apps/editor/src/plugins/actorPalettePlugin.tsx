@@ -14,7 +14,7 @@ const isActorConstructor = (ctor: unknown): ctor is new () => Actor => {
   if (typeof ctor !== "function") {
     return false;
   }
-  return Boolean(ctor.prototype && ctor.prototype instanceof Actor && ctor !== Actor);
+  return ctor.prototype && ctor.prototype instanceof Actor && ctor !== Actor;
 };
 
 const formatActorName = (rawName: string, fallback: string) => {

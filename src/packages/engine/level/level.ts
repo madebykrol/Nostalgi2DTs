@@ -8,7 +8,7 @@ export class Level extends BaseObject {
 
     private _gravity: Vector2 = new Vector2(0, 0);
     
-    private _gameMode: Constructor<GameMode> | undefined = undefined;
+    private _gameMode: Constructor<GameMode> | undefined;
 
     @property()
     public name: string = "Unnamed Level";
@@ -22,9 +22,10 @@ export class Level extends BaseObject {
     }
 
     @property()
-    set gameMode(gameMode: Constructor<GameMode> | undefined){
+    set gameMode(gameMode: Constructor<GameMode>){
         this._gameMode = gameMode;
     }
+
     get gameMode(): Constructor<GameMode> | undefined {
         return this._gameMode;
     }

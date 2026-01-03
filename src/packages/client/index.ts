@@ -1,6 +1,6 @@
 import http from "http";
 
-import { Endpoint, Engine, Container, InputManager, World, Vector2 } from "@repo/engine";
+import { Endpoint, Engine, Container, InputManager, World, Vector2, TimerManager } from "@repo/engine";
 import { inject, injectable } from "inversify";
 
 export class DefaultInputManager extends InputManager {
@@ -226,11 +226,15 @@ export class ClientEndpoint extends Endpoint<WebSocket, http.IncomingMessage> {
     throw new Error("Method not implemented.");
   }
   disconnect(): Promise<void> {
-    throw new Error("Method not implemented.");
+    return Promise.resolve();
   }
   cleanup(): void {
     throw new Error("Method not implemented.");
   }
+
+  dispose(): void {
+  }
+
 }
 
 @injectable()
@@ -239,8 +243,8 @@ export class ClientEngine extends Engine<WebSocket, http.IncomingMessage> {
   /**
    *
    */
-  constructor(@inject(World) world: World, @inject(Endpoint) endPoint: Endpoint<WebSocket, http.IncomingMessage> | undefined, @inject(Container) container: Container) {
-    super(world, endPoint, "singleplayer", container);
+  constructor(@inject(World) world: World, @inject(Endpoint) endPoint: Endpoint<WebSocket, http.IncomingMessage> | undefined, @inject(Container) container: Container, @inject(TimerManager) timerManager: TimerManager) {
+    super(world, endPoint, "singleplayer", container, timerManager);
   }
 }
 

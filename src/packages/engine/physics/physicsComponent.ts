@@ -8,9 +8,21 @@ export class PhysicsComponent extends Component {
     private body: PhysicsBody | null = null;
     private simulated = false;
     private bodyType: BodyType = "static";
+    private linearDamping = 3;
+    private angularDamping = 1;
 
-    tick(_deltaTime: number, _engineNetworkMode: "client" | "server" | "singleplayer"): void {
-        // Physics component does not tick by default.
+    tick(deltaTime: number, _engineNetworkMode: "client" | "server" | "singleplayer"): void {
+        if (!this.simulated || !this.body || deltaTime <= 0) {
+            return;
+        }
+
+        if (this.linearDamping > 0) {
+            this.body.applyLinearDamping(this.linearDamping, deltaTime);
+        }
+
+        if (this.angularDamping > 0) {
+            this.body.applyAngularDamping(this.angularDamping, deltaTime);
+        }
     }
 
     setBody(body: PhysicsBody | null): void {
@@ -81,5 +93,21 @@ export class PhysicsComponent extends Component {
             return;
         }
         this.body.addImpulse(impulse);
+    }
+
+    setLinearDamping(damping: number): void {
+        this.linearDamping = Math.max(0, damping);
+    }
+
+    getLinearDamping(): number {
+        return this.linearDamping;
+    }
+
+    setAngularDamping(damping: number): void {
+        this.angularDamping = Math.max(0, damping);
+    }
+
+    getAngularDamping(): number {
+        return this.angularDamping;
     }
 }

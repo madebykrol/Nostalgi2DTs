@@ -82,7 +82,7 @@ export class GameTileMapActor extends TileMapActor {
           const worldPosition = new Vector2(posX + translation.x, posY + translation.y);
           wallActor.position = worldPosition;
 
-          this.getWorld()?.spawnActorInstance(wallActor);
+            this.getWorld()?.spawnActorInstance(wallActor, this);
       });
   }
 

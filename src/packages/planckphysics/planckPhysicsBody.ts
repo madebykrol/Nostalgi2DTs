@@ -45,6 +45,27 @@ export class PlanckPhysicsBody extends PhysicsBody {
         this.body.setActive(active);
     }
 
+    applyLinearDamping(damping: number, deltaTime: number): void {
+        if (damping <= 0 || deltaTime <= 0) {
+            return;
+        }
+
+        const velocity = this.body.getLinearVelocity();
+        const scale = Math.max(0, 1 - damping * deltaTime);
+        velocity.set(velocity.x * scale, velocity.y * scale);
+        this.body.setLinearVelocity(velocity);
+    }
+
+    applyAngularDamping(damping: number, deltaTime: number): void {
+        if (damping <= 0 || deltaTime <= 0) {
+            return;
+        }
+
+        const angularVelocity = this.body.getAngularVelocity();
+        const scale = Math.max(0, 1 - damping * deltaTime);
+        this.body.setAngularVelocity(angularVelocity * scale);
+    }
+
     createBoundingVolume(component: CollisionComponent): void {
         const volume = new PlanckBoundingVolume(this.body, component);
         this.boundingVolumes.push(volume);

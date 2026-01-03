@@ -1,7 +1,7 @@
 import { SoundManager } from "./audio";
 import { Engine, EngineNetworkMode } from "./engine";
 import { Endpoint } from "./network";
-import { Constructor, Container, InversifyContainer, ResourceManager } from "./utils";
+import { Constructor, Container, InversifyContainer, ResourceManager, TimerManager } from "./utils";
 import { registerDecoratedActors, registerNObjects } from "./actorRegistry.js";
 import { Actor, World } from "./world";
 import { InputManager } from "./input";
@@ -10,6 +10,10 @@ import { Controller } from "./game";
 import { Level } from "./level";
 
 export class EngineBuilder<TSocket, TReq> {
+    withTimerManager<TTimerManager extends TimerManager>(ctor: Constructor<TTimerManager>) : EngineBuilder<TSocket, TReq> {
+      this.container.registerSingleton(TimerManager, ctor);
+      return this;
+    }
     withLevel<TLevel extends Level>(ctor: Constructor<TLevel>): EngineBuilder<TSocket, TReq> {
         this.container.registerSelf<TLevel>(ctor, undefined);
         return this;

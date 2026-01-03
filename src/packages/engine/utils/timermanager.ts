@@ -3,6 +3,7 @@ import { Timer } from "./timer";
 export class TimerHandle {
     constructor(public id: number = 0) { }
     hasBeenCanceled: boolean = false;
+    timePassed: number = 0; // percentage of time passed for this timer
 };
 
 export class TimerManager {
@@ -13,6 +14,16 @@ export class TimerManager {
         const now = Date.now();
         this.timers.set(handle, new Timer(callback, now+delay, delay, repeat));
         return handle;
+    }
+
+    clearAllTimers(): void {
+        this.timers.forEach((_, handle) => {
+            this.clearTimer(handle);
+        });
+    }
+
+    dispose(): void {
+        this.clearAllTimers();
     }
 
     clearTimer(handle: TimerHandle): void {
@@ -31,6 +42,7 @@ export class TimerManager {
         });
 
         this.timers.forEach((timer, handle) => {
+            handle.timePassed = Math.min(1, (now - (timer.nextTick - timer.delay)) / timer.delay);
             if (now >= timer.nextTick && !handle.hasBeenCanceled) {
                 timer.callback();
                 if (timer.repeat) {
