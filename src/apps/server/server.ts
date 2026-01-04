@@ -1,7 +1,7 @@
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 
-import { Actor, Constructor, Container, DefaultResourceManager, Engine, EngineBuilder, inject, Vector2, World } from "@repo/engine";
+import { Actor, Constructor, Container, DefaultResourceManager, Engine, EngineBuilder, inject, TimerManager, Vector2, World } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import { Endpoint, ServerReplicationManager, ClientInputMessage } from "../../packages/engine/network";
 import { DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor, GrasslandsMap } from "@repo/example";
@@ -242,13 +242,13 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
 
 const server = new Server("localhost", PORT);
 
-class ServerEngine extends Engine<WebSocket, http.IncomingMessage> {
+class ServerEngine extends Engine{
   private replicationManager: ServerReplicationManager;
   private networkTickInterval: NodeJS.Timeout | null = null;
   private networkTickRate = 60; // 60 Hz
 
-  constructor(@inject(World)world: World, @inject(Endpoint<WebSocket, http.IncomingMessage>) endpoint: Endpoint<WebSocket, http.IncomingMessage> | undefined, @inject(Container)container: Container) {
-    super(world, endpoint, "server", container);
+  constructor(@inject(World)world: World, @inject(Endpoint) endpoint: Endpoint | undefined, @inject(Container)container: Container, @inject(TimerManager) timerManager: TimerManager) {
+    super(world, endpoint, "server", container, timerManager);
     
     this.replicationManager = new ServerReplicationManager();
     this.setupNetworkHandlers();

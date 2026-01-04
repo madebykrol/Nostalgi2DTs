@@ -53,7 +53,7 @@ const areSceneGraphsEqual = (a: SceneNode[], b: SceneNode[]): boolean => {
 
 type SceneGraphPanelBaseProps = {
   editor: Editor;
-  engine: Engine<unknown, unknown>;
+  engine: Engine
 };
 
 const SceneGraphPanelBase = ({ editor, engine }: SceneGraphPanelBaseProps) => {

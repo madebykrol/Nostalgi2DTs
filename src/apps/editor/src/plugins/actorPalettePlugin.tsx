@@ -22,7 +22,7 @@ const formatActorName = (rawName: string, fallback: string) => {
   return source.replace(/\d+$/, "").replace(/Actor$/, "");
 };
 
-const discoverActorTypes = (engine: Engine<unknown, unknown>): ActorRegistryEntry[] => {
+const discoverActorTypes = (engine: Engine): ActorRegistryEntry[] => {
   const container = (engine as any)?.container as { identifierBindingMap?: Map<string, unknown> } | undefined;
   const bindings = container?.identifierBindingMap;
   if (!bindings || typeof bindings.entries !== "function") {
@@ -45,7 +45,7 @@ const discoverActorTypes = (engine: Engine<unknown, unknown>): ActorRegistryEntr
 };
 
 const resolveActorConstructor = (
-  engine: Engine<unknown, unknown>,
+  engine: Engine,
   identifier: string
 ): (new () => Actor | null) | null => {
   const container = (engine as any)?.container as {
@@ -57,7 +57,7 @@ const resolveActorConstructor = (
 
 type ActorPalettePanelBaseProps = {
   editor: Editor;
-  engine: Engine<unknown, unknown>;
+  engine: Engine;
 };
 
 const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBaseProps) => {

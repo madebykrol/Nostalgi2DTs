@@ -21,7 +21,7 @@ export class SoundActor extends Actor {
   private minDistance: number = 5;   // Minimum distance for full volume
 
   constructor(
-    @inject(Engine) private engine: Engine<unknown, unknown>,
+    @inject(Engine) private engine: Engine,
     @inject(SoundManager) private soundManager: SoundManager
   ) {
     super();

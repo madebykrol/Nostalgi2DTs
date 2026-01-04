@@ -69,7 +69,7 @@ export class EditorInputResponder {
     this.adjustZoom(data.deltaY);
   };
 
-  constructor(private readonly inputManager: InputManager, private readonly engine: Engine<unknown, unknown>, private readonly editor: Editor) {
+  constructor(private readonly inputManager: InputManager, private readonly engine: Engine, private readonly editor: Editor) {
     this.highlightMaterial = this.findHighlightMaterial();
     this.syncSelectionHighlight();
   }

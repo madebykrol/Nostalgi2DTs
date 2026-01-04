@@ -1,5 +1,5 @@
 import { Camera } from "./camera";
-import { Actor, World, BaseObject } from "./world";
+import { Actor, World, BaseObject, Component } from "./world";
 import { Level } from "./level";
 import { PlayerState, Controller } from "./game";
 import { Url, TimerManager, Constructor, Container, injectable } from "./utils";
@@ -25,7 +25,7 @@ export type PostProcessingTarget = {
 }
 
 @injectable()
-export class Engine<TSocket, TReq> {
+export class Engine {
     getContainer(): Container {
         return this.container;
     }
@@ -77,7 +77,7 @@ export class Engine<TSocket, TReq> {
 
     constructor(
         protected world: World,
-        protected netEndpoint: Endpoint<TSocket, TReq> | undefined,
+        protected netEndpoint: Endpoint | undefined,
         protected networkMode: EngineNetworkMode = "singleplayer",
         protected container: Container,
         protected timerManager: TimerManager) {
@@ -142,6 +142,18 @@ export class Engine<TSocket, TReq> {
     ): T[] {
         const targetCtor = Engine.getActorCtor<T>(ctor);
         return this.world.radialCast<T>(start, radius, includeStatic, includeDynamic, targetCtor) as T[];
+    }
+
+    createComponent<T extends Component>(ctor: Constructor<T>): T {
+        return this.container.get(ctor) as T;
+    }
+
+    createActor<T extends Actor>(ctor: Constructor<T>): T {
+        return this.container.get(ctor) as T;
+    }
+
+    createActorFromIdentifier<T extends Actor>(identifier: string): T {
+        return this.container.getByIdentifier<T>(identifier);
     }
 
     getDebugPhysics(): boolean { return this.debugMeshes; }

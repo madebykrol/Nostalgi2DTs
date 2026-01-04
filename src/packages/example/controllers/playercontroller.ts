@@ -67,7 +67,7 @@ export class PlayerController<TSocket, TRequest> extends Controller {
   };
 
 
-  constructor(@inject(InputManager) inputManager: InputManager, @inject(Engine) protected engine: Engine<TSocket, TRequest>, @inject(SoundManager) soundManager: SoundManager) {
+  constructor(@inject(InputManager) inputManager: InputManager, @inject(Engine) protected engine: Engine, @inject(SoundManager) soundManager: SoundManager) {
     super(inputManager);
     this.soundManager = soundManager;
   }

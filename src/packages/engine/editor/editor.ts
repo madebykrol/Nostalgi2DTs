@@ -20,7 +20,7 @@ export class Editor {
     /**
      *
      */
-    constructor(@inject(Engine<unknown, unknown>) private readonly engine: Engine<unknown, unknown>) {
+    constructor(@inject(Engine) private readonly engine: Engine) {
     }
 
     public emit(event: string, data: any): void {

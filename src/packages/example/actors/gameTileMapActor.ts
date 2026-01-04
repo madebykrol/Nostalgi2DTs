@@ -1,10 +1,14 @@
-import { Container, MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine } from "@repo/engine";
+import { MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine } from "@repo/engine";
 import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, TileMapMaterial, type TileMapActorOptions } from "@repo/tiler";
 import { WallActor } from "./wall";
 
 @actor()
 export class GameTileMapActor extends TileMapActor {
-  constructor(@inject(Parser) parser: Parser, @inject(Container) container: Container, @unmanaged() options: TileMapActorOptions = {}) {
+  constructor(
+    @inject(Parser) parser: Parser,
+    @inject(Engine) container: Engine,
+    @unmanaged() options: TileMapActorOptions = {}
+  ) {
     super(parser, container, options);
     const material = new TileMapMaterial();
     this.addComponent(new MeshComponent(new Quad(), material));
@@ -72,7 +76,7 @@ export class GameTileMapActor extends TileMapActor {
           // }
 
 
-          const wallActor = this.container.get<WallActor>(WallActor);
+          const wallActor = this.engine.createActor<WallActor>(WallActor);
           wallActor.applyProperties({ vertices: vertices });
 
           wallActor.initialize();
@@ -86,7 +90,7 @@ export class GameTileMapActor extends TileMapActor {
       });
   }
 
-  private handlePolygonWall(polygon: TiledPoint[], scale: number, rotation: number): { x: number; y: number }[] {
+  private handlePolygonWall(polygon: TiledPoint[], scale: number, rotation: number): Vertex2[] {
     const rotationRadians = -(rotation * (Math.PI / 180));
     const cos = Math.cos(rotationRadians);
     const sin = Math.sin(rotationRadians);
@@ -94,10 +98,10 @@ export class GameTileMapActor extends TileMapActor {
     return polygon.map((point) => {
         const scaledX = point.x * scale;
         const scaledY = -point.y * scale;
-        return {
-            x: scaledX * cos - scaledY * sin,
-            y: scaledX * sin + scaledY * cos
-        };
+        return new Vertex2(
+            scaledX * cos - scaledY * sin,
+            scaledX * sin + scaledY * cos
+        );
     });
   }
 }

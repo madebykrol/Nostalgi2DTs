@@ -1,7 +1,6 @@
-import http from "http";
-
 import { Endpoint, Engine, Container, InputManager, World, Vector2, TimerManager } from "@repo/engine";
 import { inject, injectable } from "inversify";
+import { Socket } from "../engine/network/endpoint";
 
 export class DefaultInputManager extends InputManager {
   private isAttached = false;
@@ -137,7 +136,7 @@ export class DefaultInputManager extends InputManager {
   };
 
   constructor(
-    @inject(Engine<WebSocket, http.IncomingMessage>) protected engine: Engine<WebSocket, http.IncomingMessage>
+    @inject(Engine) protected engine: Engine
   ) {
     super();
   }
@@ -218,11 +217,11 @@ export class DefaultInputManager extends InputManager {
   }
 }
 
-export class ClientEndpoint extends Endpoint<WebSocket, http.IncomingMessage> {
+export class ClientEndpoint extends Endpoint {
   send(_command: string, _data: any): void {
     throw new Error("Method not implemented.");
   }
-  connect(_onConnection: (socket: WebSocket, req: http.IncomingMessage) => void): Promise<void> {
+  connect(_onConnection: (socket: Socket, req: IncomingMessage) => void): Promise<void> {
     throw new Error("Method not implemented.");
   }
   disconnect(): Promise<void> {
@@ -238,12 +237,12 @@ export class ClientEndpoint extends Endpoint<WebSocket, http.IncomingMessage> {
 }
 
 @injectable()
-export class ClientEngine extends Engine<WebSocket, http.IncomingMessage> {
+export class ClientEngine extends Engine {
   // Implement client-specific engine logic here
   /**
    *
    */
-  constructor(@inject(World) world: World, @inject(Endpoint) endPoint: Endpoint<WebSocket, http.IncomingMessage> | undefined, @inject(Container) container: Container, @inject(TimerManager) timerManager: TimerManager) {
+  constructor(@inject(World) world: World, @inject(Endpoint) endPoint: Endpoint | undefined, @inject(Container) container: Container, @inject(TimerManager) timerManager: TimerManager) {
     super(world, endPoint, "singleplayer", container, timerManager);
   }
 }

@@ -1,4 +1,4 @@
-import { actor, Actor, CircleCollisionComponent, inject, injectable, MeshComponent, PhysicsComponent, PolygonCollisionComponent, property, Quad, TimerHandle, TimerManager, Vector2, Vertex2 } from "@repo/engine";
+import { actor, Actor, CircleCollisionComponent, inject, injectable, MeshComponent, PhysicsComponent, PolygonCollisionComponent, property, Quad, TimerHandle, TimerManager, Vector2, Vertex2, World } from "@repo/engine";
 import { UnlitMaterial } from "@repo/basicrenderer";
 import { Character } from "../../engine/game";
 
@@ -27,10 +27,10 @@ export class BombActor extends Actor {
 
     private timerHandle: TimerHandle | null = null;
 
-    constructor(@inject(TimerManager) protected timerManager: TimerManager) {
+    constructor(@inject(TimerManager) protected timerManager: TimerManager, @inject(World) protected world: World) {
         super();
         this.shouldTick = true;
-        const physics = this.addComponent(new PhysicsComponent());
+        const physics = this.addComponent(new PhysicsComponent(this.world));
         physics.setSimulationState(true, "dynamic");
 
         const collisionComponent = new PolygonCollisionComponent();
@@ -93,10 +93,10 @@ export class BombActor extends Actor {
 @actor("DemoActor")
 export class DemoActor extends Actor {
 
-    constructor() {
+    constructor(@inject(World) protected world: World) {
         super();
         this.shouldTick = true;
-        const physics = this.addComponent(new PhysicsComponent());
+        const physics = this.addComponent(new PhysicsComponent(this.world));
         physics.setSimulationState(true, "dynamic");
 
         const collisionComponent = new CircleCollisionComponent(0.5);
@@ -122,11 +122,11 @@ export class DemoCharacter extends Character {
     @property()
     public shouldSpawnBombs: boolean = true;
 
-    constructor() {
+    constructor(@inject(World) protected world: World) {
         super();
 
         this.shouldTick = true;
-        const physics = this.addComponent(new PhysicsComponent());
+        const physics = this.addComponent(new PhysicsComponent(this.world));
         physics.setSimulationState(true, "dynamic");
 
         const collisionComponent = new PolygonCollisionComponent();

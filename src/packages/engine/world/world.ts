@@ -1,13 +1,9 @@
 
-import { BaseObject, Constructor, Container } from "..";
-import { Frustum } from "../camera/frustum";
-import { Vector2 } from "../math/vector2";
-import { PhysicsBody, PhysicsComponent } from "../physics";
-import { Actor } from "./actor";
-
+import { Actor, BaseObject, Constructor, Container, PhysicsBody, PhysicsComponent, Vector2 } from "..";
 export interface WorldSettings { 
     gravity: Vector2|undefined;
     allowSleep: boolean|undefined;
+    airFriction: number|undefined;
 }
 
 export abstract class World {
@@ -27,6 +23,10 @@ export abstract class World {
 
     public resetForces() {
         
+    }
+
+    getAirfriction(): number {
+        return this.settings?.airFriction ?? 1;
     }
 
     async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent: BaseObject, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {

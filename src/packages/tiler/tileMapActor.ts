@@ -1,4 +1,4 @@
-import { Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container, property } from "@repo/engine";
+import { Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container, property, Engine, Vertex2 } from "@repo/engine";
 import { Parser, TiledMap, type TiledObject, TiledObjectLayer } from "./parser";
 
 export interface TileMapActorOptions {
@@ -31,26 +31,6 @@ export class WaterActor extends Actor {
     }
 }
 
-export class WallActor extends Actor {
-    private readonly collisionComponent: PolygonCollisionComponent;
-
-    constructor(
-        polygonPoints: { x: number; y: number }[],
-        public readonly layerName: string,
-        public readonly objectData: TiledObject
-    ) {
-        super();
-        this.shouldTick = false;
-        const physics = this.addComponent(new PhysicsComponent());
-        physics.setSimulationState(true, "static");
-        this.collisionComponent = this.addComponent(new PolygonCollisionComponent(polygonPoints));
-    }
-
-    getCollisionComponent(): PolygonCollisionComponent {
-        return this.collisionComponent;
-    }
-}
-
 export class TileMapActor extends Actor {
     private mapData: TiledMap | null = null;
     private objectActorsCreated = false;
@@ -66,7 +46,7 @@ export class TileMapActor extends Actor {
 
     constructor(
         private readonly parser: Parser,
-        protected readonly container:Container,
+        protected readonly engine: Engine,
         options: TileMapActorOptions = {}
     ) {
         super();
@@ -257,7 +237,7 @@ export class TileMapActor extends Actor {
             let actorsToAdd: Actor[] = [];
             try {
                 if(object.properties.Type) {
-                    const createdActor = this.container.getByIdentifier<Actor>(object.properties.Type as  string);
+                    const createdActor = this.engine.createActorFromIdentifier<Actor>(object.properties.Type as string);
                     console.log("Created actor from container for type:", object.properties.Type, createdActor);
                     actorsToAdd.push(createdActor);
                 }

@@ -1,4 +1,5 @@
 
+import "reflect-metadata";
 // components
 export * from "./world";
 export * from "./engine";

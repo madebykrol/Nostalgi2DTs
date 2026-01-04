@@ -34,7 +34,7 @@ export type SceneContextMenuItemDescriptor = {
 
 export type SceneDragContext = {
   editor: Editor;
-  engine: Engine<unknown, unknown> | null;
+  engine: Engine | null;
   canvas: HTMLCanvasElement | null;
 };
 

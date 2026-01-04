@@ -1,16 +1,16 @@
-import { actor, Actor, PhysicsComponent, PolygonCollisionComponent, Vertex2 } from "@repo/engine";
+import { actor, Actor, inject, PhysicsComponent, PolygonCollisionComponent, Vertex2, World } from "@repo/engine";
 
 @actor()
 export class WallActor extends Actor {
 
   vertices: Vertex2[] | undefined;
 
-  constructor(){
+  constructor(@inject(World) protected world: World) {
     super();
   }
 
   initialize(): void {
-    const physicsComponent = new PhysicsComponent();
+    const physicsComponent = new PhysicsComponent(this.world);
     physicsComponent.setSimulationState(true, "static");
     this.addComponent(physicsComponent);
 

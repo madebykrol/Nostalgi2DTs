@@ -36,8 +36,8 @@ export class EngineBuilder<TSocket, TReq> {
         this.container.registerSingletonInstance(Container, this.container);
     }
 
-    withEndpointInstance(endpoint: Endpoint<TSocket, TReq>): EngineBuilder<TSocket, TReq> {
-        this.container.registerSingletonInstance<Endpoint<TSocket, TReq>>(Endpoint<TSocket, TReq>, endpoint);
+    withEndpointInstance(endpoint: Endpoint): EngineBuilder<TSocket, TReq> {
+        this.container.registerSingletonInstance<Endpoint>(Endpoint, endpoint);
         return this;
     }
 
@@ -100,10 +100,10 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-    withNetworkEndpoint(_endpoint: Endpoint<TSocket, TReq>, mode: EngineNetworkMode): EngineBuilder<TSocket, TReq> {
+    withNetworkEndpoint(_endpoint: Endpoint, mode: EngineNetworkMode): EngineBuilder<TSocket, TReq> {
         // Configure the engine with a network endpoint
 
-        this.container.registerSingletonInstance<Endpoint<TSocket, TReq>>(Endpoint<TSocket, TReq>, _endpoint);
+        this.container.registerSingletonInstance<Endpoint>(Endpoint, _endpoint);
         this.networkMode = mode;
         return this;
     }
@@ -128,10 +128,10 @@ export class EngineBuilder<TSocket, TReq> {
         return this;
     }
 
-    build<TEngine extends Engine<TSocket, TReq>>(ctor: Constructor<TEngine>): TEngine {
+    build<TEngine extends Engine>(ctor: Constructor<TEngine>): TEngine {
         registerNObjects(this.container);
-        this.container.registerSingleton(Engine<TSocket, TReq>, ctor);
-        const engine = this.container.get(Engine<TSocket, TReq>) as TEngine;
+        this.container.registerSingleton(Engine, ctor);
+        const engine = this.container.get(Engine) as TEngine;
         engine.setNetworkMode(this.networkMode);
         engine.setIsDebug(this.useDebugLogging);
 
