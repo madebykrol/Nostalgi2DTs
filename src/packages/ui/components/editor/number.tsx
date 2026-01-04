@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from "react";
 
 const DRAG_PIXELS_PER_STEP = 8;
+const DRAG_ACTIVATION_PIXELS = 4;
 
 type NumberProps = {
     value: number;
@@ -17,6 +18,7 @@ export const Number = ({ value: externalValue, onChange, step, min, max }: Numbe
     const valueRef = useRef(externalValue);
     const dragStateRef = useRef<{ startX: number; startValue: number } | null>(null);
     const isDraggingRef = useRef(false);
+    const pendingDragRef = useRef(false);
     const stepRef = useRef(step ?? 1);
     const minRef = useRef<number | undefined>(min);
     const maxRef = useRef<number | undefined>(max);
@@ -90,6 +92,19 @@ export const Number = ({ value: externalValue, onChange, step, min, max }: Numbe
             }
 
             const deltaX = event.clientX - dragState.startX;
+
+            // Activate drag only after a small threshold so clicking/typing still works
+            if (!isDraggingRef.current) {
+                if (Math.abs(deltaX) < DRAG_ACTIVATION_PIXELS) {
+                    return;
+                }
+                isDraggingRef.current = true;
+                pendingDragRef.current = false;
+                setIsDragging(true);
+                document.body.style.cursor = "ew-resize";
+                document.body.style.userSelect = "none";
+            }
+
             const increments = Math.round(deltaX / DRAG_PIXELS_PER_STEP);
             const nextValue = dragState.startValue + increments * (stepRef.current || 1);
             commitValue(nextValue);
@@ -98,9 +113,12 @@ export const Number = ({ value: externalValue, onChange, step, min, max }: Numbe
     );
 
     const endDrag = useCallback(() => {
-        if (!isDraggingRef.current) {
+        if (!pendingDragRef.current && !isDraggingRef.current) {
+            dragStateRef.current = null;
             return;
         }
+
+        pendingDragRef.current = false;
         isDraggingRef.current = false;
         dragStateRef.current = null;
         setIsDragging(false);
@@ -115,17 +133,12 @@ export const Number = ({ value: externalValue, onChange, step, min, max }: Numbe
             if (event.button !== 0) {
                 return;
             }
-            event.preventDefault();
-
+            // Do not preventDefault so the field can still receive focus for typing.
             dragStateRef.current = {
                 startX: event.clientX,
                 startValue: valueRef.current,
             };
-            isDraggingRef.current = true;
-            setIsDragging(true);
-            document.body.style.cursor = "ew-resize";
-            document.body.style.userSelect = "none";
-
+            pendingDragRef.current = true;
             window.addEventListener("mousemove", handleMouseMove);
             window.addEventListener("mouseup", endDrag);
         },
@@ -149,7 +162,7 @@ export const Number = ({ value: externalValue, onChange, step, min, max }: Numbe
             step={step}
             min={min}
             max={max}
-            style={{ cursor: isDragging ? "ew-resize" : "ew-resize" }}
+            style={{ cursor: isDragging ? "ew-resize" : "text" }}
             onChange={handleInputChange}
             onMouseDown={handleMouseDown}
         />

@@ -162,7 +162,7 @@ const metricsTabPlugin: EditorUIPlugin = {
       id: "metrics",
       title: "Metrics",
       location: "bottom",
-      order: 1,
+      order: 9999,
       render: () => <MetricsPanel />,
     });
   },

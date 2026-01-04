@@ -467,9 +467,11 @@ const App = () => {
       console.log(e.getLocalPlayerState());
     };
 
-    setupLevel();
+  e.setEditorMode(true);
 
-    e.run(true);
+  setupLevel();
+
+  e.run(true);
     engineRef.current = e;
 
     const updateSceneGraph = () => {

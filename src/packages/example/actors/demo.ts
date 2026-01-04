@@ -1,8 +1,8 @@
-import { actor, Actor, CircleCollisionComponent, inject, injectable, MeshComponent, PhysicsComponent, property, Quad, TimerHandle, TimerManager, Vector2 } from "@repo/engine";
+import { actor, Actor, CircleCollisionComponent, inject, injectable, MeshComponent, PhysicsComponent, PolygonCollisionComponent, property, Quad, TimerHandle, TimerManager, Vector2, Vertex2 } from "@repo/engine";
 import { UnlitMaterial } from "@repo/basicrenderer";
-import { PolygonCollisionComponent } from "../../engine/world/circleCollisionComponent";
 import { Character } from "../../engine/game";
 
+@injectable()
 @actor("BombActor")
 export class BombActor extends Actor {
     
@@ -33,7 +33,13 @@ export class BombActor extends Actor {
         const physics = this.addComponent(new PhysicsComponent());
         physics.setSimulationState(true, "dynamic");
 
-        const collisionComponent = new PolygonCollisionComponent([{ x: -1, y: -1 }, { x: 1, y: -1 }, { x: 1, y: 1 }, { x: -1, y: 1 }]);
+        const collisionComponent = new PolygonCollisionComponent();
+            collisionComponent.points= [
+                new Vertex2( -0.5, -0.5 ),
+                new Vertex2( 0.5, -0.5 ),
+                new Vertex2( 0.5, 0.5 ),
+                new Vertex2( -0.5, 0.5 )
+            ]                
 
         this.addComponent(collisionComponent);
         const material = new UnlitMaterial();
@@ -41,8 +47,13 @@ export class BombActor extends Actor {
         this.addComponent(new MeshComponent(new Quad(), material));
     }
 
-    public onSpawned(): void {
-        
+    private armFuse(): void {
+        // Clear any previous fuse (hot reload/editor reuse)
+        if (this.timerHandle) {
+            this.timerManager.clearTimer(this.timerHandle);
+            this.timerHandle = null;
+        }
+
         this.timerHandle = this.timerManager.setTimer(() => {
             this.getWorld()?.radialCast(this.position, this.blastRadius, true, true, Actor).forEach((actor) => {
                 if (actor.getId() !== this.getId()) {
@@ -55,6 +66,26 @@ export class BombActor extends Actor {
             this.markForDespawn();
 
         }, this.fuseTimer);
+    }
+
+    public onBeginPlay(): void {
+        // Only arm the fuse when the game is actually playing (not just loaded in editor)
+        if (!this.timerHandle) {
+            this.armFuse();
+        }
+    }
+
+    public onSpawned(): void {
+        if(!this.timerHandle){
+            this.armFuse();
+        }
+    }
+
+    public onDespawned(): void {
+        if (this.timerHandle) {
+            this.timerManager.clearTimer(this.timerHandle);
+            this.timerHandle = null;
+        }
     }
 }
 
@@ -87,6 +118,10 @@ export class DemoActor extends Actor {
 
 @actor("DemoCharacter")
 export class DemoCharacter extends Character {
+
+    @property()
+    public shouldSpawnBombs: boolean = true;
+
     constructor() {
         super();
 
@@ -94,7 +129,13 @@ export class DemoCharacter extends Character {
         const physics = this.addComponent(new PhysicsComponent());
         physics.setSimulationState(true, "dynamic");
 
-        const collisionComponent = new PolygonCollisionComponent([{ x: -1, y: -1 }, { x: 1, y: -1 }, { x: 1, y: 1 }, { x: -1, y: 1 }]);
+        const collisionComponent = new PolygonCollisionComponent();
+            collisionComponent.points= [
+                new Vertex2( -1, -1 ),
+                new Vertex2( 1, -1 ),
+                new Vertex2( 1, 1 ),
+                new Vertex2( -1, 1 )
+            ]                
 
 
         this.addComponent(collisionComponent);
@@ -104,6 +145,10 @@ export class DemoCharacter extends Character {
     }
 
     onSpawned(): void {
+
+        if(!this.shouldSpawnBombs){
+            return;
+        }
         console.log("DemoCharacter onSpawned with id:", this.getId());
 
         // Spawn and launch 16 bombs in a circle around the character

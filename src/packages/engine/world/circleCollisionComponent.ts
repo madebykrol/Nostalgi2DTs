@@ -1,8 +1,9 @@
-import { Vector2 } from "../math";
+import { Vector2, Vertex2 } from "../math";
 import type {
     CircleCollisionShapeDescriptor,
     PolygonCollisionShapeDescriptor
 } from "../physics";
+import { property } from "../utils";
 import { CollisionComponent } from "./collisioncomponent";
 
 export class CircleCollisionComponent extends CollisionComponent {
@@ -54,29 +55,35 @@ export class CircleCollisionComponent extends CollisionComponent {
 }
 
 export class PolygonCollisionComponent extends CollisionComponent {
-    private points: Vector2[];
+    private _points: Vertex2[] = [];
 
-    constructor(points: { x: number; y: number }[]) {
+    constructor() {
         super();
-        if (points.length < 3) {
-            throw new Error("Polygon collision components require at least three points");
-        }
-        this.points = points.map((p) => new Vector2(p.x, p.y));
     }
 
-    getPoints(): Vector2[] {
-        return this.points.map((p) => p.clone());
+    get points(): Vertex2[] {
+        return this._points;
     }
 
-    setPoints(points: { x: number; y: number }[]): void {
-        if (points.length < 3) {
-            throw new Error("Polygon collision components require at least three points");
-        }
-        const next = points.map((p) => new Vector2(p.x, p.y));
-        if (this.points.length === next.length && this.points.every((p, i) => p.equals(next[i]))) {
+    @property()
+    set points(points: Vertex2[]) {
+        if (!Array.isArray(points)) {
             return;
         }
-        this.points = next;
+
+        if (points.length < 3) {
+            // Ignore invalid data instead of throwing during deserialization; caller can validate separately.
+            return;
+        }
+
+        // Normalize incoming data to Vertex2 instances (can be plain {x,y} or Vector2)
+        const next = points.map((p: any) => (p instanceof Vertex2 ? p : new Vertex2(p.x, p.y)));
+
+        if (this._points.length === next.length && this._points.every((p, i) => p.equals(next[i]))) {
+            return;
+        }
+
+        this._points = next;
         this.markDirty();
     }
 
@@ -105,7 +112,7 @@ export class PolygonCollisionComponent extends CollisionComponent {
     createShapeDescriptor(): PolygonCollisionShapeDescriptor {
         return {
             type: "polygon",
-            vertices: this.getPoints(),
+            vertices: this.points,
             density: this.getDensity(),
             friction: this.getFriction(),
             restitution: this.getRestitution(),

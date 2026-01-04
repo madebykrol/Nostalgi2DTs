@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { theme } from "../theme";
 import type { PanelRegistry } from "../plugins/pluginSystem";
 import type { Editor } from "@repo/engine";
@@ -10,15 +10,24 @@ type BottomPanelProps = {
 };
 
 export const BottomPanel = ({ panelRegistry, panelRevision, editor }: BottomPanelProps) => {
-  const bottomPanels = useMemo(() => panelRegistry.resolve("bottom"), [panelRevision]);
+  const bottomPanels = useMemo(() => panelRegistry.resolve("bottom"), [panelRegistry, panelRevision]);
   const [activeTabId, setActiveTabId] = useState<string>(() => bottomPanels[0]?.id ?? "");
 
-  // Update active tab if it no longer exists
-  if (activeTabId && !bottomPanels.some((panel) => panel.id === activeTabId)) {
-    setActiveTabId(bottomPanels[0]?.id ?? "");
-  }
+  useEffect(() => {
+    if (activeTabId && !bottomPanels.some((panel) => panel.id === activeTabId)) {
+      setActiveTabId(bottomPanels[0]?.id ?? "");
+    }
+  }, [activeTabId, bottomPanels]);
 
   const activePanel = bottomPanels.find((panel) => panel.id === activeTabId);
+
+  const ActivePanelComponent = useMemo(() => {
+    if (!activePanel) {
+      return null;
+    }
+    const Renderer = activePanel.render;
+    return () => Renderer({ editor });
+  }, [activePanel, editor]);
 
   if (bottomPanels.length === 0) {
     return null;
@@ -58,9 +67,7 @@ export const BottomPanel = ({ panelRegistry, panelRevision, editor }: BottomPane
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-hidden">
-        {activePanel && activePanel.render({ editor })}
-      </div>
+      <div className="flex-1 overflow-hidden">{ActivePanelComponent ? <ActivePanelComponent /> : null}</div>
     </div>
   );
 };

@@ -14,7 +14,8 @@ export class WallActor extends Actor {
     physicsComponent.setSimulationState(true, "static");
     this.addComponent(physicsComponent);
 
-    const collisionComponent = new PolygonCollisionComponent(this.vertices ? this.vertices : []);
+    const collisionComponent = new PolygonCollisionComponent();
+    collisionComponent.points = this.vertices || [];
     this.addComponent(collisionComponent);
   }
 }

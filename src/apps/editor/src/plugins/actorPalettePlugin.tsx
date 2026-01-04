@@ -110,7 +110,7 @@ const actorPalettePlugin: EditorUIPlugin = {
     const unregisterPanel = panels.register({
       id: "builtin.actor-palette.panel",
       title: "Actors",
-      location: "left",
+      location: "bottom",
       order: 40,
       render: ({ editor }) => <ActorPalettePanel editor={editor} />,
     });

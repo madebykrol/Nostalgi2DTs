@@ -174,8 +174,7 @@ export class Engine<TSocket, TReq> {
     }
 
     run(asEditor: boolean = false): void {
-
-        this.asEditor = asEditor;
+        this.setEditorMode(asEditor);
         this.ensureInputManager();
         this.configurePlayerControllers();
 
@@ -206,6 +205,11 @@ export class Engine<TSocket, TReq> {
                 });
             }
         }
+    }
+
+    setEditorMode(asEditor: boolean): void {
+        this.asEditor = asEditor;
+        this.world?.setEditorMode(asEditor);
     }
 
     private runServer(): void {

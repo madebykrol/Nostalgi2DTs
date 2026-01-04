@@ -11,9 +11,14 @@ export interface WorldSettings {
 }
 
 export abstract class World {
+    private editorMode: boolean = false;
     
     constructor(protected settings: WorldSettings|undefined, protected container: Container) {
 
+    }
+
+    setEditorMode(isEditor: boolean): void {
+        this.editorMode = isEditor;
     }
 
     abstract getGravity(): Vector2|undefined;
@@ -57,7 +62,9 @@ export abstract class World {
             await this.spawnActorInstance(child, actor);
         }
 
-        actor.onSpawned();
+        if (!this.editorMode) {
+            actor.onSpawned();
+        }
 
         actor.isSpawned = true;
     }

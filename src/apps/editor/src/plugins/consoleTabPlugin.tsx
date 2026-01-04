@@ -117,7 +117,7 @@ const consoleTabPlugin: EditorUIPlugin = {
       id: "console",
       title: "Console",
       location: "bottom",
-      order: 0,
+      order: 10000,
       render: () => <ConsolePanel />,
     });
   },

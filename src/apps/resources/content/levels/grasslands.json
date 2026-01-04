@@ -361,14 +361,14 @@
             {
               "type": "Number",
               "key": "x",
-              "value": 7.512848706276531,
+              "value": 3.0623853944162787,
               "properties": null,
               "node": null
             },
             {
               "type": "Number",
               "key": "y",
-              "value": 7.020128626880595,
+              "value": 13.712801671953754,
               "properties": null,
               "node": null
             }
@@ -378,14 +378,14 @@
         {
           "type": "Number",
           "key": "fuseTimer",
-          "value": 1980,
+          "value": 5000,
           "properties": null,
           "node": null
         },
         {
           "type": "Number",
           "key": "blastRadius",
-          "value": 4,
+          "value": 10,
           "properties": null,
           "node": null
         },
