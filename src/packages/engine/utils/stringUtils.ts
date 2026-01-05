@@ -16,6 +16,17 @@ export class StringUtils {
             return value;
         })
     }
+
+    private static encoder = new TextEncoder();
+    private static decoder = new TextDecoder("utf-8");
+
+    public static DecodeUtf(uint8Data: Uint8Array): string {
+        return this.decoder.decode(uint8Data);
+    }
+
+    public static encodeUtf8(text: string): Uint8Array {
+        return this.encoder.encode(text);
+    }
 }
 
 @injectable()

@@ -6,24 +6,33 @@ export const listResources = async (_req: Request, res: Response) => {
   return res.json({ data: tree });
 };
 
+export const listAssets = async (_req: Request, res: Response) => {
+  const tree = await resourceService.listAssetTree();
+  return res.json({ data: tree });
+};
+
 // Placeholder stubs to keep route surface; these can be implemented to write files when needed
 export const createResource = (_req: Request, res: Response) => {
   return res.status(501).json({ error: "Not implemented for filesystem-backed resources." });
 };
 
 export const getResource = async (req: Request, res: Response) => {
-  const { path } = req.query;
+  const { path, encoding } = req.query;
   if (typeof path !== "string") {
     return res.status(400).json({ error: "Missing or invalid path query param" });
   }
+  const resolvedEncoding = encoding === "base64" ? "base64" : "utf-8";
 
   try {
-    const content = await resourceService.getFile(path);
-    // naive content-type inference
-    if (path.endsWith(".json")) {
-      res.type("application/json");
-    } else if (path.endsWith(".tmx") || path.endsWith(".xml")) {
-      res.type("application/xml");
+    const content = await resourceService.getFile(path, resolvedEncoding);
+    if (resolvedEncoding === "base64") {
+      res.type("text/plain");
+    } else {
+      if (path.endsWith(".json")) {
+        res.type("application/json");
+      } else if (path.endsWith(".tmx") || path.endsWith(".xml")) {
+        res.type("application/xml");
+      }
     }
     return res.send(content);
   } catch (err: any) {
@@ -37,7 +46,7 @@ export const getResource = async (req: Request, res: Response) => {
 
 export const saveResource = async (req: Request, res: Response) => {
   const { path } = req.query;
-  const { content } = req.body ?? {};
+  const { content, encoding } = req.body ?? {};
 
   if (typeof path !== "string") {
     return res.status(400).json({ error: "Missing or invalid path query param" });
@@ -45,12 +54,28 @@ export const saveResource = async (req: Request, res: Response) => {
   if (typeof content !== "string") {
     return res.status(400).json({ error: "Missing or invalid content" });
   }
+  const resolvedEncoding = encoding === "base64" ? "base64" : "utf-8";
 
   try {
-    await resourceService.saveFile(path, content);
+    await resourceService.saveFile(path, content, resolvedEncoding);
     return res.status(200).json({ ok: true });
   } catch (err: any) {
     console.error("Failed to save resource", err);
     return res.status(500).json({ error: "Failed to save resource" });
+  }
+};
+
+export const listSpriteSheets = async (req: Request, res: Response) => {
+  const { extension = ".png" } = req.query;
+  if (typeof extension !== "string" || extension.trim().length === 0) {
+    return res.status(400).json({ error: "Missing or invalid extension" });
+  }
+
+  try {
+    const files = await resourceService.listFilesWithExtension(extension);
+    return res.json({ data: files });
+  } catch (err) {
+    console.error("Failed to list sprite sheets", err);
+    return res.status(500).json({ error: "Failed to list sprite sheets" });
   }
 };

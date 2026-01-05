@@ -260,7 +260,7 @@ export class ClientReplicationManager {
                 input.mouse.position.y - currentPos.y,
                 input.mouse.position.x - currentPos.x
             );
-            actor.setRotation(angle);
+            actor.rotation = angle;
         }
     }
 }

@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { listResources, createResource, getResource, saveResource } from "../controllers/resourceController";
+import { listResources, createResource, getResource, saveResource, listSpriteSheets, listAssets } from "../controllers/resourceController";
 
 const router = Router();
 
@@ -39,7 +39,7 @@ const router = Router();
  *           description: Path relative to the content root
  *         kind:
  *           type: string
- *           enum: [directory, file]
+ *           enum: [directory, file, entry]
  *         sizeBytes:
  *           type: integer
  *         extension:
@@ -48,6 +48,28 @@ const router = Router();
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/ResourceNode'
+ *     AssetNode:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *         path:
+ *           type: string
+ *           description: Path relative to the content root
+ *         kind:
+ *           type: string
+ *           enum: [directory, file]
+ *         assetType:
+ *           type: string
+ *           description: Inferred asset category (texture, sprite, actor, audio, data, container)
+ *         sizeBytes:
+ *           type: integer
+ *         extension:
+ *           type: string
+ *         children:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/AssetNode'
  */
 
 /**
@@ -131,7 +153,6 @@ router.route("/")
  *       404:
  *         description: Not found
  */
-router.get("/:id", (req: Request, res: Response) => getResource(req, res));
 
 /**
  * @openapi
@@ -172,5 +193,43 @@ router.get("/:id", (req: Request, res: Response) => getResource(req, res));
  */
 router.get("/content", async (req: Request, res: Response) => getResource(req, res));
 router.put("/content", async (req: Request, res: Response) => saveResource(req, res));
+
+/**
+ * @openapi
+ * /api/resources/assets:
+ *   get:
+ *     summary: List assets with inferred categories for the asset browser
+ *     responses:
+ *       200:
+ *         description: Asset hierarchy with type metadata
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   $ref: '#/components/schemas/AssetNode'
+ */
+router.get("/assets", async (req: Request, res: Response) => listAssets(req, res));
+
+/**
+ * @openapi
+ * /api/resources/spritesheets:
+ *   get:
+ *     summary: List sprite sheet resources filtered by extension (defaults to .png)
+ *     parameters:
+ *       - in: query
+ *         name: extension
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: File extension to match (e.g. .png)
+ */
+router.get("/spritesheets", async (req: Request, res: Response) => listSpriteSheets(req, res));
+
+/**
+ * Keep catch-all route last so more specific paths take priority.
+ */
+router.get("/:id", (req: Request, res: Response) => getResource(req, res));
 
 export default router;

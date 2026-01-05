@@ -26,4 +26,7 @@ export { Mesh } from "./rendering";
 export { Quad } from "./rendering";
 export { Vertex2 } from "./math";
 
+export { AssetService } from "./assets/assetService";
+export { AssetManifest, AssetHeader, AssetPayloadPackedEntry} from "./assets/assetManifest";
+
 

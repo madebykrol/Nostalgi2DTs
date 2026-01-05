@@ -31,3 +31,19 @@ export type ResourceNode = {
   extension?: string;
   children?: ResourceNode[];
 };
+
+export type AssetCategory = "directory" | "texture" | "sprite" | "actor" | "audio" | "data" | "container" | "unknown";
+
+export type AssetNode = {
+  name: string;
+  path: string;
+  kind: "directory" | "file" | "entry";
+  assetType: AssetCategory;
+  sizeBytes?: number;
+  extension?: string;
+  children?: AssetNode[];
+  contentType?: string;
+  metadata?: Record<string, unknown>;
+  entryId?: string;
+  containerPath?: string;
+};

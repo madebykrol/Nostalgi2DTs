@@ -17,6 +17,7 @@ import {
   Actor,
   Container,
   Level,
+  AssetService,
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import {
@@ -52,6 +53,8 @@ import sceneGraphPanelPlugin from "./plugins/sceneGraphPanelPlugin";
 import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";
 import meshComponentDesignerPlugin from "./plugins/meshComponentDesignerPlugin";
+import assetBrowserPanelPlugin from "./plugins/assetBrowserPanelPlugin";
+import spriteSheetEditorPlugin from "./plugins/spriteSheetEditorPlugin";
 import type { EditorUIPlugin } from "@repo/engine";
 import consoleTabPlugin, { type ConsoleEntry, type ConsoleEntryType } from "./plugins/consoleTabPlugin";
 import metricsTabPlugin from "./plugins/metricsTabPlugin";
@@ -202,6 +205,7 @@ const App = () => {
       .withServiceInstance(DOMParser, new DOMParser())
       .withService(Editor)
       .withService(Parser)
+      .withService(AssetService)
       .withInputManager(DefaultInputManager)
       .withSoundManager(SoundManager)
       .withGameMode(ExampleTopDownRPGGameMode)
@@ -387,6 +391,8 @@ const App = () => {
           transformPropertiesPlugin,
           simpleModalPlugin,
           meshComponentDesignerPlugin,
+          assetBrowserPanelPlugin,
+          spriteSheetEditorPlugin,
           tileMapEditorPlugin,
           consoleTabPlugin,
           metricsTabPlugin,
@@ -872,4 +878,16 @@ const App = () => {
   );
 };
 
-createRoot(document.getElementById("app")!).render(<App />);
+const mount = document.getElementById("app");
+if (!mount) {
+  throw new Error("Failed to locate #app container for editor UI");
+}
+
+const existingKey = "__editor_root";
+const anyMount = mount as typeof mount & { [key: string]: ReturnType<typeof createRoot> | undefined };
+
+if (!anyMount[existingKey]) {
+  anyMount[existingKey] = createRoot(mount);
+}
+
+anyMount[existingKey]!.render(<App />);
