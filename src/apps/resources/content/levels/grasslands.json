@@ -361,14 +361,14 @@
             {
               "type": "Number",
               "key": "x",
-              "value": 7.2496185164669855,
+              "value": 11.137203797868256,
               "properties": null,
               "node": null
             },
             {
               "type": "Number",
               "key": "y",
-              "value": 7.546898912899206,
+              "value": 3.6593047527103577,
               "properties": null,
               "node": null
             }
@@ -385,7 +385,7 @@
         {
           "type": "Number",
           "key": "blastRadius",
-          "value": 10,
+          "value": 41,
           "properties": null,
           "node": null
         },
