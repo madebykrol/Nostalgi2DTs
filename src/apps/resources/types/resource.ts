@@ -39,6 +39,8 @@ export type AssetNode = {
   path: string;
   kind: "directory" | "file" | "entry";
   assetType: AssetCategory;
+  manifestType?: string;
+  rootEntryId?: string;
   sizeBytes?: number;
   extension?: string;
   children?: AssetNode[];
@@ -46,4 +48,6 @@ export type AssetNode = {
   metadata?: Record<string, unknown>;
   entryId?: string;
   containerPath?: string;
+  /** True when this node represents a .n2asset container file. */
+  isContainer?: boolean;
 };

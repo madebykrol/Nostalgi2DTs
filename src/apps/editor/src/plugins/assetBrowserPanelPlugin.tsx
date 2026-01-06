@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent } from "react";
+import type { DragEvent, ReactNode } from "react";
 import type { Editor, EditorUIPlugin } from "@repo/engine";
 import { AssetService, type AssetManifest, type AssetPayloadPackedEntry } from "@repo/engine";
 import { fetchAssetTree, saveBinaryResource, type AssetCategory, type AssetNode } from "../services/resourceLoader";
@@ -77,7 +77,7 @@ const guessAssetTypeFromName = (fileName: string, mime?: string): AssetCategory 
 
 const generateLocalId = () => Math.random().toString(36).slice(2, 10);
 
-const AssetBrowserPanel = ({ editor: _editor }: { editor: Editor }) => {
+const AssetBrowserPanel = ({ editor }: { editor: Editor }) => {
   const [tree, setTree] = useState<AssetNode | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +87,7 @@ const AssetBrowserPanel = ({ editor: _editor }: { editor: Editor }) => {
   const [typeFilter, setTypeFilter] = useState<AssetCategory | "all">("all");
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set([""]));
   const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
+  const [selectedAssetPath, setSelectedAssetPath] = useState<string | null>(null);
   const assetServiceRef = useRef<AssetService>(new AssetService());
 
   const loadAssets = useCallback(async () => {
@@ -160,6 +161,7 @@ const AssetBrowserPanel = ({ editor: _editor }: { editor: Editor }) => {
             updatedAt: Date.now(),
             createdBy: "AssetBrowserDrop",
             updatedBy: "AssetBrowserDrop",
+            rootEntryId: payloadEntry.id,
             entries: [],
           };
 
@@ -250,20 +252,19 @@ const AssetBrowserPanel = ({ editor: _editor }: { editor: Editor }) => {
     return `${(value / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const renderNode = (node: AssetNode, depth: number): JSX.Element => {
-    const key = node.path || "__root__";
-    const isDirectory = node.kind === "directory";
-    const hasChildren = Boolean(node.children && node.children.length > 0);
-    const canToggle = hasChildren;
-    const isExpanded = expanded.has(node.path);
-    const displayChildren = canToggle && isExpanded;
-    const badge = TYPE_BADGES[node.assetType] ?? "UNK";
-    const fileSize = !isDirectory ? formatSize(node.sizeBytes) : null;
-    const isDropTarget = dropTargetPath === node.path && isDirectory;
+  const renderNode = (node: AssetNode, depth: number): ReactNode => {
+  const key = node.path || "__root__";
+  const isDirectory = node.kind === "directory";
+  const hasChildren = Boolean(node.children && node.children.length > 0);
+  const canToggle = hasChildren;
+  const isExpanded = expanded.has(node.path);
+  const displayChildren = canToggle && isExpanded;
+  const badge = TYPE_BADGES[node.assetType] ?? "UNK";
+  const fileSize = !isDirectory ? formatSize(node.sizeBytes) : null;
+  const isDropTarget = dropTargetPath === node.path && isDirectory;
+  const isSelected = selectedAssetPath === node.path;
+  const isSelectable = node.isContainer || node.assetType === "container" || node.kind === "entry";
     const detailText = (() => {
-      if (node.kind !== "entry") {
-        return null;
-      }
       const parts: string[] = [];
       if (node.contentType) {
         parts.push(node.contentType);
@@ -281,6 +282,9 @@ const AssetBrowserPanel = ({ editor: _editor }: { editor: Editor }) => {
       }
       if (node.containerPath) {
         parts.push(`from ${node.containerPath}`);
+      }
+      if (node.isContainer && node.manifestType) {
+        parts.unshift(node.manifestType);
       }
       return parts.length > 0 ? parts.join(" • ") : null;
     })();
@@ -332,8 +336,26 @@ const AssetBrowserPanel = ({ editor: _editor }: { editor: Editor }) => {
         <div
           className={`flex items-center gap-2 rounded px-2 py-1 text-xs text-white/85 hover:bg-white/5 ${
             node.kind === "entry" ? "text-white/80" : ""
-          } ${isDropTarget ? "border border-cyan-400/50 bg-cyan-400/10" : ""}`}
+          } ${isDropTarget ? "border border-cyan-400/50 bg-cyan-400/10" : ""} ${
+            isSelected ? "border border-cyan-400/60 bg-cyan-400/10" : ""
+          } ${isSelectable ? "cursor-pointer" : ""}`}
           style={{ paddingLeft: depth * 12 + 8 }}
+          onClick={isSelectable ? () => {
+            setSelectedAssetPath(node.path);
+            if (node.isContainer || node.assetType === "container" || node.kind === "entry") {
+              editor.emit("asset:selected", {
+                name: node.name,
+                path: node.path,
+                assetType: node.assetType,
+                manifestType: node.manifestType,
+                metadata: node.metadata ?? {},
+                contentType: node.contentType,
+                sizeBytes: node.sizeBytes,
+                entryId: node.entryId,
+                containerPath: node.containerPath,
+              });
+            }
+          } : undefined}
           {...dragHandlers}
         >
           {canToggle ? (

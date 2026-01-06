@@ -55,6 +55,8 @@ const manifestEntryTypeToCategory = (value?: string): AssetCategory => {
     case "audio":
     case "sound":
       return "audio";
+    case "level":
+      return "data";
     case "data":
     case "binary":
       return "data";
@@ -64,10 +66,13 @@ const manifestEntryTypeToCategory = (value?: string): AssetCategory => {
 };
 
 const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
-  if (bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength) {
-    return bytes.buffer;
+  const { buffer, byteOffset, byteLength } = bytes;
+  if (buffer instanceof ArrayBuffer && byteOffset === 0 && byteLength === buffer.byteLength) {
+    return buffer;
   }
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  const copy = new ArrayBuffer(byteLength);
+  new Uint8Array(copy).set(bytes);
+  return copy;
 };
 
 const HEADER_SIZE = 64;
@@ -89,6 +94,7 @@ type AssetManifestEntry = {
 type AssetManifest = {
   format: string;
   version: number;
+  rootEntryId?: string;
   entries: AssetManifestEntry[];
 };
 
@@ -248,40 +254,46 @@ export const resourceService = {
     };
 
     if (extension === ".n2asset") {
-      const entries = await this.readContainerEntries(relPath, absoluteBase);
-      if (entries.length > 0) {
-        node.children = entries;
+      node.isContainer = true;
+      node.containerPath = relPath;
+
+      const info = await this.readContainerRoot(relPath, absoluteBase);
+      const rootEntry = info?.rootEntry;
+
+      if (rootEntry) {
+        node.assetType = manifestEntryTypeToCategory(rootEntry.type) || "container";
+        node.manifestType = rootEntry.type;
+        node.contentType = rootEntry.contentType;
+        node.metadata = rootEntry.metadata ?? {};
+        node.entryId = rootEntry.id || undefined;
+        node.rootEntryId = rootEntry.id || undefined;
+        node.sizeBytes = rootEntry.length ?? node.sizeBytes;
       }
     }
 
     return node;
   },
 
-  async readContainerEntries(relPath: string, absoluteBase: string): Promise<AssetNode[]> {
+  async readContainerRoot(relPath: string, absoluteBase: string): Promise<{ rootEntry?: AssetManifestEntry; manifest?: AssetManifest } | null> {
     const fullPath = path.join(absoluteBase, relPath);
     try {
       const fileBytes = await fs.readFile(fullPath);
       const manifest = readAssetManifest(toArrayBuffer(fileBytes));
       if (!Array.isArray(manifest.entries) || manifest.entries.length === 0) {
-        return [];
+        return { manifest };
       }
-      return manifest.entries.map((entry) => {
-        const entryId = entry.id || `${relPath}-${entry.offset}`;
-        return {
-          name: entry.name || entryId,
-          path: `${relPath}#${entryId}`,
-          kind: "entry",
-          assetType: manifestEntryTypeToCategory(entry.type),
-          sizeBytes: entry.length,
-          contentType: entry.contentType,
-          metadata: entry.metadata ?? {},
-          entryId,
-          containerPath: relPath,
-        };
-      });
+
+      const rootEntry = (() => {
+        if (manifest.rootEntryId) {
+          return manifest.entries.find((entry) => entry.id === manifest.rootEntryId) ?? manifest.entries[0];
+        }
+        return manifest.entries[0];
+      })();
+
+      return { rootEntry, manifest };
     } catch (error) {
       console.warn(`Failed to parse asset container ${relPath}`, error);
-      return [];
+      return null;
     }
   },
 

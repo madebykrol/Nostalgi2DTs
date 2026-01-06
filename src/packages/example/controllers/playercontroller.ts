@@ -10,10 +10,10 @@ import {
   SoundManager,
   Vector2 } from "@repo/engine";
 import { inject, injectable } from 'inversify';
-import { DemoActor } from "@repo/example";
+import { BombActor, DemoActor } from "@repo/example";
 
 @injectable()
-export class PlayerController<TSocket, TRequest> extends Controller {
+export class PlayerController extends Controller {
 
   private boink: SoundHandle | null = null;
   
@@ -43,14 +43,15 @@ export class PlayerController<TSocket, TRequest> extends Controller {
     console.log("Mouse down at world position:", data.worldX, data.worldY);
 
     if (hitActors.length > 0) {
-      for (const actor of hitActors) {
+      for (const actor of hitActors.filter(x => x !==  this.possessedActor)) {
         console.log(`Clicked actor: ${actor.getId()}`);
+
         actor.markForDespawn();
       }
       return;
     }
 
-    await this.engine.getWorld().spawnActor(DemoActor, this.engine.getRootObject(), new Vector2(data.worldX, data.worldY));
+    await this.engine.getWorld().spawnActor(BombActor, this.engine.getRootObject(), new Vector2(data.worldX, data.worldY));
 
     if(!this.boink) {
       this.boink = this.soundManager.loadSoundFromBuffer("boinkSound", createBoinkSound(this.soundManager.getAudioContext()!), GainChannel.Effects);

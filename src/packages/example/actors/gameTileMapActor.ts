@@ -49,10 +49,10 @@ export class GameTileMapActor extends TileMapActor {
 
           else {
             vertices = object.width && object.height ? [
-              { x: 0, y: 0 },
-              { x: object.width * scale, y: 0 },
-              { x: object.width * scale, y: -object.height * scale },
-              { x: 0, y: -object.height * scale }
+              new Vertex2(0, 0),
+              new Vertex2(object.width * scale, 0),
+              new Vertex2(object.width * scale, -object.height * scale),
+              new Vertex2(0, -object.height * scale)
             ] : [];
           }
 

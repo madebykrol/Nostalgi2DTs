@@ -60,7 +60,7 @@ export abstract class Actor extends BaseObject {
     private _name: string|undefined = undefined;
 
     // Reference to the world this actor belongs to
-    private world: World | null = null;
+    protected world: World | null = null;
 
     // Internal flag to track if the actor is currently rendering
     private isRendering: boolean = false;

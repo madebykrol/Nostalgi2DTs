@@ -1,4 +1,4 @@
-import { actor, Actor, CircleCollisionComponent, inject, injectable, MeshComponent, PhysicsComponent, PolygonCollisionComponent, property, Quad, TimerHandle, TimerManager, Vector2, Vertex2, World } from "@repo/engine";
+import { actor, Actor, CircleCollisionComponent, GainChannel, inject, injectable, MeshComponent, PhysicsComponent, PolygonCollisionComponent, property, Quad, SoundManager, TimerHandle, TimerManager, Vector2, Vertex2, World } from "@repo/engine";
 import { UnlitMaterial } from "@repo/basicrenderer";
 import { Character } from "../../engine/game";
 
@@ -27,7 +27,7 @@ export class BombActor extends Actor {
 
     private timerHandle: TimerHandle | null = null;
 
-    constructor(@inject(TimerManager) protected timerManager: TimerManager, @inject(World) protected world: World) {
+    constructor(@inject(TimerManager) protected timerManager: TimerManager, @inject(World) protected world: World, @inject(SoundManager) protected soundManager: SoundManager) {
         super();
         this.shouldTick = true;
         const physics = this.addComponent(new PhysicsComponent(this.world));
@@ -63,6 +63,13 @@ export class BombActor extends Actor {
             });
             console.log("BombActor exploded");
 
+            // play sound effect, spawn particles, etc. here
+            // Create a simple explosion sound
+            const explosionSound = this.soundManager.loadSoundFromBuffer("explosionSound", this.createExplosionSound(this.soundManager.getAudioContext()!), GainChannel.Effects);
+            explosionSound.setVolume(0.5);
+            explosionSound.play(false, 0);
+
+
             this.markForDespawn();
 
         }, this.fuseTimer);
@@ -86,6 +93,23 @@ export class BombActor extends Actor {
             this.timerManager.clearTimer(this.timerHandle);
             this.timerHandle = null;
         }
+    }
+
+    private createExplosionSound(audioContext: AudioContext): AudioBuffer {
+        const sampleRate = audioContext.sampleRate;
+        const duration = 0.5; // seconds
+        const frameCount = sampleRate * duration;
+        const buffer = audioContext.createBuffer(1, frameCount, sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < frameCount; i++) {
+            // Simple white noise with exponential decay
+            
+            const time = i / sampleRate;
+            const decay = Math.exp(-5 * time);
+            data[i] = (Math.random() * 2 - 1) * decay;
+        }
+        return buffer;
+
     }
 }
 

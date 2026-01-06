@@ -54,7 +54,7 @@ import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";
 import meshComponentDesignerPlugin from "./plugins/meshComponentDesignerPlugin";
 import assetBrowserPanelPlugin from "./plugins/assetBrowserPanelPlugin";
-import spriteSheetEditorPlugin from "./plugins/spriteSheetEditorPlugin";
+import spriteSheetEditorPlugin from "./plugins/spriteEditor/spriteSheetEditorPlugin";
 import type { EditorUIPlugin } from "@repo/engine";
 import consoleTabPlugin, { type ConsoleEntry, type ConsoleEntryType } from "./plugins/consoleTabPlugin";
 import metricsTabPlugin from "./plugins/metricsTabPlugin";
@@ -558,9 +558,9 @@ const App = () => {
       return;
     }
     engine.shutdown();
-
-    engine.loadLevelObject(editorRef.current?.deserializeLevel(levelSnapshotRef.current!)! ).then(() => {
     engine.run(true);
+    engine.loadLevelObject(editorRef.current?.deserializeLevel(levelSnapshotRef.current!)! ).then(() => {
+  
     // Load level from current editing state
     if (inputManagerRef.current) {
       const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);

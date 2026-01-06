@@ -64,9 +64,10 @@ export abstract class World {
 
         if (!this.editorMode) {
             actor.onSpawned();
+            actor.isSpawned = true;
         }
 
-        actor.isSpawned = true;
+        
     }
 
     private spawnActorInternal<T extends Actor>(actor: T, position: Vector2|undefined): T {

@@ -20,6 +20,8 @@ export class AssetManifest {
     public updatedAt: number = Date.now();
     public createdBy: string = "";
     public updatedBy: string = "";
+    /** Optional id of the entry that represents the primary asset in the container. */
+    public rootEntryId?: string;
 
 
 }

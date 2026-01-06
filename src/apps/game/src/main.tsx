@@ -68,7 +68,7 @@ const App = () => {
     console.log(`Engine built in ${(endTime - startTime).toFixed(4)} ms`);
     
     const level = new GrasslandsMap(builder.container);
-    level.addActor(demoActor);
+    level.addChild(demoActor);
 
     const setupLevel = async () => {
       try {

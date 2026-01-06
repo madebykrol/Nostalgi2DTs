@@ -5,7 +5,7 @@ import {
   loadBinaryResource,
   saveBinaryResource,
   type SpriteSheetResource,
-} from "../services/resourceLoader";
+} from "../../services/resourceLoader";
 
 const DEFAULT_COLORS = [
   "#000000",
