@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type PointerEvent as ReactPointerEvent } from "react";
 import { AssetManifest, AssetPayloadPackedEntry, AssetService, EditorUIPlugin } from "@repo/engine";
 import {
   fetchSpriteSheets,
@@ -292,7 +292,14 @@ const alignUp = (value: number, alignment: number): number => {
   return remainder === 0 ? value : value + (alignment - remainder);
 };
 
-const SpriteSheetEditorModal = ({ onClose }: { onClose: () => void }) => {
+type SpriteSheetEditorModalProps = {
+  onClose: () => void;
+  initialFilePath?: string;
+  initialAssetPath?: string;
+  loadOnOpen?: boolean;
+};
+
+const SpriteSheetEditorModal = ({ onClose, initialFilePath, initialAssetPath, loadOnOpen }: SpriteSheetEditorModalProps) => {
   const [sheetWidth, setSheetWidth] = useState(64);
   const [sheetHeight, setSheetHeight] = useState(64);
   const [pendingWidth, setPendingWidth] = useState(64);
@@ -305,8 +312,8 @@ const SpriteSheetEditorModal = ({ onClose }: { onClose: () => void }) => {
   const [customColor, setCustomColor] = useState("#00ffff");
   const [brushType, setBrushType] = useState<BrushType>("pixel");
   const [brushSize, setBrushSize] = useState(1);
-  const [filePath, setFilePath] = useState("textures/sprites/new-spritesheet.png");
-  const [assetPath, setAssetPath] = useState("textures/sprites/new-spritesheet.n2asset");
+  const [filePath, setFilePath] = useState(initialFilePath ?? "textures/sprites/new-spritesheet.png");
+  const [assetPath, setAssetPath] = useState(initialAssetPath ?? "textures/sprites/new-spritesheet.n2asset");
   const [status, setStatus] = useState<{ kind: "idle" | "saving" | "loading" | "error" | "success"; message?: string }>({ kind: "idle" });
   const [showBrowser, setShowBrowser] = useState(false);
   const [isLoadingSheets, setIsLoadingSheets] = useState(false);
@@ -319,6 +326,7 @@ const SpriteSheetEditorModal = ({ onClose }: { onClose: () => void }) => {
   const assetServiceRef = useRef<AssetService>(new AssetService());
   const isPaintingRef = useRef(false);
   const lastPointRef = useRef<Point | null>(null);
+  const hasLoadedOnOpenRef = useRef(false);
 
   const ensurePreviewCanvasSize = useCallback(() => {
     const canvas = previewCanvasRef.current;
@@ -809,6 +817,14 @@ const SpriteSheetEditorModal = ({ onClose }: { onClose: () => void }) => {
     [applyProjectData, assetPath]
   );
 
+  useEffect(() => {
+    if (!loadOnOpen || hasLoadedOnOpenRef.current) {
+      return;
+    }
+    hasLoadedOnOpenRef.current = true;
+    void handleLoadAsset();
+  }, [handleLoadAsset, loadOnOpen]);
+
   const handleExportPng = useCallback(async () => {
     const canvas = previewCanvasRef.current;
     if (!canvas) {
@@ -1236,12 +1252,24 @@ const SpriteSheetEditorModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
+export const openSpriteSheetEditor = (
+  modals: { open: (render: (api: { close: () => void }) => JSX.Element) => void },
+  options?: { filePath?: string; assetPath?: string, loadOnOpen?: boolean }
+) => {
+  modals.open((api) => (
+    <SpriteSheetEditorModal
+      onClose={api.close}
+      initialFilePath={options?.filePath}
+      initialAssetPath={options?.assetPath}
+      loadOnOpen={options?.loadOnOpen}
+    />
+  ));
+};
+
 const spriteSheetEditorPlugin: EditorUIPlugin = {
   id: "builtin.sprite-sheet-editor",
   activate: ({ modalTriggers, modals }) => {
-    const openEditor = () => {
-      modals.open((api) => <SpriteSheetEditorModal onClose={api.close} />);
-    };
+    const openEditor = () => openSpriteSheetEditor(modals);
 
     const unregisterToolsMenu = modalTriggers.register({
       id: "builtin.sprite-sheet-editor.tools",

@@ -356,6 +356,22 @@ const AssetBrowserPanel = ({ editor }: { editor: Editor }) => {
               });
             }
           } : undefined}
+          onDoubleClick={isSelectable ? () => {
+            setSelectedAssetPath(node.path);
+            editor.emit("asset:double-click", {
+              name: node.name,
+              path: node.path,
+              assetType: node.assetType,
+              manifestType: node.manifestType,
+              metadata: node.metadata ?? {},
+              contentType: node.contentType,
+              sizeBytes: node.sizeBytes,
+              entryId: node.entryId,
+              containerPath: node.containerPath,
+              rootEntryId: node.rootEntryId,
+              isContainer: node.isContainer,
+            });
+          } : undefined}
           {...dragHandlers}
         >
           {canToggle ? (

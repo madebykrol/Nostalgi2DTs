@@ -54,7 +54,7 @@ import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";
 import meshComponentDesignerPlugin from "./plugins/meshComponentDesignerPlugin";
 import assetBrowserPanelPlugin from "./plugins/assetBrowserPanelPlugin";
-import spriteSheetEditorPlugin from "./plugins/spriteEditor/spriteSheetEditorPlugin";
+import spriteSheetEditorPlugin, { openSpriteSheetEditor } from "./plugins/spriteEditor/spriteSheetEditorPlugin";
 import type { EditorUIPlugin } from "@repo/engine";
 import consoleTabPlugin, { type ConsoleEntry, type ConsoleEntryType } from "./plugins/consoleTabPlugin";
 import metricsTabPlugin from "./plugins/metricsTabPlugin";
@@ -365,7 +365,44 @@ const App = () => {
       );
     };
 
+    const handleAssetDoubleClick = (asset: {
+      path: string;
+      assetType?: string;
+      manifestType?: string;
+      contentType?: string;
+      containerPath?: string;
+    }) => {
+      const modalManager = modalManagerRef.current;
+      if (!modalManager) {
+        return;
+      }
+
+      const type = asset.assetType?.toLowerCase();
+      const manifestType = asset.manifestType?.toLowerCase();
+      const contentType = asset.contentType?.toLowerCase();
+
+      const isSpriteLike =
+        type === "sprite" ||
+        type === "texture" ||
+        manifestType === "sprite" ||
+        manifestType === "texture" ||
+        (contentType?.startsWith("image/"));
+
+      if (!isSpriteLike) {
+        return;
+      }
+
+      const assetPath = asset.containerPath ?? asset.path;
+      const filePath = asset.path.endsWith(".n2asset") ? undefined : asset.path;
+
+      openSpriteSheetEditor(modalManager, {
+        assetPath,
+        filePath,
+      });
+    };
+
     editorRef.current.subscribe("actor:double-click", handleActorDoubleClick);
+    editorRef.current.subscribe("asset:double-click", handleAssetDoubleClick);
 
     const panelRegistry = panelRegistryRef.current;
     const modalManager = modalManagerRef.current;
@@ -517,6 +554,7 @@ const App = () => {
       modalTriggerRegistryRef.current.clear();
       modalManagerRef.current.clear();
       editorRef.current?.unsubscribe("actor:double-click", handleActorDoubleClick);
+      editorRef.current?.unsubscribe("asset:double-click", handleAssetDoubleClick);
       editorRef.current = null;
       e.offAfterRender(afterRenderId);
       engineRef.current = null;
