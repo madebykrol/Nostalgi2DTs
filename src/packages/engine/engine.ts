@@ -2,13 +2,18 @@ import { Camera } from "./camera";
 import { Actor, World, BaseObject, Component } from "./world";
 import { Level } from "./level";
 import { PlayerState, Controller } from "./game";
-import { Url, TimerManager, Constructor, Container, injectable } from "./utils";
+import { TimerManager, Constructor, Container, injectable, StringUtils, inject, normalizeClassName, getRegisteredPropertiesForInstance, Property } from "./utils";
 import { Vector2 } from "./math";
 import { Endpoint } from "./network/endpoint";
 import { InputManager } from "./input/inputmanager";
 import { MeshComponent, PostProcessingVolumeActor, PostProcessMaterial } from "./rendering";
 import { GameMode } from "./game/gameMode";
 import { EditorActor } from "./editor/editorActor";
+import { AssetLoader} from "./assets/assetService";
+import { GUIManager } from "./ui/guiManager";
+import { GUIComponentRegistry } from "./ui/guiComponentRegistry";
+import { GUIModuleRegistry } from "./ui/uiModuleRegistry";
+import { LevelParser } from "./level/levelParser";
 
 class RootObject extends BaseObject {
 
@@ -66,12 +71,26 @@ export class Engine {
     // private spatialGrid: SpatialGrid = new SpatialGrid(10);
     public debugMeshes: boolean = false; // show physics debug outlines
     public useDebugLogging: boolean = false;
+    public showDebugGrid: boolean = false;
 
     players: PlayerState[] = [];
     controllers: Controller[] = [];
 
+    public readonly guiManager: GUIManager = new GUIManager();
+    public readonly componentRegistry: GUIComponentRegistry = new GUIComponentRegistry();
+    public readonly uiModuleRegistry: GUIModuleRegistry = new GUIModuleRegistry();
+
     rootObject: BaseObject = new RootObject();
     editorRootObject: BaseObject = new RootObject();
+
+    // Editor grid (rendered behind actors when showDebugGrid is true)
+    private editorGridProgram: WebGLProgram | null = null;
+    private editorGridVAO: WebGLVertexArrayObject | null = null;
+    private editorGridUniforms: {
+        resolution?: WebGLUniformLocation | null;
+        origin?: WebGLUniformLocation | null;
+        spacing?: WebGLUniformLocation | null;
+    } = {};
 
     private controllerTypeForPlayer: Constructor<Controller> | null = null;
 
@@ -185,10 +204,57 @@ export class Engine {
         });
     }
 
+    public async loadLevel(levelPath: string, _levelProperties: any = {}): Promise<Level> {
+
+        levelPath += !levelPath.toLowerCase().endsWith(".n2asset") ? ".n2asset" : "";
+
+        var resourceLoader = this.container.get(AssetLoader);
+        var levelParser = this.container.get(LevelParser);
+
+        var levelAsset = await resourceLoader.loadAsset(levelPath);
+
+        const manifest = levelAsset.manifest;
+        if (!manifest) {
+            throw new Error(`Asset manifest is missing in level asset ${levelPath}`);
+        }
+
+        const rootEntry = levelAsset.getRootEntry();
+
+        if (!rootEntry) {
+            throw new Error(`No root entry found in level asset ${levelPath}`);
+        }
+        const payloadBytes = rootEntry.bytes;
+        const text = StringUtils.DecodeUtf(payloadBytes);
+
+        console.log(`Loaded level from ${levelPath}, size: ${payloadBytes.byteLength} bytes`);
+        return levelParser.deserializeLevel(text)!;
+    }
+
     run(asEditor: boolean = false): void {
+
+
         this.setEditorMode(asEditor);
         this.ensureInputManager();
         this.configurePlayerControllers();
+        
+        for (const actor of this.getFlattenedActors()) {
+            actor.onBeginPlay();
+        }
+
+        var playerStart = this.currentGameMode?.pickPlayerStart();
+        if (playerStart) {
+            console.log(`Spawning local player at start: ${playerStart.getId()}`);
+
+            const localPlayer = this.getLocalPlayerState();
+            this.currentGameMode?.spawnPawnForPlayer(localPlayer!);
+        }
+
+        if (this.networkMode === "server") {
+            this.runServer();
+            return 
+        }
+
+
 
        
         if (this.asEditor) {
@@ -196,27 +262,12 @@ export class Engine {
             return;
         }
 
-        for (const actor of this.getFlattenedActors()) {
-            actor.onBeginPlay();
-        }
-
-        if (this.networkMode === "server") {
-            this.runServer();
-        }
-
-        var playerStart = this.currentGameMode?.pickPlayerStart();
-        if (playerStart) {
-            console.log(`Spawning local player at start: ${playerStart.getId()}`);
-            const localPlayer = this.getLocalPlayerState();
-            const playerPawnCtor = this.currentGameMode?.playerCharacterType;
-            if (localPlayer && playerPawnCtor) {
-                const pawn = this.container.get(playerPawnCtor);
-                const sceneRoot = this.currentMap ?? this.rootObject;
-                this.world.spawnActorInstance(pawn, sceneRoot, playerStart.position).then(() => {
-                    localPlayer.getController()?.possess(pawn);
-                });
-            }
-        }
+        this.uiModuleRegistry.activateForLevel(this.getCurrentLevel()!, {
+            guiManager: this.guiManager,
+            componentRegistry: this.componentRegistry,
+            engine: this,
+            level: this.getCurrentLevel()!,
+        }, this.asEditor);
     }
 
     setEditorMode(asEditor: boolean): void {
@@ -294,6 +345,11 @@ export class Engine {
         gl.bindFramebuffer(gl.FRAMEBUFFER, hasPostProcess ? postProcessTarget!.framebuffer : null);
         gl.viewport(0, 0, canvasWidth, canvasHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // Optional debug grid, rendered as a background in editor views
+        if (this.showDebugGrid) {
+            this.renderEditorGrid(gl, canvasWidth, canvasHeight, camera);
+        }
 
         // Render forward pass into the current framebuffer (FBO if post-process, default otherwise)
         for (const actor of sortedActors) {
@@ -422,36 +478,36 @@ export class Engine {
     // Load a level from a given path (URL or local path)
     // Once loaded, spawns all actors in the world
     // Adding actors to the level after it has been loaded does not cause them to spawn
-    async loadLevel(levelPath: string): Promise<void> {
-        if (!levelPath || levelPath.length === 0) {
-            throw new Error("Invalid level path");
-        }
+    // async loadLevel(levelPath: string): Promise<void> {
+    //     if (!levelPath || levelPath.length === 0) {
+    //         throw new Error("Invalid level path");
+    //     }
 
-        // Check if string is a valid URL
+    //     // Check if string is a valid URL
     
-        if (Url.isValidUrl(levelPath)) {
-            // Load from URL
-            return;
-        } 
+    //     if (Url.isValidUrl(levelPath)) {
+    //         // Load from URL
+    //         return;
+    //     } 
         
-        // or a local path
+    //     // or a local path
         
-        // Spawn actors in the world
+    //     // Spawn actors in the world
 
-        if (!this.currentMap) {
-            throw new Error("No level loaded");
-        }
+    //     if (!this.currentMap) {
+    //         throw new Error("No level loaded");
+    //     }
       
-        const actors = this.rootObject.getChildrenOfType(Actor);
-        for (const actor of actors) {
-            console.log("Loading actor:", actor.getId());
-            await actor.onLoad();
-        }
+    //     const actors = this.rootObject.getChildrenOfType(Actor);
+    //     for (const actor of actors) {
+    //         console.log("Loading actor:", actor.getId());
+    //         await actor.onLoad();
+    //     }
 
-        await this.spawnLevelActors();
-    }
+    //     await this.spawnLevelActors();
+    // }
 
-    async loadLevelObject(level: Level): Promise<void> {
+    loadLevelObject(level: Level): void {
         if (!level) {
             throw new Error("Invalid level object");
         }
@@ -465,7 +521,7 @@ export class Engine {
 
         this.rootObject = level;
 
-        await this.spawnLevelActors();
+        this.spawnLevelActors();
         
         const requestedGameModeId = level.gameMode?.name ?? "DefaultGameMode";
         try {
@@ -485,6 +541,8 @@ export class Engine {
                 
         this.world.setGravity(level.gravity);
         
+        // Activate UI modules for this level (skip when in editor)
+        
         this.configurePlayerControllers();
     }
 
@@ -501,7 +559,7 @@ export class Engine {
         return this.editorRootObject;
     }
 
-    getCurrentLevel(): Level | undefined {
+    public getCurrentLevel(): Level | undefined {
         return this.currentMap;
     }
 
@@ -514,14 +572,10 @@ export class Engine {
         this.rootObject.dispose();
 
         this.rootObject = new RootObject();
-
-        this.rootObject.getChildrenOfType(Actor).forEach(actor => { this.despawnActor(actor); });
-        this.editorRootObject.dispose();
-        this.editorRootObject = new RootObject();
     }
     
 
-    private  despawnActor(actor: Actor): void {
+    private despawnActor(actor: Actor): void {
         this.world?.despawnActor(actor);
     }
     
@@ -581,6 +635,7 @@ export class Engine {
 
         // despawn actors marked for despawn
         const allActors = this.getFlattenedActors();
+        
         allActors.filter(a => a.isMarkedForDespawned()).forEach(a => {
             this.despawnActor(a);
             a.dispose();
@@ -704,6 +759,170 @@ export class Engine {
 
         return true;
     }
+
+    private ensureEditorGridResources(gl: WebGL2RenderingContext): void {
+        if (this.editorGridProgram && this.editorGridVAO) {
+            return;
+        }
+
+        const vertexSource = `#version 300 es
+        precision highp float;
+        layout(location = 0) in vec2 a_position;
+        void main() {
+            gl_Position = vec4(a_position, 0.0, 1.0);
+        }`;
+
+        const fragmentSource = `#version 300 es
+        precision highp float;
+        uniform vec2 u_resolution;
+        uniform vec2 u_origin;
+        uniform float u_spacing;
+        out vec4 outColor;
+        void main() {
+            vec2 frag = gl_FragCoord.xy;
+
+            // Base background (matches mesh editor navy)
+            vec3 baseColor = vec3(2.0/255.0, 6.0/255.0, 23.0/255.0);
+
+            // Position relative to world origin projected into screen space
+            vec2 rel = frag - u_origin;
+
+            float spacing = max(u_spacing, 1.0);
+
+            // Distance to nearest vertical/horizontal grid line
+            float gx = abs(mod(rel.x, spacing));
+            gx = min(gx, spacing - gx);
+            float gy = abs(mod(rel.y, spacing));
+            gy = min(gy, spacing - gy);
+
+            float gridWidth = 1.0;
+            float gridMask = float(gx < gridWidth || gy < gridWidth);
+
+            vec3 gridColor = vec3(148.0/255.0, 163.0/255.0, 184.0/255.0);
+
+            // Origin cross (purple) through world (0,0)
+            float crossWidth = 1.5;
+            float crossMask = float(abs(rel.x) < crossWidth || abs(rel.y) < crossWidth);
+            vec3 crossColor = vec3(236.0/255.0, 72.0/255.0, 153.0/255.0);
+
+            vec3 color = baseColor;
+            color = mix(color, gridColor, 0.35 * gridMask);
+            color = mix(color, crossColor, 0.6 * crossMask);
+
+            outColor = vec4(color, 1.0);
+        }`;
+
+        const createShader = (type: number, source: string): WebGLShader => {
+            const shader = gl.createShader(type);
+            if (!shader) {
+                throw new Error("Failed to create editor grid shader");
+            }
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                const info = gl.getShaderInfoLog(shader);
+                gl.deleteShader(shader);
+                throw new Error(`Editor grid shader compile error: ${info ?? "unknown"}`);
+            }
+            return shader;
+        };
+
+        const vertexShader = createShader(gl.VERTEX_SHADER, vertexSource);
+        const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentSource);
+
+        const program = gl.createProgram();
+        if (!program) {
+            gl.deleteShader(vertexShader);
+            gl.deleteShader(fragmentShader);
+            throw new Error("Failed to create editor grid program");
+        }
+
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+        if (!linked) {
+            const info = gl.getProgramInfoLog(program);
+            gl.deleteProgram(program);
+            gl.deleteShader(vertexShader);
+            gl.deleteShader(fragmentShader);
+            throw new Error(`Editor grid program link error: ${info ?? "unknown"}`);
+        }
+
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
+
+        const vao = gl.createVertexArray();
+        if (!vao) {
+            gl.deleteProgram(program);
+            throw new Error("Failed to create editor grid VAO");
+        }
+        const vbo = gl.createBuffer();
+        if (!vbo) {
+            gl.deleteVertexArray(vao);
+            gl.deleteProgram(program);
+            throw new Error("Failed to create editor grid VBO");
+        }
+
+        gl.bindVertexArray(vao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+
+        const vertices = new Float32Array([
+            -1, -1,
+             1, -1,
+            -1,  1,
+             1,  1,
+        ]);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+        gl.bindVertexArray(null);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        this.editorGridProgram = program;
+        this.editorGridVAO = vao;
+
+        this.editorGridUniforms.resolution = gl.getUniformLocation(program, "u_resolution");
+        this.editorGridUniforms.origin = gl.getUniformLocation(program, "u_origin");
+        this.editorGridUniforms.spacing = gl.getUniformLocation(program, "u_spacing");
+    }
+
+    private renderEditorGrid(gl: WebGL2RenderingContext, canvasWidth: number, canvasHeight: number, camera: Camera): void {
+        this.ensureEditorGridResources(gl);
+        if (!this.editorGridProgram || !this.editorGridVAO) {
+            return;
+        }
+
+        let originX = canvasWidth * 0.5;
+        let originY = canvasHeight * 0.5;
+
+        if (camera instanceof OrthoCamera) {
+            const originWorld = new Vector2(0, 0);
+            const originScreen = camera.worldToScreen(originWorld, canvasWidth, canvasHeight);
+            originX = originScreen.x;
+            originY = originScreen.y;
+        }
+
+        gl.useProgram(this.editorGridProgram);
+        gl.bindVertexArray(this.editorGridVAO);
+
+        if (this.editorGridUniforms.resolution) {
+            gl.uniform2f(this.editorGridUniforms.resolution, canvasWidth, canvasHeight);
+        }
+        if (this.editorGridUniforms.origin) {
+            gl.uniform2f(this.editorGridUniforms.origin, originX, originY);
+        }
+        if (this.editorGridUniforms.spacing) {
+            gl.uniform1f(this.editorGridUniforms.spacing, 40.0);
+        }
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        gl.bindVertexArray(null);
+        gl.useProgram(null);
+    }
     
     private renderActorDebug(actor: Actor, gl: WebGL2RenderingContext, camera: Camera): void {
         const meshComponents = actor.getComponentsOfType(MeshComponent);
@@ -731,13 +950,13 @@ export class Engine {
         for (const player of this.players) {
             let controller = player.getController();
 
+            
+            controller = this.container.get(this.controllerTypeForPlayer);
             if (!controller) {
-                controller = this.container.get(this.controllerTypeForPlayer);
-                if (!controller) {
-                    continue;
-                }
-                player.setController(controller);
+                continue;
             }
+            player.setController(controller);
+            
 
             if (this.asEditor) {
                 controller.deactivate();
@@ -769,7 +988,7 @@ export class Engine {
     }
 
     private tickTimerManager(_deltaTime: number): void {
-        this.timerManager.tick();
+        this.timerManager.tick(); // runs asynchronous timers
     }
 
     private tickActorsAndWorld(_deltaTime: number): void {
@@ -802,13 +1021,13 @@ export class Engine {
         }
     }
 
-    private async spawnLevelActors(): Promise<void> {
+    private spawnLevelActors(): void {
         const actors = this.rootObject.getChildrenOfType(Actor);
 
-        await Promise.all(actors.map(actor => actor.onLoad()));
+        actors.map(actor => actor.onLoad());
 
         for (const actor of actors) {
-            await this.world.spawnActorInstance(actor);
+            this.world.spawnActorInstance(actor);
         }
     }
 }

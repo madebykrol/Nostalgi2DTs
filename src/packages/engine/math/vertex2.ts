@@ -1,4 +1,4 @@
-import { nobject, Vector2 } from "..";
+import { nobject } from "..";
 import { property, unmanaged } from "../utils";
 
 @nobject()

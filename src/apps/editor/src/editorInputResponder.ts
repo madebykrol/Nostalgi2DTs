@@ -69,6 +69,13 @@ export class EditorInputResponder {
     this.adjustZoom(data.deltaY);
   };
 
+  private readonly handleDeleteKey = () => {
+    if (this.shouldIgnoreDeleteShortcut()) {
+      return;
+    }
+    this.deleteSelectedActors();
+  };
+
   constructor(private readonly inputManager: InputManager, private readonly engine: Engine, private readonly editor: Editor) {
     this.highlightMaterial = this.findHighlightMaterial();
     this.syncSelectionHighlight();
@@ -88,6 +95,7 @@ export class EditorInputResponder {
     this.inputManager.on("mouse:move", this.handleMouseMove);
     this.inputManager.on("mouse:up", this.handleMouseUp);
     this.inputManager.on("wheel:tap:shift", this.handleWheelWithShift);
+    this.inputManager.on("delete:down", this.handleDeleteKey);
 
     for (const event of this.mouseDownEvents) {
       this.inputManager.on(event, this.handleMouseDown);
@@ -111,6 +119,7 @@ export class EditorInputResponder {
     this.inputManager.off("mouse:move", this.handleMouseMove);
     this.inputManager.off("mouse:up", this.handleMouseUp);
     this.inputManager.off("wheel:tap:shift", this.handleWheelWithShift);
+    this.inputManager.off("delete:down", this.handleDeleteKey);
 
     for (const event of this.mouseDownEvents) {
       this.inputManager.off(event, this.handleMouseDown);
@@ -185,6 +194,7 @@ export class EditorInputResponder {
     this.activeDrag.handle.handleDrag(cursor, delta);
     this.activeDrag.lastCursor = cursor.clone();
   }
+
 
   private panCamera(deltaX: number, deltaY: number): void {
     const camera = this.engine.getCurrentCamera();
@@ -291,6 +301,28 @@ export class EditorInputResponder {
     this.applySelection(selection, preferredFocus);
   }
 
+  private deleteSelectedActors(): void {
+    if (this.selectedActors.size === 0) {
+      return;
+    }
+
+    const targets = Array.from(this.selectedActors).filter((actor) => !(actor instanceof GizmoActor));
+    if (targets.length === 0) {
+      return;
+    }
+
+    const world = this.engine.getWorld();
+    for (const actor of targets) {
+      if (actor.getWorld()) {
+        world.despawnActor(actor);
+      } else {
+        actor.getParent()?.removeChild(actor);
+      }
+    }
+
+    this.applySelection(new Set(), null);
+  }
+
   private findHighlightMaterial(): SphereWarpPostProcessMaterial | null {
     const pending: Actor[] = [...this.engine.getRootActors()];
     while (pending.length > 0) {
@@ -367,5 +399,20 @@ export class EditorInputResponder {
     }
 
     return activeGizmo.getHandle(worldPosition, camera.getZoom());
+  }
+
+  private shouldIgnoreDeleteShortcut(): boolean {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    const active = document.activeElement as HTMLElement | null;
+    if (!active) {
+      return false;
+    }
+    const tag = active.tagName?.toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") {
+      return true;
+    }
+    return active.isContentEditable === true;
   }
 }

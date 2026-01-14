@@ -1,26 +1,89 @@
 import { Actor, Engine, getRegisteredPropertiesForInstance, GizmoActor, inject, injectable, Level, normalizeClassName, Property, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
 import { EditorPluginManifestEntry, EditorUIPlugin } from "./";
 import { SerializedNode, SerializedProperty } from "../serialization";
+import { SerializedLevel } from "../level/level";
 
 export type GizmoType = "translation" | "rotation" | "scaling";
 
 type SelectionController = {
     selectActors(actors: Actor[], focus?: Actor | null): void;
 };
-@injectable()
 
+export class Edit {
+    revert: (() => void) | undefined;
+    apply: (() => void) | undefined
+}
+
+export class EditStream {
+    stack: Array<Edit> = [];
+    cursor: number = 0;
+    maxSize: number = 100;
+
+    push(edit: Edit) {
+        this.stack.push(edit);
+        this.cursor = this.stack.length-1;
+    }
+
+    getAtCursor(): Edit {
+        return this.stack[this.cursor];
+    }
+
+    trimAfterCursor() {
+
+        if( this.cursor >= this.stack.length -1) return;
+        // Remove all stack items passed cursor
+        var newSlice = this.stack.slice(undefined, this.cursor);
+
+        this.stack = newSlice;
+    }
+}
+
+@injectable()
 export class Editor {
 
     private activeGizmoActor: GizmoActor | null = null;
     private selectionController: SelectionController | null = null;
     private currentSelection: Actor[] = [];
     private editorPluginManifest: EditorPluginManifestEntry[] = [];
+    
+    private editStack: Map<string, EditStream> = new Map();
 
     eventListeners: Map<string, Set<Function>> = new Map();
     /**
      *
      */
     constructor(@inject(Engine) private readonly engine: Engine) {
+    }
+
+    public pushEdit(editor: string, edit: Edit) {
+        var hasEditor = this.editStack.has(editor);
+        if (!hasEditor)
+            this.editStack.set(editor, new EditStream())
+
+        var stream = this.editStack.get(editor)!;
+
+        stream.push(edit);
+        
+        stream.trimAfterCursor(); 
+    }
+
+    public undoEdit(editor: string) {
+        var stream = this.editStack.get(editor);
+
+        if(stream) {
+            var edit = stream.getAtCursor();
+            if (edit.revert)
+                edit.revert();
+        }
+    }
+
+    public redoEdit(editor: string) {
+        var stream = this.editStack.get(editor);
+        if(stream) {
+            var edit = stream.getAtCursor();
+            if (edit.apply)
+                edit.apply();
+        }
     }
 
     public emit(event: string, data: any): void {
@@ -187,7 +250,11 @@ export class Editor {
         const container = this.engine.getContainer();
         try {
             const parsedData = JSON.parse(levelData) as SerializedLevel;
-            const level = container.getByIdentifier(normalizeClassName(parsedData.type ?? "Level")) as Level;
+            const levelIdentifier = normalizeClassName(parsedData.type ?? "Level");
+            const level = container.getByIdentifier<Level>(levelIdentifier);
+            if (!level) {
+                throw new Error(`deserializeLevel: unknown level type \"${levelIdentifier}\"`);
+            }
 
             // Deserialize level properties recursively
             for (const prop of parsedData.properties) {
@@ -206,7 +273,12 @@ export class Editor {
 
             // Deserialize actors
             for (const actorNode of parsedData.actors) {
-                const actor = container.getByIdentifier(normalizeClassName(actorNode.type ?? "Actor")) as Actor;
+                const actorIdentifier = normalizeClassName(actorNode.type ?? "Actor");
+                const actor = container.getByIdentifier<Actor>(actorIdentifier);
+                if (!actor) {
+                    console.warn(`deserializeLevel: unknown actor type \"${actorIdentifier}\" – skipping`, actorNode);
+                    continue;
+                }
                 // Deserialize actor properties
                 for (const prop of actorNode.properties) {
                     const property = this.getPropertiesForInstance(actor).find((p) => p.key === prop.key);
@@ -360,12 +432,12 @@ export class Editor {
         await this.engine.getWorld().spawnActorInstance(actor, parent);
     }
 
-    private async ensureGizmoInstance<T extends GizmoActor>(ctor: new () => T): Promise<T> {
+    private async ensureGizmoInstance<T extends GizmoActor>(ctor: new (editor: Editor) => T): Promise<T> {
         if (!(this.activeGizmoActor instanceof ctor)) {
             if (this.activeGizmoActor) {
                 this.engine.getWorld().despawnActor(this.activeGizmoActor);
             }
-            this.activeGizmoActor = new ctor();
+            this.activeGizmoActor = this.engine.createActor(ctor);
         }
 
         const gizmo = this.activeGizmoActor as T;
@@ -373,12 +445,5 @@ export class Editor {
         return gizmo;
     }
 
-}
-
-
-export class SerializedLevel {
-    type: string|null = null;
-    properties: SerializedProperty[] = [];
-    actors: SerializedNode[] = [];
 }
 

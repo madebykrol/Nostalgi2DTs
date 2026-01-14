@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { listResources, createResource, getResource, saveResource, listSpriteSheets, listAssets } from "../controllers/resourceController";
+import { listResources, createResource, getResource, saveResource, listSpriteSheets, listAssets, listAssetsByType } from "../controllers/resourceController";
 
 const router = Router();
 
@@ -211,6 +211,33 @@ router.put("/content", async (req: Request, res: Response) => saveResource(req, 
  *                   $ref: '#/components/schemas/AssetNode'
  */
 router.get("/assets", async (req: Request, res: Response) => listAssets(req, res));
+
+/**
+ * @openapi
+ * /api/resources/assets/search:
+ *   get:
+ *     summary: List assets filtered by inferred or manifest type (e.g. level)
+ *     parameters:
+ *       - in: query
+ *         name: types
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Comma-separated list of asset types to include (e.g. "level")
+ *     responses:
+ *       200:
+ *         description: Flat list of assets matching the provided types
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/AssetNode'
+ */
+router.get("/assets/search", async (req: Request, res: Response) => listAssetsByType(req, res));
 
 /**
  * @openapi

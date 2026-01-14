@@ -1,19 +1,22 @@
 import { GameMode } from "../game/gameMode";
 import { Vector2 } from "../math";
-import { type Constructor, property } from "../utils";
+import { SerializedNode, SerializedProperty } from "../serialization";
+import { type Constructor, property, injectable } from "../utils";
 import { Actor } from "../world";
 import { BaseObject } from "../world/baseobject";
 
+@injectable()
 export class Level extends BaseObject {
 
-    private _gravity: Vector2 = new Vector2(0, 0);
+    private _gravity: Vector2 = new Vector2(0, 10);
     
     private _gameMode: Constructor<GameMode> | undefined;
 
     @property()
     public name: string = "Unnamed Level";
 
-    protected set gravity(gravity: Vector2) {
+    @property()
+    public  set gravity(gravity: Vector2) {
         this._gravity = gravity;
     }
 
@@ -29,6 +32,9 @@ export class Level extends BaseObject {
     get gameMode(): Constructor<GameMode> | undefined {
         return this._gameMode;
     }
+
+    @property({ label: "UI Modules" })
+    public uiModules: string[] = [];
 
     /**
      *
@@ -74,4 +80,10 @@ export class Level extends BaseObject {
 
         return childActors;
     }
+}
+
+export class SerializedLevel {
+    type: string|null = null;
+    properties: SerializedProperty[] = [];
+    actors: SerializedNode[] = [];
 }

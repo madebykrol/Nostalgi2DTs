@@ -1,12 +1,9 @@
 import {
-  Constructor,
-  Container,
-  GameMode,
+Container,
   Level,
   Vector2,
-  PostProcessingVolumeActor,
-  SphereWarpPostProcessMaterial,
-  injectable
+  injectable,
+  inject
 } from "@repo/engine";
 import { GameTileMapActor } from "@repo/example";
 
@@ -15,7 +12,7 @@ import { GameTileMapActor } from "@repo/example";
 export class GrasslandsMap extends Level {
 
   private tileMapActor: GameTileMapActor;
-  constructor(container: Container) {
+  constructor(@inject(Container) container: Container) {
     super();
 
     this.name = "Grasslands";

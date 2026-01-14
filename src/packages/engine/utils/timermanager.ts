@@ -31,7 +31,7 @@ export class TimerManager {
         handle.hasBeenCanceled = true;
     }
 
-    tick(): void {
+    tick(): Promise<void> {
         const now = Date.now();
 
         var keys = Array.from(this.timers.keys());
@@ -52,5 +52,7 @@ export class TimerManager {
                 }
             }
         });
+
+        return Promise.resolve();
     }
 }

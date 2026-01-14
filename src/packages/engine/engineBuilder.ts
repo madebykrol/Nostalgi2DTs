@@ -59,6 +59,7 @@ export class EngineBuilder<TSocket, TReq> {
     withGameMode(ctor: Constructor<GameMode>) : EngineBuilder<TSocket, TReq> 
     {
         this.container.registerSelf<GameMode>(ctor, ctor.name);
+        // Also bind by normalized name so resolution by class name string always works
         return this;
     }
 

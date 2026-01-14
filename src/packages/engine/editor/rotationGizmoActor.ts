@@ -122,7 +122,7 @@ export class RotationGizmoActor extends GizmoActor {
 	private readonly counterClockwiseHandle: CounterClockwiseRotationHandle;
 
 	constructor() {
-		super();
+		super(null as any);
 		this.name = "RotationGizmo";
 		this.layer = Number.MAX_SAFE_INTEGER;
 

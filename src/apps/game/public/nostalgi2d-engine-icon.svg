@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="nostalgi2d engine icon">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="grid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0.9" />
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#22d3ee" flood-opacity="0.35" />
+      <feDropShadow dx="0" dy="2" stdDeviation="8" flood-color="#a855f7" flood-opacity="0.25" />
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="128" height="128" rx="20" fill="url(#bg)" />
+  <g stroke="url(#grid)" stroke-width="1.5" opacity="0.45">
+    <path d="M16 32h96" />
+    <path d="M16 52h96" />
+    <path d="M16 72h96" />
+    <path d="M16 92h96" />
+    <path d="M32 16v96" />
+    <path d="M52 16v96" />
+    <path d="M72 16v96" />
+    <path d="M92 16v96" />
+  </g>
+  <g filter="url(#glow)">
+    <rect x="34" y="44" width="60" height="40" rx="8" fill="#111827" stroke="url(#grid)" stroke-width="3" />
+    <path d="M48 64h32" stroke="url(#grid)" stroke-width="6" stroke-linecap="round" />
+    <path d="M64 48v32" stroke="url(#grid)" stroke-width="6" stroke-linecap="round" />
+  </g>
+</svg>

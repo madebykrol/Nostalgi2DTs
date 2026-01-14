@@ -1,7 +1,19 @@
 import { useRef, useEffect } from "react";
 
-const useCanvas = (compile: (gl: WebGL2RenderingContext) => void, draw: (context: WebGL2RenderingContext, frameCount: number) => void, _options = {}) => {
+const useCanvas = (
+  compile: (gl: WebGL2RenderingContext) => void,
+  draw: (context: WebGL2RenderingContext, frameCount: number) => void,
+  _options = {},
+) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const compileRef = useRef(compile);
+  const drawRef = useRef(draw);
+  const lastCompileFnRef = useRef<typeof compile | null>(null);
+  const compiledRef = useRef(false);
+
+  // Keep the latest callbacks without re-running the setup effect
+  compileRef.current = compile;
+  drawRef.current = draw;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -31,8 +43,6 @@ const useCanvas = (compile: (gl: WebGL2RenderingContext) => void, draw: (context
       }
     };
 
-    compile(gl);
-
     const resizeObserver = new ResizeObserver(() => resizeCanvas());
     resizeObserver.observe(canvas);
     window.addEventListener("resize", resizeCanvas);
@@ -42,6 +52,16 @@ const useCanvas = (compile: (gl: WebGL2RenderingContext) => void, draw: (context
       frameCount++;
       resizeCanvas();
 
+      // Re-run compile when the provided callback identity changes (e.g., when engine becomes ready)
+      if (compileRef.current !== lastCompileFnRef.current) {
+        compiledRef.current = false;
+        lastCompileFnRef.current = compileRef.current;
+      }
+      if (!compiledRef.current) {
+        compileRef.current(gl);
+        compiledRef.current = true;
+      }
+
       gl.clearColor(0.0, 0.0, 0.0, 1.0); // Clear to black, fully opaque
       gl.clearDepth(1.0); // Clear everything
       gl.enable(gl.DEPTH_TEST); // Enable depth testing
@@ -49,7 +69,7 @@ const useCanvas = (compile: (gl: WebGL2RenderingContext) => void, draw: (context
 
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-      draw(gl, frameCount);
+      drawRef.current(gl, frameCount);
       animationFrameId = window.requestAnimationFrame(render);
     };
 
@@ -60,7 +80,7 @@ const useCanvas = (compile: (gl: WebGL2RenderingContext) => void, draw: (context
       window.removeEventListener("resize", resizeCanvas);
       resizeObserver.disconnect();
     };
-  }, [draw]);
+  }, []);
 
   return canvasRef;
 };

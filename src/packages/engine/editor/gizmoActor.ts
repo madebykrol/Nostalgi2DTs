@@ -3,12 +3,13 @@ import { Vector2 } from "../math";
 import type { EngineNetworkMode } from "../engine";
 import { EditorActor } from "./editorActor";
 import { GizmoHandle } from "./gizmoHandle";
+import { Editor } from "./editor";
 
 export abstract class GizmoActor extends EditorActor {
 
     private targetActors: Set<Actor> = new Set();
 
-    constructor() {
+    constructor(public editor: Editor) {
         super();
         this.shouldTick = true;
         this.tickComponents = false;

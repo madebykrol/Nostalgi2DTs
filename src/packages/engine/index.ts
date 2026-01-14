@@ -1,5 +1,6 @@
 
 import "reflect-metadata";
+export { DefaultGameMode } from "./game/defaultGameMode";
 // components
 export * from "./world";
 export * from "./engine";
@@ -11,6 +12,7 @@ export * from "./camera";
 export * from "./audio";
 export * from "./network";
 export * from "./editor";
+export * from "./ui";
 export { EngineBuilder } from "./engineBuilder";
 export { actor, registerDecoratedActors, nobject, registerNObjects } from "./actorRegistry";
 export {GameInstance, Controller, PlayerState, GameMode} from "./game";
@@ -28,5 +30,7 @@ export { Vertex2 } from "./math";
 
 export { AssetService } from "./assets/assetService";
 export { AssetManifest, AssetHeader, AssetPayloadPackedEntry} from "./assets/assetManifest";
+
+
 
 

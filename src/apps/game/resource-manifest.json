@@ -1,0 +1,7 @@
+{
+  "baseUrl": "http://localhost:4000",
+  "assets": [
+    { "path": "levels/new-level.n2asset", "version": "1" },
+    { "path": "levels/grasslands.n2asset", "version": "1" }
+  ]
+}

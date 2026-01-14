@@ -30,10 +30,17 @@ export abstract class InputManager {
     }
 
     protected generateEvent(
-        event: string,
+        event: string|KeyboardEvent,
         trigger: "up" | "down" | "hold" | "tap" | "move",
         modifiers: { ctrl: boolean; shift: boolean; alt: boolean }
     ): string {
-        return `${event.toLocaleLowerCase()}:${trigger.toLocaleLowerCase()}${modifiers.ctrl ? ":ctrl" : ""}${modifiers.shift ? ":shift" : ""}${modifiers.alt ? ":alt" : ""}`;
+
+        let eventStr = typeof event === "string" ? event : (event as KeyboardEvent).key;
+
+        if(eventStr == " " || (typeof event !== "string" && event.code.toLocaleLowerCase() == "space")) {
+            eventStr = "space";
+        }
+
+        return `${eventStr.toLocaleLowerCase()}:${trigger.toLocaleLowerCase()}${modifiers.ctrl ? ":ctrl" : ""}${modifiers.shift ? ":shift" : ""}${modifiers.alt ? ":alt" : ""}`;
     }
 }

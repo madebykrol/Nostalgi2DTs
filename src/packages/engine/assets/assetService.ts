@@ -1,8 +1,9 @@
-import { injectable, StringUtils } from "..";
-import { AssetHeader, AssetManifest, AssetManifestEntry, AssetPayloadPackedEntry as AssetPayloadPackEntry, HEADER_SIZE, MAGIC } from "./assetManifest";
+import { inject, injectable, ResourceManager, StringUtils } from "..";
+import { UnpackedAsset, AssetHeader, AssetManifest, AssetManifestEntry, AssetPayloadPackedEntry as AssetPayloadPackEntry, HEADER_SIZE, MAGIC } from "./assetManifest";
 
 @injectable()
 export class AssetService {
+
     public parseHeader(buffer: ArrayBuffer): AssetHeader
     {
         if (buffer.byteLength < HEADER_SIZE) throw new Error("Buffer too small for header");
@@ -68,6 +69,31 @@ export class AssetService {
         return manifest.entries.find(e => e.id === id);
     }
 
+    public unPackAsset(buffer: ArrayBuffer): UnpackedAsset {
+        const asset = new UnpackedAsset();
+
+        const header = this.parseHeader(buffer);
+        asset.header = header;
+        const manifest = this.readManifest(buffer);
+        asset.manifest = manifest;
+        const entries = manifest.entries ?? [];
+        for (const entry of entries) {
+            const payloadBytes = this.getEntryPayloadBytes(buffer, entry, header);
+            asset.entries.push({
+                id: entry.id,
+                name: entry.name,
+                type: entry.type,
+                contentType: entry.contentType,
+                bytes: payloadBytes,
+                hash: entry.hash,
+                encoding: entry.encoding ?? "raw",
+                metadata: entry.metadata
+            });
+        }
+
+        return asset;
+    }
+
     public async packAsset(manifest: AssetManifest, entries: AssetPayloadPackEntry[]): Promise<ArrayBuffer> {
         const payloadAlignment = 8;
 
@@ -92,6 +118,8 @@ export class AssetService {
             entry.metadata = e.metadata ?? {};
             return entry;
         }));
+
+        manifest.entries = manifestEntries;
 
         const manifestJson = JSON.stringify(manifest);
         const manifestBytes = StringUtils.encodeUtf8(manifestJson);
@@ -192,5 +220,18 @@ export class AssetService {
             new Uint8Array(buffer).set(array);
             return buffer;
         }
+    }
+}
+
+@injectable()
+export class AssetLoader {
+    constructor(
+        @inject(ResourceManager) protected resourceManager: ResourceManager,
+        @inject(AssetService) protected assetService: AssetService
+    ) {}
+
+    public async loadAsset(path: string): Promise<UnpackedAsset> {
+        const assetBytes = await this.resourceManager.loadAsset(path);
+        return this.assetService.unPackAsset(assetBytes);
     }
 }

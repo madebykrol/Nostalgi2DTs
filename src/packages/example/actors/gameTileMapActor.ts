@@ -1,4 +1,4 @@
-import { MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine } from "@repo/engine";
+import { MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine, PolygonCollisionComponent } from "@repo/engine";
 import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, TileMapMaterial, type TileMapActorOptions } from "@repo/tiler";
 import { WallActor } from "./wall";
 
@@ -77,16 +77,23 @@ export class GameTileMapActor extends TileMapActor {
 
 
           const wallActor = this.engine.createActor<WallActor>(WallActor);
-          wallActor.applyProperties({ vertices: vertices });
+
+          var collisionComponent = new PolygonCollisionComponent();
+          collisionComponent.points = vertices;
+          wallActor.addComponent(collisionComponent)
 
           wallActor.initialize();
 
           const posX = (object.x + (layer.offsetX ?? 0)) * scale;
           const posY = -((object.y + (layer.offsetY ?? 0)) * scale);
-          const worldPosition = new Vector2(posX + translation.x, posY + translation.y);
-          wallActor.position = worldPosition;
+            const parentPosition = this.position;
+            const worldPosition = new Vector2(
+              parentPosition.x + posX + translation.x,
+              parentPosition.y + posY + translation.y
+            );
+            wallActor.position = worldPosition;
 
-            this.getWorld()?.spawnActorInstance(wallActor, this);
+          this.getWorld()?.spawnActorInstance(wallActor, this);
       });
   }
 

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --clearScreen false",
     "debug": "node --inspect=9231 --enable-source-maps ../../node_modules/vite/bin/vite.js --clearScreen false",
+    "prebuild": "node ./scripts/fetch-assets.mjs",
     "build": "tsc && vite build",
+    "serve:dist": "node ./scripts/serve-dist.mjs",
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.ts\"",
     "predeploy": "npm run build",

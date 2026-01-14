@@ -36,7 +36,7 @@ const discoverActorTypes = (engine: Engine): ActorRegistryEntry[] => {
     }
     entries.push({
       id: identifier,
-      name: formatActorName(ctor.name, identifier),
+      name: formatActorName((ctor as any).name, identifier),
     });
   }
 
@@ -77,12 +77,12 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
     <div className="space-y-2 text-xs text-white/90">
       <header className="text-[11px] uppercase tracking-wide text-white/60">Actor Palette</header>
       <p className="text-[11px] text-white/50">Drag an actor into the scene view to spawn it.</p>
-      <ul className="space-y-1">
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {entries.map((entry) => (
           <li key={entry.id}>
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2 text-left text-xs text-white transition hover:bg-white/10"
+              className="flex h-full w-full items-center justify-start rounded border border-white/10 bg-white/5 px-3 py-3 text-left text-xs text-white transition hover:border-white/20 hover:bg-white/10"
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = "copy";
@@ -92,7 +92,7 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
                 );
               }}
             >
-              <span>{entry.name}</span>
+              <span className="truncate">{entry.name}</span>
             </button>
           </li>
         ))}

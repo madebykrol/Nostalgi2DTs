@@ -57,12 +57,27 @@ const manifestEntryTypeToCategory = (value?: string): AssetCategory => {
       return "audio";
     case "level":
       return "data";
+    case "mesh":
+      return "data";
     case "data":
     case "binary":
       return "data";
     default:
       return "unknown";
   }
+};
+
+const matchesTypeFilter = (node: AssetNode, filters: Set<string>): boolean => {
+  const manifestType = (node.manifestType ?? "").toLowerCase();
+  const assetType = (node.assetType ?? "").toLowerCase();
+  if (filters.has(manifestType) || filters.has(assetType)) {
+    return true;
+  }
+  // Treat .n2asset roots containing level entries as level
+  if (node.extension === ".n2asset" && manifestType === "level") {
+    return true;
+  }
+  return false;
 };
 
 const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
@@ -152,6 +167,24 @@ export const resourceService = {
 
   async listAssetTree(): Promise<AssetNode> {
     return this.buildAssetNode("", contentRoot);
+  },
+
+  async listAssetsByType(types: string[]): Promise<AssetNode[]> {
+    const filters = new Set(types.map((t) => t.toLowerCase()));
+    const root = await this.listAssetTree();
+    const results: AssetNode[] = [];
+
+    const walk = (node: AssetNode) => {
+      if (node.kind === "file" && matchesTypeFilter(node, filters)) {
+        results.push(node);
+      }
+      if (node.children && node.children.length) {
+        node.children.forEach(walk);
+      }
+    };
+
+    walk(root);
+    return results;
   },
 
   async getFile(relPath: string, encoding: BufferEncoding | "base64" = "utf-8"): Promise<string> {

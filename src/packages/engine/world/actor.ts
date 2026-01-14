@@ -65,7 +65,7 @@ export abstract class Actor extends BaseObject {
     // Internal flag to track if the actor is currently rendering
     private isRendering: boolean = false;
 
-        // Internal flag used to mark the actor for despawning by the engine
+    // Internal flag used to mark the actor for despawning by the engine
     private isMarkedForDespawn: boolean = false;
 
     public isSpawned: boolean = false;
@@ -80,7 +80,7 @@ export abstract class Actor extends BaseObject {
      * This method is called before the actor is being spawned.
      * Used to load any necessary resources.
      */
-    async onLoad(): Promise<void> {
+    onLoad(): void {
         
     }
 
@@ -153,24 +153,45 @@ export abstract class Actor extends BaseObject {
     }
 
     get position(): Vector2 {
-        const parentActor = this.getParent() as Actor
-
-        if(parentActor && parentActor instanceof Actor) {
-            const parentPos = parentActor.position;
-            
-            return new Vector2(parentPos.x + this._position.x, parentPos.y + this._position.y);
-        }
         return new Vector2(this._position.x, this._position.y);
     }
 
     @property()
     set position(position: Vector2) {
+        const positionDelta = new Vector2(
+            position.x - this._position.x,
+            position.y - this._position.y
+        );
+
         this._position = position;
         this.syncPhysicsTransform();
+        this.children.forEach((child) => {
+            if (child instanceof Actor) {
+                child.position = child.position.add(positionDelta);
+            }
+        });
+    }
+
+    setRelativePosition(relativePosition: Vector2): void {
+        const parentActor = this.getParent() as Actor
+        if (parentActor) {
+            this.position = parentActor.position.add(relativePosition);
+            return;
+        }
+        this.position = relativePosition;
+    }
+
+    getRelativePosition(): Vector2 {
+        const parentActor = this.getParent() as Actor
+        if (parentActor) {
+            return this.position.subtract(parentActor.position);
+        }
+
+        return this.position;
     }
 
     setTransformFromPhysics(position: Vector2, rotation: number): void {
-        this._position = position;
+        this.position = position;
         this.rotation = rotation;
     }
 

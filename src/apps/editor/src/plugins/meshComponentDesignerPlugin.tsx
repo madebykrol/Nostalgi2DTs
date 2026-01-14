@@ -286,7 +286,7 @@ type MeshDesignerModalProps = {
   onClose: () => void;
 };
 
-const MeshDesignerModal = ({ asset, onApply, onClose }: MeshDesignerModalProps) => {
+export const MeshDesignerModal = ({ asset, onApply, onClose }: MeshDesignerModalProps) => {
   const payload = asset.payload as MeshComponentAssetPayload;
   const baseMetadata = useMemo(() => ensureMeshMetadata(payload), [asset]);
   const [vertices, setVertices] = useState<MeshVertex[]>(() => cloneVertices(baseMetadata.vertices));

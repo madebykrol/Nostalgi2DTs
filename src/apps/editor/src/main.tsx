@@ -18,14 +18,19 @@ import {
   Container,
   Level,
   AssetService,
+    DefaultGameMode,
+    GUIProvider,
+    GUIRenderer,
 } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
 import {
   ExampleTopDownRPGGameMode,
+  FlappyRectangleGameMode,
   GrasslandsMap,
-  PlayerController,
+  TopDownRPGController,
+  flappyUiModule,
 } from "@repo/example";
-import { loadResourceLevel, DEFAULT_LEVEL_PATH, saveResourceLevel } from "./services/resourceLoader";
+import { DEFAULT_LEVEL_PATH, saveResourceLevel, loadBinaryResource, saveBinaryResource } from "./services/resourceLoader";
 import { Parser, tileMapEditorPlugin } from "@repo/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -46,18 +51,22 @@ import {
 import type {
   ComponentAssetStorage,
   EditorComponentAssembler,
-  Engine,
+  ComponentAsset,
+  MeshComponentAssetPayload,
 } from "@repo/engine";
 import { transformPropertiesPlugin } from "@repo/editor-plugins";
 import sceneGraphPanelPlugin from "./plugins/sceneGraphPanelPlugin";
 import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";
-import meshComponentDesignerPlugin from "./plugins/meshComponentDesignerPlugin";
+import meshComponentDesignerPlugin, { MeshDesignerModal } from "./plugins/meshComponentDesignerPlugin";
 import assetBrowserPanelPlugin from "./plugins/assetBrowserPanelPlugin";
 import spriteSheetEditorPlugin, { openSpriteSheetEditor } from "./plugins/spriteEditor/spriteSheetEditorPlugin";
 import type { EditorUIPlugin } from "@repo/engine";
 import consoleTabPlugin, { type ConsoleEntry, type ConsoleEntryType } from "./plugins/consoleTabPlugin";
 import metricsTabPlugin from "./plugins/metricsTabPlugin";
+import fileMenuPlugin from "./plugins/fileMenuPlugin";
+
+import { FlappyRectangleController } from "@repo/example";
 
 // Extracted utilities
 import { type SceneNode, areSceneGraphsEqual} from "./utils/sceneGraph";
@@ -75,8 +84,144 @@ import { createPrototypeComponentAssetStorage, createPrototypeComponentAssembler
 // Contexts
 import { ConsoleContext } from "./contexts/ConsoleContext";
 import { EditorEngineContext } from "./contexts/EngineContext";
-import clone from "clone";
 import { useEngineInitialization } from "./hooks/useEngineInitialization";
+
+type SerializedPropertyRecord = {
+  key?: string | null;
+  type?: string | null;
+  value?: unknown;
+  properties?: SerializedPropertyRecord[] | null;
+  node?: unknown;
+};
+
+type SerializedLevelRecord = {
+  type?: string | null;
+  properties?: SerializedPropertyRecord[] | null;
+  actors?: unknown[] | null;
+};
+
+const hasMeaningfulPropertyData = (property: SerializedPropertyRecord | null | undefined) => {
+  if (!property) {
+    return false;
+  }
+  if (property.value !== null && property.value !== undefined && property.value !== "") {
+    return true;
+  }
+  if (Array.isArray(property.properties) && property.properties.length > 0) {
+    return true;
+  }
+  if (property.node) {
+    return true;
+  }
+  return false;
+};
+
+const PROPERTY_KEYS_PREFER_EXISTING = new Set(["gameMode"]);
+
+const makePropertyKey = (property: SerializedPropertyRecord, index: number) =>
+  typeof property?.key === "string" && property.key.length > 0 ? property.key : `__index_${index}`;
+
+const buildPropertyIndex = (properties: SerializedPropertyRecord[] | null | undefined) => {
+  const index = new Map<string, { key: string | null; prop: SerializedPropertyRecord }>();
+  if (!properties) {
+    return index;
+  }
+  properties.forEach((prop, idx) => {
+    const key = typeof prop?.key === "string" ? prop.key : null;
+    index.set(makePropertyKey(prop, idx), { key, prop });
+  });
+  return index;
+};
+
+const mergePropertyRecords = (
+  existing: SerializedPropertyRecord | undefined,
+  current: SerializedPropertyRecord | undefined,
+  preferExisting: boolean,
+): SerializedPropertyRecord | null => {
+  if (!existing && !current) {
+    return null;
+  }
+  if (!existing) {
+    return current ?? null;
+  }
+  if (!current) {
+    return existing;
+  }
+
+  const existingHas = hasMeaningfulPropertyData(existing);
+  const currentHas = hasMeaningfulPropertyData(current);
+  if (!currentHas && existingHas) {
+    return existing;
+  }
+  if (!existingHas && currentHas) {
+    return current;
+  }
+  if (preferExisting && existingHas) {
+    return existing;
+  }
+
+  const mergedNested = mergeSerializedPropertyLists(existing.properties, current.properties);
+  return {
+    ...current,
+    properties: mergedNested,
+  };
+};
+
+const mergeSerializedPropertyLists = (
+  existing: SerializedPropertyRecord[] | null | undefined,
+  current: SerializedPropertyRecord[] | null | undefined,
+): SerializedPropertyRecord[] => {
+  if (!existing || existing.length === 0) {
+    return current ? [...current] : [];
+  }
+  if (!current || current.length === 0) {
+    return [...existing];
+  }
+
+  const existingIndex = buildPropertyIndex(existing);
+  const currentIndex = buildPropertyIndex(current);
+  const merged: SerializedPropertyRecord[] = [];
+  const processed = new Set<string>();
+
+  const processKey = (keyId: string) => {
+    if (processed.has(keyId)) {
+      return;
+    }
+    processed.add(keyId);
+    const existingEntry = existingIndex.get(keyId);
+    const currentEntry = currentIndex.get(keyId);
+    const logicalKey = currentEntry?.key ?? existingEntry?.key ?? null;
+    const preferExisting = logicalKey ? PROPERTY_KEYS_PREFER_EXISTING.has(logicalKey) : false;
+    const record = mergePropertyRecords(existingEntry?.prop, currentEntry?.prop, preferExisting);
+    if (record) {
+      merged.push(record);
+    }
+  };
+
+  for (const keyId of currentIndex.keys()) {
+    processKey(keyId);
+  }
+  for (const keyId of existingIndex.keys()) {
+    processKey(keyId);
+  }
+
+  return merged;
+};
+
+const mergeSerializedLevelJson = (existingContent: string | null | undefined, currentContent: string) => {
+  if (!existingContent) {
+    return currentContent;
+  }
+  try {
+    const existing = JSON.parse(existingContent) as SerializedLevelRecord;
+    const current = JSON.parse(currentContent) as SerializedLevelRecord;
+    current.properties = mergeSerializedPropertyLists(existing.properties, current.properties);
+    return JSON.stringify(current, null, 2);
+  } catch (error) {
+    console.warn("Failed to merge existing level properties; saving editor state only.", error);
+    return currentContent;
+  }
+};
 
 const App = () => {
   // const [engine, setEngine] = useState<ClientEngine | null>(null);
@@ -85,6 +230,9 @@ const App = () => {
   const [logs, setLogs] = useState<ConsoleEntry[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const [sceneGraph, setSceneGraph] = useState<SceneNode[]>([]);
+  const [activeLevelPath, setActiveLevelPath] = useState<string>(DEFAULT_LEVEL_PATH);
+  const [playLevelPath, setPlayLevelPath] = useState<string | undefined>(undefined);
+  const [availableLevels, setAvailableLevels] = useState<string[]>([]);
   const engineInitialized = useRef(false);
   const engineRef = useRef<ClientEngine | null>(null);
   const sceneGraphRaf = useRef<number | null>(null);
@@ -206,13 +354,19 @@ const App = () => {
       .withService(Editor)
       .withService(Parser)
       .withService(AssetService)
+
       .withInputManager(DefaultInputManager)
       .withSoundManager(SoundManager)
       .withGameMode(ExampleTopDownRPGGameMode)
+      .withGameMode(DefaultGameMode)
+      .withGameMode(FlappyRectangleGameMode)
       .withLevel(GrasslandsMap)
+      .withLevel(Level)
+      // Provide default UI module selection if desired; levels can override via uiModules property
       .withResourceManager(DefaultResourceManager)
       .withDecoratedActors()
-      .withPlayerController(PlayerController<WebSocket, http.IncomingMessage>)
+      .withPlayerController(TopDownRPGController)
+      .withPlayerController(FlappyRectangleController)
       .withDebugLogging()
       .asSinglePlayer("LocalPlayer", "local_player")
       .build(ClientEngine)
@@ -220,6 +374,11 @@ const App = () => {
 
   const engine = init?.engine ?? null;
   const container = init?.container ?? null;
+
+    // Register UI modules globally (they are skipped when editor mode is active)
+    if (engine) {
+      engine.uiModuleRegistry.registerModule(flappyUiModule);
+    }
 
 
   const buildSceneGraph = useCallback((rootActors: Actor[]): SceneNode[] => {
@@ -305,6 +464,13 @@ const App = () => {
     [engine]
   );
 
+  const rememberLevelPath = useCallback((path: string) => {
+    if (!path) {
+      return;
+    }
+    setActiveLevelPath(path);
+  }, []);
+
   const handleMenuButtonClick = useCallback(
     (menuId: string) => (event: MouseEvent<HTMLButtonElement>) => {
       const editorInstance = editorRef.current;
@@ -365,34 +531,222 @@ const App = () => {
       );
     };
 
-    const handleAssetDoubleClick = (asset: {
+    const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes.buffer;
+    };
+
+    const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    };
+
+    type LoadedMeshAsset = {
+      path: string;
+      rootEntryId: string;
+      entryName: string;
+      manifest: any;
+      asset: ComponentAsset;
+    };
+
+    const loadMeshDesignerAsset = async (path: string): Promise<LoadedMeshAsset | null> => {
+      try {
+        const base64 = await loadBinaryResource(path);
+        const buffer = base64ToArrayBuffer(base64);
+        const service = new AssetService();
+        const unpacked = service.unPackAsset(buffer);
+        const manifest = unpacked.manifest;
+        const entries = unpacked.entries ?? [];
+        if (!manifest || entries.length === 0) {
+          return null;
+        }
+
+        const rootEntry = manifest.entries.find((entry) => entry.id === manifest.rootEntryId) ?? manifest.entries[0];
+        const payloadEntry = entries.find((entry) => entry.id === rootEntry.id) ?? entries[0];
+        const json = new TextDecoder().decode(payloadEntry.bytes);
+        const parsed = JSON.parse(json);
+
+        const payload = parsed.payload ?? parsed;
+
+        const meshAsset: ComponentAsset = {
+          id: parsed.id ?? payload.meshId ?? rootEntry.id,
+          name: parsed.name ?? rootEntry.name ?? "Mesh",
+          type: "mesh",
+          description: parsed.description ?? "",
+          payload: {
+            meshId: payload.meshId ?? parsed.id ?? rootEntry.id,
+            materialId: payload.materialId ?? "default",
+            metadata: payload.metadata ?? payload,
+          },
+        };
+
+        return {
+          path,
+          rootEntryId: rootEntry.id,
+          entryName: rootEntry.name ?? meshAsset.name,
+          manifest,
+          asset: meshAsset,
+        };
+      } catch (error) {
+        console.error("Failed to load mesh asset for designer", error);
+        return null;
+      }
+    };
+
+    const saveMeshDesignerAsset = async (loaded: LoadedMeshAsset, metadata: MeshComponentAssetPayload["metadata"]) => {
+      try {
+        const service = new AssetService();
+        const manifest = { ...loaded.manifest };
+        const existingEntry = (manifest.entries ?? []).find((entry: any) => entry.id === loaded.rootEntryId);
+        const payload = loaded.asset.payload as MeshComponentAssetPayload;
+        const updatedPayload = {
+          ...loaded.asset,
+          payload: {
+            ...payload,
+            metadata,
+          },
+        };
+
+        const payloadBytes = new TextEncoder().encode(JSON.stringify(updatedPayload, null, 2));
+
+        const entryMetadata = {
+          ...(existingEntry?.metadata ?? {}),
+          kind: "mesh",
+          meshId: payload.meshId ?? loaded.rootEntryId,
+          updatedAt: new Date().toISOString(),
+        };
+
+        const packed = await service.packAsset(
+          {
+            format: "n2ar",
+            version: manifest.version ?? 1,
+            createdAt: manifest.createdAt ?? Date.now(),
+            updatedAt: Date.now(),
+            createdBy: manifest.createdBy ?? "Editor",
+            updatedBy: "Editor",
+            rootEntryId: loaded.rootEntryId,
+            entries: [],
+          },
+          [
+            {
+              id: loaded.rootEntryId,
+              name: loaded.entryName,
+              type: "mesh",
+              contentType: "application/json",
+              bytes: payloadBytes,
+              metadata: entryMetadata,
+            },
+          ]
+        );
+
+        const base64 = arrayBufferToBase64(packed);
+        await saveBinaryResource(loaded.path, base64);
+      } catch (error) {
+        console.error("Failed to save mesh asset", error);
+      }
+    };
+
+    const handleAssetDoubleClick = async (asset: {
       path: string;
       assetType?: string;
       manifestType?: string;
       contentType?: string;
       containerPath?: string;
+      rootEntryId?: string;
+      metadata?: Record<string, unknown>;
+      isContainer?: boolean;
     }) => {
-      const modalManager = modalManagerRef.current;
-      if (!modalManager) {
+      const activeEngine = engineRef.current;
+
+      if (!activeEngine) {
+        console.warn("Cannot load level without an active engine instance");
         return;
       }
+
+      const modalManager = modalManagerRef.current;
 
       const type = asset.assetType?.toLowerCase();
       const manifestType = asset.manifestType?.toLowerCase();
       const contentType = asset.contentType?.toLowerCase();
+      const metadataKind = (() => {
+        if (!asset.metadata) {
+          return undefined;
+        }
+        const kindValue = (asset.metadata as { kind?: unknown }).kind;
+        return typeof kindValue === "string" ? kindValue.toLowerCase() : undefined;
+      })();
+
+      const targetPath = asset.containerPath ?? asset.path;
+      const normalizedTarget = targetPath.toLowerCase();
+
+      const isMeshLike = manifestType === "mesh" || metadataKind === "mesh" || type === "mesh";
+
+      if (isMeshLike && modalManager) {
+        const meshAsset = await loadMeshDesignerAsset(targetPath);
+        if (meshAsset) {
+          modalManager.open((api) => (
+            <MeshDesignerModal
+              asset={meshAsset.asset}
+              onClose={api.close}
+              onApply={(nextMetadata) => {
+                void saveMeshDesignerAsset(meshAsset, nextMetadata);
+                api.close();
+              }}
+            />
+          ));
+        }
+        return;
+      }
+
+      const looksLikeLevelPath = normalizedTarget.startsWith("levels/") || normalizedTarget.includes("/levels/");
+      const levelContainerCandidate = asset.isContainer && type === "data" && normalizedTarget.endsWith(".n2asset");
+
+      const isLevelLike =
+        manifestType === "level" ||
+        metadataKind === "level" ||
+        levelContainerCandidate ||
+        (type === "data" && looksLikeLevelPath);
+
+      if (isLevelLike) {
+        
+        try {
+          const levelJson = await activeEngine.loadLevel(targetPath);
+          const level = levelJson;
+          if (!level) {
+            throw new Error("Level deserialization failed");
+          }
+          await activeEngine.loadLevelObject(level);
+          rememberLevelPath(targetPath);
+        } catch (error) {
+          console.error("Failed to load level asset", error);
+        }
+        return;
+      }
+
+      if (!modalManager) {
+        return;
+      }
 
       const isSpriteLike =
         type === "sprite" ||
         type === "texture" ||
         manifestType === "sprite" ||
         manifestType === "texture" ||
-        (contentType?.startsWith("image/"));
+        contentType?.startsWith("image/");
 
       if (!isSpriteLike) {
         return;
       }
 
-      const assetPath = asset.containerPath ?? asset.path;
+      const assetPath = targetPath;
       const filePath = asset.path.endsWith(".n2asset") ? undefined : asset.path;
 
       openSpriteSheetEditor(modalManager, {
@@ -423,6 +777,7 @@ const App = () => {
     const loadPlugins = async () => {
       try {
         const builtInPlugins: EditorUIPlugin[] = [
+          fileMenuPlugin,
           sceneGraphPanelPlugin,
           actorPalettePlugin,
           transformPropertiesPlugin,
@@ -469,95 +824,97 @@ const App = () => {
   const fallbackLevel: Level = new GrasslandsMap(container);
   setIsPlaying(false);
 
-    const setupLevel = async () => {
+  const setupLevel = async () => {
+    try {
+      const levelStartTime = performance.now();
+      let levelToLoad: Level | null = fallbackLevel;
+      //let possessTarget: Actor = demoActor;
+
       try {
-        const levelStartTime = performance.now();
-        let levelToLoad: Level | null = fallbackLevel;
-        //let possessTarget: Actor = demoActor;
+        const levelData = await e.loadLevel(DEFAULT_LEVEL_PATH);
+        const parsedLevel = levelData! ?? null;
 
-        try {
-          const levelData = await loadResourceLevel(DEFAULT_LEVEL_PATH);
-          console.log("Loaded level JSON", { bytes: levelData.length });
-          const parsedLevel = editorRef.current?.deserializeLevel(levelData) ?? null;
-
-          levelToLoad = parsedLevel;
-          console.log("Loaded and parsed level data from resource API", levelData.length, "bytes");
-        } catch (err) {
-          console.warn("Failed to load level from resource API, falling back to default", err);
-        }
-
-        await e.loadLevelObject(levelToLoad!);
-
-        const worldSize = levelToLoad!.getWorldSize();
-
-        if (worldSize) {
-          const camera = new OrthoCamera(new Vector2(worldSize.x / 2, worldSize.y / 2), 1, 40);
-          e.setCurrentCamera(camera);
-        } else {
-          // Fallback to a sensible default if level doesn't report a world size
-          e.setCurrentCamera(new OrthoCamera(new Vector2(0, 0), 1));
-        }
-
-        const levelEndTime = performance.now();
-        console.log(`Level loaded in ${(levelEndTime - levelStartTime).toFixed(2)} ms`);
-
-        e.addPlayer(new PlayerState("local_player", "LocalPlayer"));
-        //e.getLocalPlayerState()?.getController()?.possess(possessTarget);
-      } catch (error) {
-        console.error("Failed to initialize level", error);
+        levelToLoad = parsedLevel;
+        rememberLevelPath(DEFAULT_LEVEL_PATH);
+      } catch (err) {
+        console.warn("Failed to load level from resource API, falling back to default", err);
       }
 
-      console.log(e.getLocalPlayerState());
-    };
+      await e.loadLevelObject(levelToLoad!);
+
+      const worldSize = levelToLoad!.getWorldSize();
+
+      if (worldSize) {
+        const camera = new OrthoCamera(new Vector2(worldSize.x / 2, worldSize.y / 2), 1, 40);
+        e.setCurrentCamera(camera);
+      } else {
+        // Fallback to a sensible default if level doesn't report a world size
+        e.setCurrentCamera(new OrthoCamera(new Vector2(0, 0), 1));
+      }
+
+      const levelEndTime = performance.now();
+      console.log(`Level loaded in ${(levelEndTime - levelStartTime).toFixed(2)} ms`);
+
+      e.addPlayer(new PlayerState("local_player", "LocalPlayer"));
+      //e.getLocalPlayerState()?.getController()?.possess(possessTarget);
+    } catch (error) {
+      console.error("Failed to initialize level", error);
+    }
+
+    console.log(e.getLocalPlayerState());
+  };
 
   e.setEditorMode(true);
 
   setupLevel();
 
-  e.run(true);
-    engineRef.current = e;
+  engineRef.current = e;
 
-    const updateSceneGraph = () => {
-      if (sceneGraphRaf.current !== null) {
-        return;
-      }
-      sceneGraphRaf.current = requestAnimationFrame(() => {
-        sceneGraphRaf.current = null;
-        const activeEngine = engineRef.current;
-        if (!activeEngine) {
-          return;
-        }
-        const rootActors = activeEngine.getRootActors();
-        const nextGraph = buildSceneGraph(rootActors);
-        setSceneGraph((previous) => (areSceneGraphsEqual(previous, nextGraph) ? previous : nextGraph));
-      });
-    };
+  const updateSceneGraph = () => {
 
-    updateSceneGraph();
-    const afterRenderId = e.onAfterRender(updateSceneGraph);
-
-    if (inputManagerRef.current) {
-      const responder = new EditorInputResponder(inputManagerRef.current, e, editorRef.current);
-      responder.activate();
-      editorInputRef.current = responder;
+    if (sceneGraphRaf.current !== null) {
+      return;
     }
 
-    return () => {
-      cancelled = true;
-      editorInputRef.current?.dispose();
-      editorInputRef.current = null;
-      pluginCleanupRef.current?.();
-      pluginCleanupRef.current = null;
-      panelRegistryRef.current.clear();
-      sceneContextMenuRegistryRef.current.clear();
-      sceneDragDropRegistryRef.current.clear();
-      modalTriggerRegistryRef.current.clear();
-      modalManagerRef.current.clear();
-      editorRef.current?.unsubscribe("actor:double-click", handleActorDoubleClick);
-      editorRef.current?.unsubscribe("asset:double-click", handleAssetDoubleClick);
-      editorRef.current = null;
-      e.offAfterRender(afterRenderId);
-      engineRef.current = null;
+    sceneGraphRaf.current = requestAnimationFrame(() => {
+      sceneGraphRaf.current = null;
+      const activeEngine = engineRef.current;
+      if (!activeEngine) {
+        return;
+      }
+      const rootActors = activeEngine.getRootActors();
+      const nextGraph = buildSceneGraph(rootActors);
+      setSceneGraph((previous) => (areSceneGraphsEqual(previous, nextGraph) ? previous : nextGraph));
+    });
+  };
+
+   e.run(true);
+  updateSceneGraph();
+  if (inputManagerRef.current) {
+    const responder = new EditorInputResponder(inputManagerRef.current, e, editorRef.current!);
+    responder.activate();
+    editorInputRef.current = responder;
+  }
+  
+  const afterRenderId = e.onAfterRender(updateSceneGraph);
+  
+
+  return () => {
+    cancelled = true;
+    editorInputRef.current?.dispose();
+    editorInputRef.current = null;
+    pluginCleanupRef.current?.();
+    pluginCleanupRef.current = null;
+    panelRegistryRef.current.clear();
+    sceneContextMenuRegistryRef.current.clear();
+    sceneDragDropRegistryRef.current.clear();
+    modalTriggerRegistryRef.current.clear();
+    modalManagerRef.current.clear();
+    editorRef.current?.unsubscribe("actor:double-click", handleActorDoubleClick);
+    editorRef.current?.unsubscribe("asset:double-click", handleAssetDoubleClick);
+    editorRef.current = null;
+    e.offAfterRender(afterRenderId);
+    engineRef.current = null;
     containerRef.current = null;
     levelSnapshotRef.current = null;
       if (sceneGraphRaf.current !== null) {
@@ -565,7 +922,7 @@ const App = () => {
         sceneGraphRaf.current = null;
       }
     };
-  }, [engine, container, buildSceneGraph]);
+  }, [engine, container, buildSceneGraph, rememberLevelPath]);
 
   useEffect(() => {
     const registry = panelRegistryRef.current;
@@ -577,7 +934,42 @@ const App = () => {
     };
   }, []);
 
-  const handlePlay = () => {
+  useEffect(() => {
+    let cancelled = false;
+    const loadLevels = async () => {
+      try {
+        const res = await fetch("http://localhost:4000/api/resources/assets/search?types=level");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const paths: string[] = Array.isArray(json?.data)
+          ? json.data
+              .map((n: any) => (typeof n?.path === "string" ? n.path : null))
+              .filter((p: string | null) => !!p)
+          : [];
+        if (!cancelled) {
+          setAvailableLevels(paths);
+        }
+      } catch (error) {
+        console.warn("Failed to fetch available levels", error);
+        if (!cancelled) {
+          setAvailableLevels([]);
+        }
+      }
+    };
+    loadLevels();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const playLevelOptions = useMemo(() => {
+    const options = new Set<string>(availableLevels);
+    if (activeLevelPath) options.add(activeLevelPath);
+    options.add(DEFAULT_LEVEL_PATH);
+    return Array.from(options);
+  }, [availableLevels, activeLevelPath]);
+
+  const handlePlay = async () => {
     if (!engine) {
       return;
     }
@@ -586,8 +978,25 @@ const App = () => {
 
     levelSnapshotRef.current = editorRef.current?.serializeLevel(engine.getCurrentLevel()!) ?? null;
 
+    const targetPath = (playLevelPath && playLevelPath.trim()) || activeLevelPath || DEFAULT_LEVEL_PATH;
+
+    if (targetPath && targetPath !== activeLevelPath) {
+      try {
+        const levelData = await engine.loadLevel(targetPath);
+        engine.loadLevelObject(levelData);
+      } catch (error) {
+        console.error(`Failed to load play level ${targetPath}`, error);
+        // Reactivate editor input if play failed
+        if (inputManagerRef.current) {
+          const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);
+          responder.activate();
+          editorInputRef.current = responder;
+        }
+        return;
+      }
+    }
+
     engine.run(false);
-    
     setIsPlaying(true);
   };
 
@@ -597,8 +1006,9 @@ const App = () => {
     }
     engine.shutdown();
     engine.run(true);
-    engine.loadLevelObject(editorRef.current?.deserializeLevel(levelSnapshotRef.current!)! ).then(() => {
-  
+    
+    engine.loadLevelObject(editorRef.current?.deserializeLevel(levelSnapshotRef.current!)! );
+
     // Load level from current editing state
     if (inputManagerRef.current) {
       const responder = new EditorInputResponder(inputManagerRef.current, engine, editorRef.current!);
@@ -606,9 +1016,8 @@ const App = () => {
       editorInputRef.current = responder;
     }
     setIsPlaying(false);
-    });
 
-  };
+  }
 
   const draw = (gl: WebGL2RenderingContext | null) => {
     if (!engine) return;
@@ -674,7 +1083,7 @@ const App = () => {
             </div>
 
             <div className="flex items-center gap-1 ml-6">
-              <MenuButton label="File" />
+              <MenuButton label="File" onClick={handleMenuButtonClick("file")} />
               <MenuButton label="Edit" />
               <MenuButton label="View" />
               <MenuButton label="Tools" onClick={handleMenuButtonClick("tools")} />
@@ -682,8 +1091,12 @@ const App = () => {
           </div>
 
           <div className="flex-1 flex items-center justify-center gap-3">
-            <ToolButton icon={Undo} label="" onClick={() => {}}/>
-            <ToolButton icon={Redo} label="" onClick={() => {}}/>
+            <ToolButton icon={Undo} label="" onClick={() => {
+              editorRef.current?.undoEdit("default")
+            }}/>
+            <ToolButton icon={Redo} label="" onClick={() => {
+              editorRef.current?.redoEdit("default")
+            }}/>
             <ToolButton
               icon={Play}
               label=""
@@ -698,6 +1111,16 @@ const App = () => {
               disabled={!engine}
               active={!isPlaying}
             />
+            <select
+              className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white focus:border-white/30 focus:outline-none"
+              value={(playLevelPath ?? activeLevelPath) ?? DEFAULT_LEVEL_PATH}
+              onChange={(e) => setPlayLevelPath(e.target.value)}
+              title="Select level to play"
+            >
+              {playLevelOptions.map((path) => (
+                <option key={path} value={path}>{path}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex items-center gap-2">
@@ -706,20 +1129,31 @@ const App = () => {
               icon={Save}
               tooltip={isSaving ? "Saving..." : "Save Map"}
               onClick={async () => {
-                if (!engineRef.current) return;
-                const level = engineRef.current.getCurrentLevel();
+                const activeEngine = engineRef.current;
+                const editorInstance = editorRef.current;
+                if (!activeEngine || !editorInstance) {
+                  return;
+                }
 
-                var serializedLevel = editorRef.current?.serializeLevel(level!);
-
-                var level2 = editorRef.current?.deserializeLevel(serializedLevel!);
+                const level = activeEngine.getCurrentLevel();
                 if (!level) {
                   console.warn("No level loaded to save");
                   return;
                 }
+
+                const serializedLevel = editorInstance.serializeLevel(level);
                 setIsSaving(true);
                 try {
-                  await saveResourceLevel(DEFAULT_LEVEL_PATH, serializedLevel!);
-                  console.log("Level saved", DEFAULT_LEVEL_PATH);
+                  const targetPath = activeLevelPath ?? DEFAULT_LEVEL_PATH;
+                  let contentToSave = serializedLevel;
+                  try {
+                    const existingContent = await activeEngine.loadLevel(targetPath);
+                    contentToSave = mergeSerializedLevelJson(editorInstance.serializeLevel(existingContent), serializedLevel);
+                  } catch (contentError) {
+                    console.warn("Unable to load existing level before save; saving editor state only.", contentError);
+                  }
+                  await saveResourceLevel(targetPath, contentToSave);
+                  console.log("Level saved", targetPath);
                 } catch (err) {
                   console.error("Failed to save level", err);
                 } finally {
@@ -819,7 +1253,18 @@ const App = () => {
                         <div className="h-full w-full" onDragOver={handleSceneDragOver} onDrop={handleSceneDrop}>
                           {engine && (
                             <EngineContext.Provider value={engine}>
-                              <Canvas compile={compile} draw={draw} options={{ context: "webgl2" }} className="w-full h-full" />
+                              <div className="relative h-full w-full">
+                                <Canvas compile={compile} draw={draw} options={{ context: "webgl2" }} className="w-full h-full" />
+                                {/* UI modules are skipped in editor mode by the engine */}
+                                <GUIProvider guiManager={engine.guiManager} componentRegistry={engine.componentRegistry}>
+                                  <div
+                                    className="absolute inset-0"
+                                    style={{ pointerEvents: isPlaying ? "auto" : "none", overflow: "hidden" }}
+                                  >
+                                    <GUIRenderer />
+                                  </div>
+                                </GUIProvider>
+                              </div>
                             </EngineContext.Provider>
                           )}
                         </div>

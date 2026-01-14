@@ -1,4 +1,4 @@
-import { Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container, property, Engine, Vertex2 } from "@repo/engine";
+import { Actor, Vector2, property, Engine } from "@repo/engine";
 import { Parser, TiledMap, type TiledObject, TiledObjectLayer } from "./parser";
 
 export interface TileMapActorOptions {
@@ -70,6 +70,7 @@ export class TileMapActor extends Actor {
     }
 
     async onLoad(): Promise<void> {
+        
         if (this.mapData) {
             return;
         }
@@ -185,7 +186,7 @@ export class TileMapActor extends Actor {
 
     private isRemoteUrl(value: string): boolean {
         try {
-            const parsed = new URL(value);
+            const parsed =  new URL(value);
             return parsed.protocol === "http:" || parsed.protocol === "https:";
         } catch {
             return false;

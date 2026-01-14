@@ -11,7 +11,7 @@ type NumberProps = {
     max?: number;
 };
 
-export const Number = ({ value: externalValue, onChange, step, min, max }: NumberProps) => {
+export const NumberEditor = ({ value: externalValue, onChange, step, min, max }: NumberProps) => {
     const [value, setValue] = useState<number>(externalValue);
     const [isDragging, setIsDragging] = useState(false);
 

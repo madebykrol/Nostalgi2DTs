@@ -1,10 +1,10 @@
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 
-import { Actor, Constructor, Container, DefaultResourceManager, Engine, EngineBuilder, inject, TimerManager, Vector2, World } from "@repo/engine";
+import { Actor, Container, DefaultResourceManager, Engine, EngineBuilder, inject, TimerManager, World } from "@repo/engine";
 import { PlanckWorld } from "@repo/planckphysics";
-import { Endpoint, ServerReplicationManager, ClientInputMessage } from "../../packages/engine/network";
-import { DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor, GrasslandsMap } from "@repo/example";
+import { Endpoint, ClientInputMessage, ClientSetUsernameMessage, ClientPostScoreMessage } from "../../packages/engine/network";
+import { DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor} from "@repo/example";
 import { Parser } from "../../packages/tiler/parser";
 
 import { DOMParser } from "@xmldom/xmldom";
@@ -24,7 +24,7 @@ class UserSession {
   }
 }
 
-class Server extends Endpoint<WebSocket, http.IncomingMessage>{
+class Server extends Endpoint{
   private wss: WebSocketServer | undefined;
   private webServer: http.Server | undefined;
   private sessions: Map<string, UserSession> = new Map();
@@ -113,6 +113,7 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
 
     socket.on("message", (data) => {
       try {
+        console.log(data.toString());
         const message = JSON.parse(data.toString());
         const messageType = message.type;
         
@@ -242,15 +243,13 @@ class Server extends Endpoint<WebSocket, http.IncomingMessage>{
 
 const server = new Server("localhost", PORT);
 
-class ServerEngine extends Engine{
-  private replicationManager: ServerReplicationManager;
+class ServerEngine extends Engine {
   private networkTickInterval: NodeJS.Timeout | null = null;
   private networkTickRate = 60; // 60 Hz
 
   constructor(@inject(World)world: World, @inject(Endpoint) endpoint: Endpoint | undefined, @inject(Container)container: Container, @inject(TimerManager) timerManager: TimerManager) {
     super(world, endpoint, "server", container, timerManager);
     
-    this.replicationManager = new ServerReplicationManager();
     this.setupNetworkHandlers();
   }
 
@@ -261,8 +260,12 @@ class ServerEngine extends Engine{
     }
 
     // Register message handlers using the Endpoint pattern
-    endpoint.onMessage<ClientInputMessage>("client:input", (sessionId, message) => {
-      this.handleClientInput(sessionId, message);
+    endpoint.onMessage<ClientSetUsernameMessage>("username:set", (sessionId, message) => {
+      console.log(`Client ${sessionId} set username to ${message.username}`);
+    });
+
+    endpoint.onMessage<ClientPostScoreMessage>("client:score", (sessionId, message) => {
+      console.log(`Client ${sessionId} posted score ${message.score}`);
     });
 
     endpoint.onMessage<any>("client:ready", (sessionId, _message) => {
@@ -271,19 +274,7 @@ class ServerEngine extends Engine{
     });
   }
 
-  private handleClientInput(sessionId: string, message: ClientInputMessage): void {
-    const result = this.replicationManager.processClientInput(message);
-    
-    if (!result.success) {
-      // Send error to client using endpoint
-      const endpoint = this.netEndpoint as Server;
-      endpoint.sendToSession(sessionId, {
-        type: "error",
-        code: result.error,
-        message: `Failed to process input: ${result.error}`
-      });
-    }
-  }
+ 
 
   run(): void {
     super.run();
@@ -303,36 +294,8 @@ class ServerEngine extends Engine{
 
   private networkTick(): void {
     // Broadcast all actor updates
-    const updates = this.replicationManager.getActorUpdates();
-    if (updates.updates.length > 0) {
-      const endpoint = this.netEndpoint;
-      if (endpoint && endpoint instanceof Server) {
-        endpoint.broadcast(updates);
-      }
-    }
   }
 
-  // Override spawnActor to register actors for replication
-  async spawnActorInstance(actor: Actor, parent?: Actor, position?: Vector2): Promise<void> {
-    await super.spawnActorInstance(actor, parent, position);
-    
-    // Register for replication if needed
-    if (actor.shouldReplicate) {
-      const actorId = actor.getId();
-      this.replicationManager.registerActor(actor, actorId);
-    }
-  }
-
-  async spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent?: Actor, position?: Vector2, properties?: Record<string, any>): Promise<TActor> {
-    const actor = await super.spawnActor(ctor, parent, position, properties);
-    // Additional logic if needed
-
-    if (actor.shouldReplicate) {
-      const actorId = actor.getId();
-      this.replicationManager.registerActor(actor, actorId);
-    }
-    return actor;
-  }
 }
 
 var builder = new EngineBuilder<WebSocket, http.IncomingMessage>();
@@ -351,19 +314,6 @@ builder
 const engine = builder.build(ServerEngine);
 
 engine.run();
-const level = new GrasslandsMap(builder.container);
-const demoActor = new DemoActor();
-
-demoActor.addChild(new DemoActor());
-demoActor.addChild(new DemoActor());
-
-const demo2Actor = new DemoActor();
-demo2Actor.tickGroup = "post-physics";
-
-level.addActor(demoActor);
-level.addActor(demo2Actor);
-
-engine.loadLevelObject(level);
 
 let isRunning = true;
 

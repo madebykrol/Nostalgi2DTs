@@ -1,5 +1,6 @@
 import { Vector2 } from "../math";
 import type { CollisionShapeDescriptor } from "../physics";
+import { Actor } from "./actor";
 import { Component } from "./component";
 
 export abstract class CollisionComponent extends Component {
@@ -12,6 +13,8 @@ export abstract class CollisionComponent extends Component {
     private dirty: boolean = true;
     private filterBits: number = 0xFFFF;
     private filterMask: number = 0xFFFF;
+
+    private collisionCallback: ((actor: Actor, collision: CollisionComponent) => void) | null = null;
 
     abstract getBounds(): { min: { x: number; y: number }; max: { x: number; y: number } };
     abstract createShapeDescriptor(): CollisionShapeDescriptor;
@@ -100,19 +103,25 @@ export abstract class CollisionComponent extends Component {
         this.dirty = false;
     }
 
-    protected markDirty(): void {
-        this.dirty = true;
-    }
-
     tick(_deltaTime: number, _engineNetworkMode: "client" | "server" | "singleplayer"): void {
         
     }
 
-    onColliding(_other: CollisionComponent): void {
-        
+    onColliding(callback: (actor: Actor, collision: CollisionComponent) => void): void {
+        this.collisionCallback = callback   ;
+    }
+
+    triggerCollisionCallbacks(actor: Actor, collisionComponent: CollisionComponent): void {
+        if (this.collisionCallback) {
+            this.collisionCallback(actor, collisionComponent);
+        }
     }
 
     onCollided(_other: CollisionComponent): void {
 
+    }
+
+    protected markDirty(): void {
+        this.dirty = true;
     }
 }

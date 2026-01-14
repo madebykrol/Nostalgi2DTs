@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@repo/engine": "*",
-    "@repo/tiler": "*"
+    "@repo/tiler": "*",
+    "react": "^18.2.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",

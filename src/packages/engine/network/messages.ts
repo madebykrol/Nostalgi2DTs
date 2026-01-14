@@ -91,6 +91,18 @@ export interface ClientInputMessage {
     inputs: InputState[];
 }
 
+export interface ClientSetUsernameMessage {
+    type: "username:set";
+    userId: string;
+    username: string;
+}
+
+export interface ClientPostScoreMessage {
+    type: "client:score";
+    userId: string;
+    score: number;
+}
+
 export interface ClientReadyMessage {
     type: "client:ready";
     clientId: string;

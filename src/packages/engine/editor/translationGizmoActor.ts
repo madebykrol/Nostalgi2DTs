@@ -1,7 +1,9 @@
 import { actor } from "../actorRegistry";
 import { Vector2 } from "../math";
 import { Mesh, MeshComponent} from "../rendering";
+import { inject, injectable } from "../utils";
 import { Actor } from "../world";
+import { Edit, Editor } from "./editor";
 import { GizmoActor } from "./gizmoActor";
 import { GizmoHandle } from "./gizmoHandle";
 import { TranslationGizmoMaterial } from "./translationGizmoMaterial";
@@ -36,6 +38,7 @@ export abstract class TranslationHandle extends GizmoHandle {
             
             const startWorld = actor.position;
             const newWorld = new Vector2(startWorld.x + offset.x, startWorld.y + offset.y);
+            
 
             let newLocalPosition = newWorld;
 
@@ -45,6 +48,7 @@ export abstract class TranslationHandle extends GizmoHandle {
             if (parent instanceof Actor) {
                 const parentWorld = parent.position;
                 newLocalPosition = new Vector2(newWorld.x - parentWorld.x, newWorld.y - parentWorld.y);
+
             }
             actor.position = newLocalPosition;
         }
@@ -87,14 +91,28 @@ class TranslationPivotHandle extends TranslationHandle {
     }
 
     handleDrag(_position: Vector2, delta: Vector2): void {
-        const offset = new Vector2(delta.x, delta.y);
-        this.translateActors(offset);
+
+        var edit = new Edit();
+        var currentPosition = new Vector2(_position.x, _position.y);
+        
+        edit.apply = () => {
+            const offset = new Vector2(delta.x, delta.y);
+            this.translateActors(offset);
+        }
+        edit.revert = () => {
+            this.translateActors(currentPosition)
+        }
+
+        this.gizmo.editor.pushEdit("canvas", edit);
+
+        edit.apply();
+
+        console.log(this.gizmo.editor);
     }
-
-
 }
 
 @actor()
+@injectable()
 export class TranslationGizmoActor extends GizmoActor {
     private readonly meshComponent: MeshComponent;
     private readonly material: TranslationGizmoMaterial;
@@ -106,8 +124,8 @@ export class TranslationGizmoActor extends GizmoActor {
     private xHandle: TranslationXHandle = new TranslationXHandle(this);
     private yHandle: TranslationYHandle = new TranslationYHandle(this);
 
-    constructor() {
-        super();
+    constructor(@inject(Editor) public editor: Editor) {
+        super(editor);
         this.name = "TranslationGizmo";
         this.layer = Number.MAX_SAFE_INTEGER;
 

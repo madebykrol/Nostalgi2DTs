@@ -1,16 +1,23 @@
 import type { BodyType } from "./bodyType";
 import type { PhysicsBody } from "./body";
-import { inject, injectable, World, Actor, Engine, nobject, Vector2, Component } from "@repo/engine";
+import { inject, injectable, World, Actor, nobject, Vector2, Component, property } from "@repo/engine";
 
 
 @injectable()
 @nobject()
 export class PhysicsComponent extends Component {
+    getLinearVelocity(): Vector2 {
+        if (!this.body) {
+            return new Vector2(0, 0);
+        }
+        return this.body.getLinearVelocity();
+    }
     private body: PhysicsBody | null = null;
     private simulated = false;
     private bodyType: BodyType = "static";
     private linearDamping = 3;
     private angularDamping = 1;
+    private _gravityScale = 1;
 
     /**
      *
@@ -21,13 +28,21 @@ export class PhysicsComponent extends Component {
         super();
     }
 
+    @property()
+    public set gravityScale(scale: number) {
+        this._gravityScale = scale;
+    }
+
+    public get gravityScale(): number {
+        return this._gravityScale;
+    }
+
     tick(deltaTime: number, _engineNetworkMode: "client" | "server" | "singleplayer"): void {
         if (!this.simulated || !this.body || deltaTime <= 0) {
             return;
         }
 
         this.body.applyLinearDamping(this.world.getAirfriction(), deltaTime);
-
         this.body.applyAngularDamping(this.world.getAirfriction(), deltaTime);
         
     }

@@ -90,6 +90,12 @@ export class UnlitMaterial extends Material {
 
         const { actor, camera, gl } = context;
 
+        // Compile lazily so dynamically spawned actors render even if compileMaterials was
+        // called before they existed.
+        if (!this.resourcesInitialized) {
+            this.compile(gl);
+        }
+
         if (!this.shaderProgram || !this.positionBuffer) {
             return false;
         }

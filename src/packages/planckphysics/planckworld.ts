@@ -21,6 +21,20 @@ export class PlanckWorld extends World {
             gravity: settings?.gravity ? new Vec2(settings.gravity.x, settings.gravity.y) : new Vec2(0, 0),
             allowSleep: settings?.allowSleep ?? true
         });
+
+        this.world.on('begin-contact', (contact) => {
+            const fixtureA: Fixture = contact.getFixtureA();
+            const fixtureB: Fixture = contact.getFixtureB();    
+            const userDataA = fixtureA.getUserData() as CollisionComponent;
+            const userDataB = fixtureB.getUserData() as CollisionComponent;
+
+            userDataA?.triggerCollisionCallbacks(userDataB!.getActor()!, userDataA);
+            userDataB?.triggerCollisionCallbacks(userDataA!.getActor()!, userDataB);
+
+            this.collisionCallbacks.get("begin")?.forEach(callback => {
+                callback(userDataA!, userDataB!);
+            });
+        });
     }
 
     public resetForces(): void {
@@ -156,6 +170,9 @@ export class PlanckWorld extends World {
     }
 
     _tick(timestep: number): void {
+        if (!this.isSimulating) {
+            return;
+        }
         this.world.step(timestep);
 
         let body = this.world.getBodyList();

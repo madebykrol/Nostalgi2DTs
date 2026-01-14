@@ -11,6 +11,27 @@ export const listAssets = async (_req: Request, res: Response) => {
   return res.json({ data: tree });
 };
 
+export const listAssetsByType = async (req: Request, res: Response) => {
+  const { types } = req.query;
+  const raw = typeof types === "string" ? types : Array.isArray(types) ? types.join(",") : "";
+  const filters = raw
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter((t) => t.length > 0);
+
+  if (filters.length === 0) {
+    return res.status(400).json({ error: "Missing type filter (e.g. ?types=level)" });
+  }
+
+  try {
+    const assets = await resourceService.listAssetsByType(filters);
+    return res.json({ data: assets });
+  } catch (err) {
+    console.error("Failed to list assets by type", err);
+    return res.status(500).json({ error: "Failed to list assets" });
+  }
+};
+
 // Placeholder stubs to keep route surface; these can be implemented to write files when needed
 export const createResource = (_req: Request, res: Response) => {
   return res.status(501).json({ error: "Not implemented for filesystem-backed resources." });

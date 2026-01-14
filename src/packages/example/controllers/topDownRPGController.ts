@@ -10,10 +10,10 @@ import {
   SoundManager,
   Vector2 } from "@repo/engine";
 import { inject, injectable } from 'inversify';
-import { BombActor, DemoActor } from "@repo/example";
+import { BombActor } from "@repo/example";
 
 @injectable()
-export class PlayerController extends Controller {
+export class TopDownRPGController extends Controller {
 
   private boink: SoundHandle | null = null;
   
