@@ -1,5 +1,5 @@
 import { TileMapActor, TiledMap, TiledTileLayer, TiledTilesetReference } from "@repo/tiler";
-import { Material, MaterialRenderContext } from "@repo/engine";
+import { inject, Material, MaterialRenderContext, ResourceManager } from "@repo/engine";
 
 interface DrawCall {
     vao: WebGLVertexArrayObject | null;
@@ -35,6 +35,13 @@ export class TileMapMaterial extends Material {
         opacity: null,
         texture: null
     };
+
+    /**
+     *
+     */
+    constructor(@inject(ResourceManager) protected resourceManager: ResourceManager) {
+        super();
+    }
 
     /**
      *
@@ -444,13 +451,20 @@ export class TileMapMaterial extends Material {
         return texture;
     }
 
-    private loadImage(src: string): Promise<HTMLImageElement> {
+    private async loadImage(src: string): Promise<HTMLImageElement> {
+
+       
         return new Promise((resolve, reject) => {
-            const image = new Image();
-            image.crossOrigin = "anonymous";
-            image.onload = () => resolve(image);
-            image.onerror = () => reject(new Error(`Failed to load image '${src}'`));
-            image.src = src;
+            this.resourceManager.loadResource(src, true, true).then(resource => {
+                const image = new Image();
+                image.crossOrigin = "anonymous";
+                image.onload = () => resolve(image);
+                image.onerror = () => reject(new Error(`Failed to load image '${src}'`));
+                image.src = 'data:image/png;base64,' + resource;
+                console.log(image.src);
+            }).catch(err => {
+                reject(err);
+            });
         });
     }
 }

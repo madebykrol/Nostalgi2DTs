@@ -24,8 +24,6 @@ export class GrasslandsMap extends Level {
     if (!this.tileMapActor) {
       throw new Error("GrasslandsMap failed to resolve GameTileMapActor; ensure it's registered with the container");
     }
-
-    this.tileMapActor.mapUrl = "/assets/maps/grasslands/grasslands.tmx";
   }
 
   // get

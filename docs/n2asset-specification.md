@@ -34,6 +34,7 @@ Payload is a utf-8 encoded json (denoted by flag 0)
 ```json
 {
     "format": "n2as",
+    "rootEntryId": "1", // used to reference the entry that defines the asset
     "version": 1,
     "createdAt": "2026-01-01T09:00:00Z",
     "createdBy": "User1",
@@ -41,7 +42,7 @@ Payload is a utf-8 encoded json (denoted by flag 0)
     "updatedBy": "User2",
     "entries": [
         {
-            "id": "",
+            "id": "1",
             "name": "Player texture",
             "type": "texture", // Used to filter and categorize entries 
             "contentType": "image/png",
@@ -60,3 +61,20 @@ Payload is a utf-8 encoded json (denoted by flag 0)
 
 
 ## Payload
+
+# Engine assets definitions
+
+## Levels
+
+### Entries
+Single entry in.
+Contains a json blob with level data.
+Entry has type: level
+
+
+## Textures
+Multiple entries
+
+## Tilemaps
+
+## 

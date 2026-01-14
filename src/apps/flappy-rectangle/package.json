@@ -1,0 +1,41 @@
+{
+  "name": "flappy-rectangle",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --clearScreen false",
+    "debug": "node --inspect=9231 --enable-source-maps ../../node_modules/vite/bin/vite.js --clearScreen false",
+    "prebuild": "node ./scripts/fetch-assets.mjs",
+    "build": "tsc && vite build",
+    "serve:dist": "node ./scripts/serve-dist.mjs",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.ts\"",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "@repo/basicrenderer": "*",
+    "@repo/client": "*",
+    "@repo/engine": "*",
+    "@repo/example": "*",
+    "@repo/tiler": "*",
+    "@repo/ui": "*",
+    "gh-pages": "^6.3.0",
+    "inversify": "^7.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "reflect-metadata": "0.2.2"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^8.57.0",
+    "typescript": "5.5.4",
+    "vite": "^6.4.1",
+    "vite-plugin-static-copy": "^3.1.4"
+  }
+}

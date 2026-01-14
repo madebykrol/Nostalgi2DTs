@@ -1,6 +1,6 @@
 import { Controller } from "../game";
 import { Vector2 } from "../math/vector2";
-import { BaseObject } from "./baseobject";
+import { SceneNode } from "./baseobject";
 import { CollisionComponent } from "./collisioncomponent";
 import { Component } from "./component";
 import { World } from "./world";
@@ -11,7 +11,8 @@ import { property } from "../utils/decorators";
 const TICK_GROUP_OPTIONS = ["default", "post-physics"] as const;
 type TickGroup = typeof TICK_GROUP_OPTIONS[number];
 
-export abstract class Actor extends BaseObject {
+export abstract class Actor extends SceneNode {
+    
     isOwnedBy<TController extends Controller>(controller: TController|null): boolean {
         return this.possessedBy === controller;
     }

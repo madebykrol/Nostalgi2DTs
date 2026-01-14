@@ -22,7 +22,7 @@ export abstract class ResourceManager {
      * I.E. "maps/map01.tmx" or "sprites/hero/sprite01.png"
      * @param resource
      */
-    public abstract loadResource(resource: string, noCache?: boolean): Promise<string>;
+    public abstract loadResource(resource: string, noCache?: boolean, encode?: boolean): Promise<string>;
 
 	/**
 	 * Load an asset container as an ArrayBuffer.
@@ -57,7 +57,7 @@ export class DefaultResourceManager extends ResourceManager {
 		return res.arrayBuffer();
 	}
     
-    async loadResource(path: string, noCache?: boolean): Promise<string> {
+    async loadResource(path: string, noCache?: boolean, encode?: boolean): Promise<string> {
 		console.log(`Loading resource from path: ${path} (noCache: ${noCache})`);
         // Default implementation could be empty or throw an error
        if(isServer()) {
@@ -66,16 +66,24 @@ export class DefaultResourceManager extends ResourceManager {
        }
 
        if( isBrowser()) {
-        return await this.fetchText(path);
+        return await this.fetchText(path, noCache, encode);
        }
 
        return "";
     }
 
-    private async fetchText(target: string): Promise<string> {
-		const response = await fetch(target);
+    private async fetchText(path: string, noCache?: boolean, encode?: boolean): Promise<string> {
+		const trimmedBase = resolveResourceBase().replace(/\/$/, "");
+		const isHttp = /^https?:/i.test(trimmedBase);
+		const cacheBust = noCache ? `&_=${Date.now()}` : "";
+
+		const url = isHttp
+			? `${trimmedBase}/api/resources/content?path=${encodeURIComponent(path)}${encode ? "&encoding=base64" : ""}${cacheBust}`
+			: `${trimmedBase}/${path}`;
+
+		const response = await fetch(url);
 		if (!response.ok) {
-			throw new Error(`Failed to fetch TMX map from ${target}: ${response.status} ${response.statusText}`);
+			throw new Error(`Failed to fetch TMX map from ${path}: ${response.status} ${response.statusText}`);
 		}
 		return response.text();
 	}

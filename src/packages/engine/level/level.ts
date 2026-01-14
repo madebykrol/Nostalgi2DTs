@@ -3,10 +3,10 @@ import { Vector2 } from "../math";
 import { SerializedNode, SerializedProperty } from "../serialization";
 import { type Constructor, property, injectable } from "../utils";
 import { Actor } from "../world";
-import { BaseObject } from "../world/baseobject";
+import { SceneNode } from "../world/baseobject";
 
 @injectable()
-export class Level extends BaseObject {
+export class Level extends SceneNode {
 
     private _gravity: Vector2 = new Vector2(0, 10);
     
@@ -43,7 +43,7 @@ export class Level extends BaseObject {
         super();
     }
 
-    protected objects: BaseObject[] = [];
+    protected objects: SceneNode[] = [];
 
     findActor(id:string): Actor | null {
         for(const actor of this.children.filter(o => o instanceof Actor)) {

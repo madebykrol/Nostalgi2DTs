@@ -1,4 +1,4 @@
-import { MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine, PolygonCollisionComponent } from "@repo/engine";
+import { MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine, PolygonCollisionComponent, ResourceManager } from "@repo/engine";
 import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, TileMapMaterial, type TileMapActorOptions } from "@repo/tiler";
 import { WallActor } from "./wall";
 
@@ -7,10 +7,11 @@ export class GameTileMapActor extends TileMapActor {
   constructor(
     @inject(Parser) parser: Parser,
     @inject(Engine) container: Engine,
+    @inject(ResourceManager) resourceManager: ResourceManager,
     @unmanaged() options: TileMapActorOptions = {}
   ) {
     super(parser, container, options);
-    const material = new TileMapMaterial();
+    const material = new TileMapMaterial(resourceManager);
     this.addComponent(new MeshComponent(new Quad(), material));
   }
 

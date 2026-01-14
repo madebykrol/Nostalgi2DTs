@@ -215,19 +215,6 @@ export class FlappyRectangleGameMode extends GameMode {
         const physics = pawn?.getComponentsOfType(PhysicsComponent)[0];
         physics?.addImpulse(new Vector2(0, 20));
     };
-
-    // private findGeneratorRecursive(node: BaseObject): FlayypRectangleObsticleGeneratorActor | null {
-    //     for (const child of node.getChildren()) {
-    //         if (child instanceof FlayypRectangleObsticleGeneratorActor) {
-    //             return child;
-    //         }
-    //         const found = this.findGeneratorRecursive(child);
-    //         if (found) {
-    //             return found;
-    //         }
-    //     }
-    //     return null;
-    // }
 }
 
 @actor("FlappyRectangleCharacter")

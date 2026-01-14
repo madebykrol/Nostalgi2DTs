@@ -1,5 +1,5 @@
 import { Camera } from "./camera";
-import { Actor, World, BaseObject, Component } from "./world";
+import { Actor, World, Component } from "./world";
 import { Level } from "./level";
 import { PlayerState, Controller } from "./game";
 import { TimerManager, Constructor, Container, injectable, StringUtils, inject, normalizeClassName, getRegisteredPropertiesForInstance, Property } from "./utils";
@@ -14,10 +14,7 @@ import { GUIManager } from "./ui/guiManager";
 import { GUIComponentRegistry } from "./ui/guiComponentRegistry";
 import { GUIModuleRegistry } from "./ui/uiModuleRegistry";
 import { LevelParser } from "./level/levelParser";
-
-class RootObject extends BaseObject {
-
-}
+import { SceneNode } from "./world/baseobject";
 
 export type EngineNetworkMode = "client" | "server" | "singleplayer";
 
@@ -50,6 +47,8 @@ export class Engine {
       this.afterRenderCallbacks.delete(id);
     }
 
+    public static instance: Engine;
+
     protected currentCamera: Camera | undefined;
     protected lastFrameTime: number = 0; // used ONLY for FPS measurement (updated in finishFrame)
     protected lastTickTime: number = 0;  // used for simulation delta (updated in tick)
@@ -80,17 +79,8 @@ export class Engine {
     public readonly componentRegistry: GUIComponentRegistry = new GUIComponentRegistry();
     public readonly uiModuleRegistry: GUIModuleRegistry = new GUIModuleRegistry();
 
-    rootObject: BaseObject = new RootObject();
-    editorRootObject: BaseObject = new RootObject();
-
-    // Editor grid (rendered behind actors when showDebugGrid is true)
-    private editorGridProgram: WebGLProgram | null = null;
-    private editorGridVAO: WebGLVertexArrayObject | null = null;
-    private editorGridUniforms: {
-        resolution?: WebGLUniformLocation | null;
-        origin?: WebGLUniformLocation | null;
-        spacing?: WebGLUniformLocation | null;
-    } = {};
+    rootObject: SceneNode = new SceneNode();
+    editorRootObject: SceneNode = new SceneNode();
 
     private controllerTypeForPlayer: Constructor<Controller> | null = null;
 
@@ -104,6 +94,10 @@ export class Engine {
 
     setNetworkMode(networkMode: EngineNetworkMode): void {
         this.networkMode = networkMode;
+    }
+
+    getNetworkMode(): EngineNetworkMode {
+        return this.networkMode;
     }
 
     setCurrentCamera(camera: Camera): void {
@@ -161,6 +155,19 @@ export class Engine {
     ): T[] {
         const targetCtor = Engine.getActorCtor<T>(ctor);
         return this.world.radialCast<T>(start, radius, includeStatic, includeDynamic, targetCtor) as T[];
+    }
+
+    spawnActorInstance(actor: Actor, parent?: SceneNode, position?: Vector2): void {
+        this.world.spawnActorInstance(actor, parent, position);
+
+    }
+
+    spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent: SceneNode, position?: Vector2, properties?: Record<string, any>): Actor {
+        return this.world.spawnActor(ctor, parent, position, properties);
+    }
+
+    despawnActor(actor: Actor): void {
+        this.world.despawnActor(actor);
     }
 
     createComponent<T extends Component>(ctor: Constructor<T>): T {
@@ -226,13 +233,11 @@ export class Engine {
         const payloadBytes = rootEntry.bytes;
         const text = StringUtils.DecodeUtf(payloadBytes);
 
-        console.log(`Loaded level from ${levelPath}, size: ${payloadBytes.byteLength} bytes`);
         return levelParser.deserializeLevel(text)!;
     }
 
     run(asEditor: boolean = false): void {
-
-
+        Engine.instance = this;
         this.setEditorMode(asEditor);
         this.ensureInputManager();
         this.configurePlayerControllers();
@@ -254,9 +259,6 @@ export class Engine {
             return 
         }
 
-
-
-       
         if (this.asEditor) {
             console.log("Running in editor mode");
             return;
@@ -346,10 +348,7 @@ export class Engine {
         gl.viewport(0, 0, canvasWidth, canvasHeight);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // Optional debug grid, rendered as a background in editor views
-        if (this.showDebugGrid) {
-            this.renderEditorGrid(gl, canvasWidth, canvasHeight, camera);
-        }
+       
 
         // Render forward pass into the current framebuffer (FBO if post-process, default otherwise)
         for (const actor of sortedActors) {
@@ -551,11 +550,11 @@ export class Engine {
         return flattenedActors.length;
     }
 
-    public getRootObject(): BaseObject {
+    public getRootObject(): SceneNode {
         return this.rootObject;
     }
 
-    public getEditorRoot():BaseObject {
+    public getEditorRoot():SceneNode {
         return this.editorRootObject;
     }
 
@@ -571,12 +570,7 @@ export class Engine {
         this.rootObject.getChildrenOfType(Actor).forEach(actor => { this.despawnActor(actor); });
         this.rootObject.dispose();
 
-        this.rootObject = new RootObject();
-    }
-    
-
-    private despawnActor(actor: Actor): void {
-        this.world?.despawnActor(actor);
+        this.rootObject = new SceneNode();
     }
     
     protected handleNetworkTick(): void {
@@ -595,7 +589,7 @@ export class Engine {
     }
 
 
-    private getEditorActorsFlattened(actor: BaseObject): Actor[] {
+    private getEditorActorsFlattened(actor: SceneNode): Actor[] {
         const actors: Actor[] = [];
 
         for (const child of actor.getChildrenOfType(EditorActor)) {
@@ -609,7 +603,7 @@ export class Engine {
         return actors;
     }
 
-    private getActorsFlattened(actor: BaseObject): Actor[] {
+    private getActorsFlattened(actor: SceneNode): Actor[] {
         const actors: Actor[] = [];
 
         for (const child of actor.getChildrenOfType(Actor)) {
@@ -759,170 +753,6 @@ export class Engine {
 
         return true;
     }
-
-    private ensureEditorGridResources(gl: WebGL2RenderingContext): void {
-        if (this.editorGridProgram && this.editorGridVAO) {
-            return;
-        }
-
-        const vertexSource = `#version 300 es
-        precision highp float;
-        layout(location = 0) in vec2 a_position;
-        void main() {
-            gl_Position = vec4(a_position, 0.0, 1.0);
-        }`;
-
-        const fragmentSource = `#version 300 es
-        precision highp float;
-        uniform vec2 u_resolution;
-        uniform vec2 u_origin;
-        uniform float u_spacing;
-        out vec4 outColor;
-        void main() {
-            vec2 frag = gl_FragCoord.xy;
-
-            // Base background (matches mesh editor navy)
-            vec3 baseColor = vec3(2.0/255.0, 6.0/255.0, 23.0/255.0);
-
-            // Position relative to world origin projected into screen space
-            vec2 rel = frag - u_origin;
-
-            float spacing = max(u_spacing, 1.0);
-
-            // Distance to nearest vertical/horizontal grid line
-            float gx = abs(mod(rel.x, spacing));
-            gx = min(gx, spacing - gx);
-            float gy = abs(mod(rel.y, spacing));
-            gy = min(gy, spacing - gy);
-
-            float gridWidth = 1.0;
-            float gridMask = float(gx < gridWidth || gy < gridWidth);
-
-            vec3 gridColor = vec3(148.0/255.0, 163.0/255.0, 184.0/255.0);
-
-            // Origin cross (purple) through world (0,0)
-            float crossWidth = 1.5;
-            float crossMask = float(abs(rel.x) < crossWidth || abs(rel.y) < crossWidth);
-            vec3 crossColor = vec3(236.0/255.0, 72.0/255.0, 153.0/255.0);
-
-            vec3 color = baseColor;
-            color = mix(color, gridColor, 0.35 * gridMask);
-            color = mix(color, crossColor, 0.6 * crossMask);
-
-            outColor = vec4(color, 1.0);
-        }`;
-
-        const createShader = (type: number, source: string): WebGLShader => {
-            const shader = gl.createShader(type);
-            if (!shader) {
-                throw new Error("Failed to create editor grid shader");
-            }
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                const info = gl.getShaderInfoLog(shader);
-                gl.deleteShader(shader);
-                throw new Error(`Editor grid shader compile error: ${info ?? "unknown"}`);
-            }
-            return shader;
-        };
-
-        const vertexShader = createShader(gl.VERTEX_SHADER, vertexSource);
-        const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentSource);
-
-        const program = gl.createProgram();
-        if (!program) {
-            gl.deleteShader(vertexShader);
-            gl.deleteShader(fragmentShader);
-            throw new Error("Failed to create editor grid program");
-        }
-
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, fragmentShader);
-        gl.linkProgram(program);
-
-        const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
-        if (!linked) {
-            const info = gl.getProgramInfoLog(program);
-            gl.deleteProgram(program);
-            gl.deleteShader(vertexShader);
-            gl.deleteShader(fragmentShader);
-            throw new Error(`Editor grid program link error: ${info ?? "unknown"}`);
-        }
-
-        gl.deleteShader(vertexShader);
-        gl.deleteShader(fragmentShader);
-
-        const vao = gl.createVertexArray();
-        if (!vao) {
-            gl.deleteProgram(program);
-            throw new Error("Failed to create editor grid VAO");
-        }
-        const vbo = gl.createBuffer();
-        if (!vbo) {
-            gl.deleteVertexArray(vao);
-            gl.deleteProgram(program);
-            throw new Error("Failed to create editor grid VBO");
-        }
-
-        gl.bindVertexArray(vao);
-        gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-
-        const vertices = new Float32Array([
-            -1, -1,
-             1, -1,
-            -1,  1,
-             1,  1,
-        ]);
-        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-        gl.enableVertexAttribArray(0);
-        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-
-        gl.bindVertexArray(null);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-        this.editorGridProgram = program;
-        this.editorGridVAO = vao;
-
-        this.editorGridUniforms.resolution = gl.getUniformLocation(program, "u_resolution");
-        this.editorGridUniforms.origin = gl.getUniformLocation(program, "u_origin");
-        this.editorGridUniforms.spacing = gl.getUniformLocation(program, "u_spacing");
-    }
-
-    private renderEditorGrid(gl: WebGL2RenderingContext, canvasWidth: number, canvasHeight: number, camera: Camera): void {
-        this.ensureEditorGridResources(gl);
-        if (!this.editorGridProgram || !this.editorGridVAO) {
-            return;
-        }
-
-        let originX = canvasWidth * 0.5;
-        let originY = canvasHeight * 0.5;
-
-        if (camera instanceof OrthoCamera) {
-            const originWorld = new Vector2(0, 0);
-            const originScreen = camera.worldToScreen(originWorld, canvasWidth, canvasHeight);
-            originX = originScreen.x;
-            originY = originScreen.y;
-        }
-
-        gl.useProgram(this.editorGridProgram);
-        gl.bindVertexArray(this.editorGridVAO);
-
-        if (this.editorGridUniforms.resolution) {
-            gl.uniform2f(this.editorGridUniforms.resolution, canvasWidth, canvasHeight);
-        }
-        if (this.editorGridUniforms.origin) {
-            gl.uniform2f(this.editorGridUniforms.origin, originX, originY);
-        }
-        if (this.editorGridUniforms.spacing) {
-            gl.uniform1f(this.editorGridUniforms.spacing, 40.0);
-        }
-
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-        gl.bindVertexArray(null);
-        gl.useProgram(null);
-    }
     
     private renderActorDebug(actor: Actor, gl: WebGL2RenderingContext, camera: Camera): void {
         const meshComponents = actor.getComponentsOfType(MeshComponent);
@@ -978,13 +808,16 @@ export class Engine {
                 // this.world?.despawnActor(actor);
             }
         }
-
     }
 
-    
-
     private serverTick(_deltaTime: number): void {
+        // Tick server timers
 
+        // Tick replicated actors
+
+        // Handle incomming RPCs from clients
+
+        // send RPCs to clients
     }
 
     private tickTimerManager(_deltaTime: number): void {
@@ -1001,7 +834,7 @@ export class Engine {
             .filter(a => a.tickGroup === "default")
             .forEach(actor => actor._tick(this.deltaTime, this.networkMode));
 
-        this.world?._tick(1/120); // Physics tick at a fixed rate of 120Hz
+        this.world?._tick(this.deltaTime); // Physics tick at a fixed rate of 120Hz
 
         tickingActors
             .filter(a => a.tickGroup === "post-physics")

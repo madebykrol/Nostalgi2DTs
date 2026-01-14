@@ -7,6 +7,8 @@ export class OrthoCamera extends Camera {
     protected position: Vector2;
     protected zoom: number;
     protected unitsPerScreenHeight: number; // Define how many world units fit in screen height
+    private viewportWidth: number = 0;
+    private viewportHeight: number = 0;
     private referenceViewportHeight: number | null = null;
     private currentViewportHeight: number | null = null;
     private pixelScale: number = 1;
@@ -33,8 +35,8 @@ export class OrthoCamera extends Camera {
         return this.zoom;
     }
 
-    setViewportSize(_width: number, height: number): void {
-        if (height <= 0) {
+    setViewportSize(width: number, height: number): void {
+        if (width <= 0 || height <= 0) {
             return;
         }
 
@@ -42,11 +44,14 @@ export class OrthoCamera extends Camera {
             this.referenceViewportHeight = height;
         }
 
-        if (this.currentViewportHeight !== height) {
+        if (this.viewportWidth !== width || this.viewportHeight !== height) {
+            this.viewportWidth = width;
+            this.viewportHeight = height;
             this.currentViewportHeight = height;
             const reference = this.referenceViewportHeight || height;
             this.pixelScale = reference === 0 ? 1 : height / reference;
-            this.needsUpdate = true;
+            const aspectRatio = width / height;
+            this.updateMatrices(aspectRatio);
             this.frustum = undefined;
         }
     }
@@ -217,6 +222,8 @@ export class OrthoCamera extends Camera {
 
     clone(): Camera {
         const cloned = new OrthoCamera(this.position.clone(), this.zoom, this.unitsPerScreenHeight);
+        cloned.viewportWidth = this.viewportWidth;
+        cloned.viewportHeight = this.viewportHeight;
         cloned.referenceViewportHeight = this.referenceViewportHeight;
         cloned.currentViewportHeight = this.currentViewportHeight;
         cloned.pixelScale = this.pixelScale;
@@ -228,6 +235,8 @@ export class OrthoCamera extends Camera {
         this.setZoom(other.getZoom());
         if (other instanceof OrthoCamera) {
             this.unitsPerScreenHeight = other.unitsPerScreenHeight;
+            this.viewportWidth = other.viewportWidth;
+            this.viewportHeight = other.viewportHeight;
             this.referenceViewportHeight = other.referenceViewportHeight;
             this.currentViewportHeight = other.currentViewportHeight;
             this.pixelScale = other.pixelScale;

@@ -95,7 +95,7 @@ const App = () => {
 
     const setupLevel = async () => {
       try {
-        const level = await e.loadLevel("levels/new-level");
+        const level = await e.loadLevel("levels/grasslands");
         const levelStartTime = performance.now();
         await e.loadLevelObject(level);
 

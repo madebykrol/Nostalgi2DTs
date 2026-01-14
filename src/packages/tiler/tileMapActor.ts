@@ -242,20 +242,6 @@ export class TileMapActor extends Actor {
                     console.log("Created actor from container for type:", object.properties.Type, createdActor);
                     actorsToAdd.push(createdActor);
                 }
-                // } else {
-
-                //     // const createdActor = create(baseName, uniqueName); // Example of creating a WaterActor
-                //     // console.log(createdActor)
-                //     const defaultActor = new TileMapObjectActor(uniqueName, object, layer.name);
-                //     const factoryResult = this.options.objectActorFactory?.({
-                //         tileMap: this,
-                //         layer,
-                //         object,
-                //         index,
-                //         defaultActor
-                //     });
-                //     actorsToAdd = this.normalizeFactoryResult(factoryResult, defaultActor);
-                // }
                 
             } catch (e) {
                 console.error(`Error creating actor for object of type '${object.properties.Type}':`, e);

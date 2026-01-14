@@ -1,5 +1,5 @@
 
-import { Actor, BaseObject, CollisionComponent, Constructor, Container, PhysicsBody, PhysicsComponent, Vector2 } from "..";
+import { Actor, CollisionComponent, Constructor, Container, PhysicsBody, PhysicsComponent, SceneNode, Vector2 } from "..";
 export interface WorldSettings { 
     gravity: Vector2|undefined;
     allowSleep: boolean|undefined;
@@ -57,7 +57,7 @@ export abstract class World {
         return this.settings?.airFriction ?? 0.02;
     }
 
-    spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent: BaseObject, position?: Vector2, properties?: Record<string, any>): Actor {
+    spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent: SceneNode, position?: Vector2, properties?: Record<string, any>): Actor {
 
         const actor = this.container.get<TActor>(ctor);
         if (properties)
@@ -70,7 +70,7 @@ export abstract class World {
         return actor;
     }
 
-    spawnActorInstance(actor: Actor, parent?: BaseObject, position?: Vector2): void {
+    spawnActorInstance(actor: Actor, parent?: SceneNode, position?: Vector2): void {
         let resolvedParent = parent ?? actor.getParent();
 
         if (resolvedParent) {
@@ -81,7 +81,6 @@ export abstract class World {
 
         if(position !== undefined)
             actor.position = position;
-
 
         this.spawnActorInternal(actor, actor.position);
         const children = actor.getChildrenOfType(Actor);
