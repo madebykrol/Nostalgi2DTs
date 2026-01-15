@@ -1,5 +1,8 @@
+import { nobject } from "..";
 import { Vector2 } from "./vector2";
 
+
+@nobject()
 export class Matrix3 {
     elements: Float32Array;
     constructor() {

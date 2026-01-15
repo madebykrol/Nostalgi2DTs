@@ -4,7 +4,6 @@ import { BodyType } from "planck";
 import { PlanckBoundingVolume } from "./planckBoundingVolume";
 
 export class PlanckPhysicsBody extends PhysicsBody {
-
     protected bodyType: BodyType = "dynamic";
 
     private body: Body;
@@ -13,8 +12,9 @@ export class PlanckPhysicsBody extends PhysicsBody {
     constructor(world: World, protected actor: Actor, physics: PhysicsComponent, planckWorld: PWorld) {
         super(world, actor);
         this.body = planckWorld.createBody({ userData: { actor: this.actor, component: physics }, type: physics.getBodyType(), awake: true });
-        this.body.setPosition(new Vec2(actor.getPosition().x, actor.getPosition().y));
+        this.body.setPosition(new Vec2(actor.position.x, actor.position.y));
         this.body.setActive(physics.isSimulated());
+        this.body.setGravityScale(physics.gravityScale);
     }
     
     setCollisionFilter(filterFunction: (actor: Actor) => boolean): void {
@@ -26,6 +26,13 @@ export class PlanckPhysicsBody extends PhysicsBody {
 
     addImpulse(impulse: Vector2): void {
         this.body.applyLinearImpulse(new Vec2(impulse.x, impulse.y), this.body.getWorldCenter(), true);
+        // Debug: capture resulting velocity to verify impulse application
+        const v = this.body.getLinearVelocity();
+        console.log("planck impulse", {
+            actorId: this.actor.getId(),
+            impulse: { x: impulse.x, y: impulse.y },
+            velocity: { x: v.x, y: v.y }
+        });
     }
 
     addForce(force: Vector2): void {
@@ -44,6 +51,33 @@ export class PlanckPhysicsBody extends PhysicsBody {
     setIsActive(active: boolean): void {
         this.body.setActive(active);
     }
+
+    applyLinearDamping(damping: number, deltaTime: number): void {
+        if (damping <= 0 || deltaTime <= 0) {
+            return;
+        }
+
+        const velocity = this.body.getLinearVelocity();
+        const scale = Math.max(0, 1 - damping   );
+        velocity.set(velocity.x * scale, velocity.y * scale);
+        this.body.setLinearVelocity(velocity);
+    }
+
+    applyAngularDamping(damping: number, deltaTime: number): void {
+        if (damping <= 0 || deltaTime <= 0) {
+            return;
+        }
+
+        const angularVelocity = this.body.getAngularVelocity();
+        const scale = Math.max(0, 1 - damping * deltaTime);
+        this.body.setAngularVelocity(angularVelocity * scale);
+    }
+
+    getLinearVelocity(): Vector2 {
+        const velocity = this.body.getLinearVelocity();
+        return new Vector2(velocity.x, velocity.y);
+    }
+
 
     createBoundingVolume(component: CollisionComponent): void {
         const volume = new PlanckBoundingVolume(this.body, component);

@@ -1,40 +1,29 @@
 import {
-  Constructor,
-  Container,
-  GameMode,
+Container,
   Level,
   Vector2,
-  PostProcessingVolumeActor,
-  SphereWarpPostProcessMaterial
+  injectable,
+  inject
 } from "@repo/engine";
-import { GameTileMapActor } from "./actors/gameTileMapActor";
+import { GameTileMapActor } from "@repo/example";
 
+
+@injectable()
 export class GrasslandsMap extends Level {
 
   private tileMapActor: GameTileMapActor;
-  private container: Container;
-  constructor(container: Container, ) {
+  constructor(@inject(Container) container: Container) {
     super();
 
     this.name = "Grasslands";
 
-    console.log(container);
+    // Ensure the tile map actor binding exists
+  
     this.tileMapActor = container.get(GameTileMapActor);
-    console.log(this.tileMapActor);
-    this.tileMapActor.setMapUrl("/assets/maps/grasslands/grasslands.tmx");
 
-    this.container = container;
-
-    this.addActor(this.tileMapActor);
-
-    const sphereMaterial = new SphereWarpPostProcessMaterial();
-    const postVolume = new PostProcessingVolumeActor(sphereMaterial);
-    postVolume.setExtent(new Vector2(1000, 1000));
-    postVolume.setPosition(new Vector2(0, 0));
-    postVolume.layer = Number.MAX_SAFE_INTEGER; // ensure evaluated after world actors
-    this.addActor(postVolume);
-    // const mapCenter = tileMapActor.getWorldCenter();
-    // tileMapActor.setPosition(mapCenter);
+    if (!this.tileMapActor) {
+      throw new Error("GrasslandsMap failed to resolve GameTileMapActor; ensure it's registered with the container");
+    }
   }
 
   // get
@@ -45,8 +34,8 @@ export class GrasslandsMap extends Level {
     );
   }
 
-  getGameMode(): Constructor<GameMode> | undefined {
-    console.log(this.tileMapActor.getMap()?.properties?.GameMode);
-    return this.container.getTypeForIdentifier(this.tileMapActor.getMap()?.properties?.GameMode as  string) as Constructor<GameMode> | undefined;
-  }
+  // get gameMode(): Constructor<GameMode> | undefined {
+  //   console.log(this.tileMapActor.getMap()?.properties?.GameMode);
+  //   return this.container.getTypeForIdentifier(this.tileMapActor.getMap()?.properties?.GameMode as string) as Constructor<GameMode> | undefined;
+  // }
 }

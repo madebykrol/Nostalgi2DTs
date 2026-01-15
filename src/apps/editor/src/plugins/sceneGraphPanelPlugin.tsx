@@ -11,9 +11,18 @@ type SceneNode = {
 };
 
 const buildSceneGraph = (actors: Actor[]): SceneNode[] => {
+  const formatActorName = (actor: Actor) => {
+    const explicitName = (actor as any).name;
+    if (typeof explicitName === "string" && explicitName.trim().length > 0) {
+      return explicitName;
+    }
+    const ctorName = actor.constructor?.name ?? "Actor";
+    return ctorName.replace(/\d+$/, "");
+  };
+
   const traverse = (actor: Actor): SceneNode => ({
     id: actor.getId(),
-    name: (actor as any).name ?? actor.constructor?.name ?? "Actor",
+    name: formatActorName(actor),
     actor,
     children: actor.getChildrenOfType(Actor).map(traverse),
   });
@@ -44,7 +53,7 @@ const areSceneGraphsEqual = (a: SceneNode[], b: SceneNode[]): boolean => {
 
 type SceneGraphPanelBaseProps = {
   editor: Editor;
-  engine: Engine<unknown, unknown>;
+  engine: Engine
 };
 
 const SceneGraphPanelBase = ({ editor, engine }: SceneGraphPanelBaseProps) => {
@@ -139,7 +148,7 @@ const SceneNodeEntry = ({ node, depth, selectedIds, onSelect, onDoubleClick }: S
         onClick={() => onSelect(node.actor)}
         onDoubleClick={() => onDoubleClick?.(node.actor)}
       >
-        <span className="truncate">{node.name}</span>
+        <span className="truncate">{node.name} <span className="text-white/60 text-xs">({node.id})</span></span>
       </button>
       {node.children.length > 0 && (
         <div className="space-y-1">

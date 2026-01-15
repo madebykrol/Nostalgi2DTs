@@ -14,10 +14,15 @@ const isActorConstructor = (ctor: unknown): ctor is new () => Actor => {
   if (typeof ctor !== "function") {
     return false;
   }
-  return Boolean(ctor.prototype && ctor.prototype instanceof Actor && ctor !== Actor);
+  return ctor.prototype && ctor.prototype instanceof Actor && ctor !== Actor;
 };
 
-const discoverActorTypes = (engine: Engine<unknown, unknown>): ActorRegistryEntry[] => {
+const formatActorName = (rawName: string, fallback: string) => {
+  const source = rawName || fallback;
+  return source.replace(/\d+$/, "").replace(/Actor$/, "");
+};
+
+const discoverActorTypes = (engine: Engine): ActorRegistryEntry[] => {
   const container = (engine as any)?.container as { identifierBindingMap?: Map<string, unknown> } | undefined;
   const bindings = container?.identifierBindingMap;
   if (!bindings || typeof bindings.entries !== "function") {
@@ -31,7 +36,7 @@ const discoverActorTypes = (engine: Engine<unknown, unknown>): ActorRegistryEntr
     }
     entries.push({
       id: identifier,
-      name: (ctor.name || identifier).replace(/Actor$/, ""),
+      name: formatActorName((ctor as any).name, identifier),
     });
   }
 
@@ -40,7 +45,7 @@ const discoverActorTypes = (engine: Engine<unknown, unknown>): ActorRegistryEntr
 };
 
 const resolveActorConstructor = (
-  engine: Engine<unknown, unknown>,
+  engine: Engine,
   identifier: string
 ): (new () => Actor | null) | null => {
   const container = (engine as any)?.container as {
@@ -52,7 +57,7 @@ const resolveActorConstructor = (
 
 type ActorPalettePanelBaseProps = {
   editor: Editor;
-  engine: Engine<unknown, unknown>;
+  engine: Engine;
 };
 
 const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBaseProps) => {
@@ -72,12 +77,12 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
     <div className="space-y-2 text-xs text-white/90">
       <header className="text-[11px] uppercase tracking-wide text-white/60">Actor Palette</header>
       <p className="text-[11px] text-white/50">Drag an actor into the scene view to spawn it.</p>
-      <ul className="space-y-1">
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {entries.map((entry) => (
           <li key={entry.id}>
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded border border-white/10 bg-white/5 px-3 py-2 text-left text-xs text-white transition hover:bg-white/10"
+              className="flex h-full w-full items-center justify-start rounded border border-white/10 bg-white/5 px-3 py-3 text-left text-xs text-white transition hover:border-white/20 hover:bg-white/10"
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.effectAllowed = "copy";
@@ -87,7 +92,7 @@ const ActorPalettePanelBase = ({ editor: _editor, engine }: ActorPalettePanelBas
                 );
               }}
             >
-              <span>{entry.name}</span>
+              <span className="truncate">{entry.name}</span>
             </button>
           </li>
         ))}
@@ -105,7 +110,7 @@ const actorPalettePlugin: EditorUIPlugin = {
     const unregisterPanel = panels.register({
       id: "builtin.actor-palette.panel",
       title: "Actors",
-      location: "left",
+      location: "bottom",
       order: 40,
       render: ({ editor }) => <ActorPalettePanel editor={editor} />,
     });
@@ -173,7 +178,7 @@ const actorPalettePlugin: EditorUIPlugin = {
         const worldPos = camera.screenToWorld(screenPos, targetCanvas.width, targetCanvas.height);
 
         try {
-          const spawnedActor = await engine.spawnActor(ctor as any, undefined, worldPos);
+          const spawnedActor = await engine.getWorld().spawnActor(ctor as any, engine.getRootObject(), worldPos);
           editor.selectActors([spawnedActor], spawnedActor);
           return true;
         } catch (error) {

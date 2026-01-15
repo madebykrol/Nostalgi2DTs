@@ -14,6 +14,7 @@ export class PlayerState {
     setController<T extends Controller>(controller: T) {
         this.controller = controller;
     }
+    
     playerId: string;
     playerName: string;
     isConnected: boolean = true;

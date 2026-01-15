@@ -1,28 +1,28 @@
-import { Container, MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2 } from "@repo/engine";
+import { MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine, PolygonCollisionComponent, ResourceManager } from "@repo/engine";
 import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, TileMapMaterial, type TileMapActorOptions } from "@repo/tiler";
 import { WallActor } from "./wall";
 
+@actor()
 export class GameTileMapActor extends TileMapActor {
-  constructor(@inject(Parser) parser: Parser, @inject(Container) container: Container, @unmanaged() options: TileMapActorOptions = {}) {
+  constructor(
+    @inject(Parser) parser: Parser,
+    @inject(Engine) container: Engine,
+    @inject(ResourceManager) resourceManager: ResourceManager,
+    @unmanaged() options: TileMapActorOptions = {}
+  ) {
     super(parser, container, options);
-
-    console.log(parser);
-
-    const material = new TileMapMaterial();
+    const material = new TileMapMaterial(resourceManager);
     this.addComponent(new MeshComponent(new Quad(), material));
   }
 
   protected handleLayer(layer: TiledObjectLayer): boolean {
       const layerName = layer.name?.toLowerCase?.() ?? "";
       const typeProperty = layer.properties ? layer.properties["Type"] : undefined;
-
-      console.log(layerName, typeProperty);
       const layerType = typeof typeProperty === "string"
           ? typeProperty.toLowerCase()
           : "";
 
       if (layerName.includes("wall") || layerType === "walls") {
-          console.log("Handling walls for layer:", layer.name);
           this.handleWalls(layer);
           return true;
       }
@@ -36,9 +36,6 @@ export class GameTileMapActor extends TileMapActor {
 
       const scale = this.getWorldUnitsPerPixel();
       const translation = this.getRenderTranslation();
-
-      console.log("Processing walls for layer:", layer.name);
-
       layer.objects.forEach((object, _index) => {
           if (!object.visible) {
               return;
@@ -53,10 +50,10 @@ export class GameTileMapActor extends TileMapActor {
 
           else {
             vertices = object.width && object.height ? [
-              { x: 0, y: 0 },
-              { x: object.width * scale, y: 0 },
-              { x: object.width * scale, y: -object.height * scale },
-              { x: 0, y: -object.height * scale }
+              new Vertex2(0, 0),
+              new Vertex2(object.width * scale, 0),
+              new Vertex2(object.width * scale, -object.height * scale),
+              new Vertex2(0, -object.height * scale)
             ] : [];
           }
 
@@ -80,21 +77,28 @@ export class GameTileMapActor extends TileMapActor {
           // }
 
 
-          const wallActor = this.container.get<WallActor>(WallActor);
-          wallActor.applyProperties({ vertices: vertices });
+          const wallActor = this.engine.createActor<WallActor>(WallActor);
+
+          var collisionComponent = new PolygonCollisionComponent();
+          collisionComponent.points = vertices;
+          wallActor.addComponent(collisionComponent)
 
           wallActor.initialize();
 
           const posX = (object.x + (layer.offsetX ?? 0)) * scale;
           const posY = -((object.y + (layer.offsetY ?? 0)) * scale);
-          const worldPosition = new Vector2(posX + translation.x, posY + translation.y);
-          wallActor.setPosition(worldPosition);
+            const parentPosition = this.position;
+            const worldPosition = new Vector2(
+              parentPosition.x + posX + translation.x,
+              parentPosition.y + posY + translation.y
+            );
+            wallActor.position = worldPosition;
 
-          this.addChild(wallActor);
+          this.getWorld()?.spawnActorInstance(wallActor, this);
       });
   }
 
-  private handlePolygonWall(polygon: TiledPoint[], scale: number, rotation: number): { x: number; y: number }[] {
+  private handlePolygonWall(polygon: TiledPoint[], scale: number, rotation: number): Vertex2[] {
     const rotationRadians = -(rotation * (Math.PI / 180));
     const cos = Math.cos(rotationRadians);
     const sin = Math.sin(rotationRadians);
@@ -102,10 +106,10 @@ export class GameTileMapActor extends TileMapActor {
     return polygon.map((point) => {
         const scaledX = point.x * scale;
         const scaledY = -point.y * scale;
-        return {
-            x: scaledX * cos - scaledY * sin,
-            y: scaledX * sin + scaledY * cos
-        };
+        return new Vertex2(
+            scaledX * cos - scaledY * sin,
+            scaledX * sin + scaledY * cos
+        );
     });
   }
 }

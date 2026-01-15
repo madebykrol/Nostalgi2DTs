@@ -4,6 +4,7 @@ import { GizmoActor } from "./gizmoActor";
 import { GizmoHandle } from "./gizmoHandle";
 import { RotationGizmoHandle, RotationGizmoMaterial } from "./rotationGizmoMaterial";
 import { Actor } from "../world";
+import { actor } from "../actorRegistry";
 
 class RotationGizmoMesh extends Mesh {
 	constructor() {
@@ -59,8 +60,8 @@ abstract class BaseRotationHandle extends GizmoHandle {
 		this.lastAngle = angle;
 
 		for (const actor of this.gizmo.getTargetActors()) {
-			const startRotation = this.startRotations.get(actor) ?? actor.getRotation();
-			actor.setRotation(startRotation + this.accumulated);
+			const startRotation = this.startRotations.get(actor) ?? actor.rotation;
+			actor.rotation = startRotation + this.accumulated;
 		}
 	}
 
@@ -69,7 +70,7 @@ abstract class BaseRotationHandle extends GizmoHandle {
 	}
 
 	protected computeAngle(cursor: Vector2): number | null {
-		const pivot = this.gizmo.getPosition();
+		const pivot = this.gizmo.position;
 		const offset = cursor.subtract(pivot);
 		const magnitudeSq = offset.x * offset.x + offset.y * offset.y;
 		if (magnitudeSq < 1e-6) {
@@ -92,7 +93,7 @@ abstract class BaseRotationHandle extends GizmoHandle {
 	private cacheStartRotations(): void {
 		this.startRotations.clear();
 		for (const actor of this.gizmo.getTargetActors()) {
-			this.startRotations.set(actor, actor.getRotation());
+			this.startRotations.set(actor, actor.rotation);
 		}
 	}
 }
@@ -113,6 +114,7 @@ class CounterClockwiseRotationHandle extends BaseRotationHandle {
 	}
 }
 
+@actor()
 export class RotationGizmoActor extends GizmoActor {
 	private readonly meshComponent: MeshComponent;
 	private readonly material: RotationGizmoMaterial;
@@ -120,8 +122,8 @@ export class RotationGizmoActor extends GizmoActor {
 	private readonly counterClockwiseHandle: CounterClockwiseRotationHandle;
 
 	constructor() {
-		super();
-		this.setName("RotationGizmo");
+		super(null as any);
+		this.name = "RotationGizmo";
 		this.layer = Number.MAX_SAFE_INTEGER;
 
 		this.material = new RotationGizmoMaterial();
@@ -151,7 +153,7 @@ export class RotationGizmoActor extends GizmoActor {
 	}
 
 	private detectHandle(worldPoint: Vector2, cameraZoom: number): RotationGizmoHandle | null {
-		const origin = this.getPosition();
+		const origin = this.position;
 		const localX = worldPoint.x - origin.x;
 		const localY = worldPoint.y - origin.y;
 		return this.material.hitTest(localX, localY, cameraZoom);

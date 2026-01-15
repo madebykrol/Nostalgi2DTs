@@ -1,4 +1,4 @@
-import {
+import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -1264,6 +1264,7 @@ const TileMapEditorModal = ({ actor, onClose }: TileMapEditorModalProps) => {
     };
 
     return (
+      <React.Fragment>
       <div className="flex h-full flex-col gap-4 overflow-auto p-4 text-xs text-white/80">
         <div>
           <h3 className="text-[11px] uppercase tracking-wide text-white/60">Selected Object</h3>
@@ -1449,6 +1450,7 @@ const TileMapEditorModal = ({ actor, onClose }: TileMapEditorModalProps) => {
           </div>
         </div>
       </div>
+      </React.Fragment>
     );
   };
 

@@ -1,5 +1,19 @@
+import { nobject } from "..";
+import { property, unmanaged } from "../utils";
+
+@nobject()
 export class Vector2 {
-    constructor(public x: number, public y: number) {}
+
+    @property()
+    public x: number;
+
+    @property()
+    public y: number;
+
+    constructor(@unmanaged() x: number, @unmanaged() y: number) {
+        this.x = x;
+        this.y = y;
+    }
 
     add(v: Vector2): Vector2 {
         return new Vector2(this.x + v.x, this.y + v.y);

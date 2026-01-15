@@ -4,7 +4,7 @@ import { CollisionComponent } from "../world/collisioncomponent";
 import { BodyType } from "./bodyType";
 import { BoundingVolume } from "./boundingvolume";
 export abstract class PhysicsBody {
-
+    
     protected actor: Actor;
     protected world: World;
     protected bodyType: BodyType = "dynamic";
@@ -23,6 +23,9 @@ export abstract class PhysicsBody {
     abstract setBodyType(type: BodyType): void;
     abstract setTransform(position: Vector2, rotation: number): void;
     abstract setCollisionFilter(filterFunction: (actor: Actor) => boolean): void;
+    abstract applyLinearDamping(damping: number, deltaTime: number): void;
+    abstract applyAngularDamping(damping: number, deltaTime: number): void;
+    abstract getLinearVelocity(): Vector2;
 }
 
 

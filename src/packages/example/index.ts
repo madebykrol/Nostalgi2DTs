@@ -1,8 +1,14 @@
 // components
-export { DemoActor, BombActor } from "./actors/demo";
-export { PlayerController } from "./controllers/playercontroller";
+export { TopDownRPGController } from "./controllers/topDownRPGController";
 export { ExampleTopDownRPGGameMode } from "./exampleTopDownRPGGameMode";
-export { GameTileMapActor } from "./actors/gameTileMapActor";
-export { WallActor } from "./actors/wall";
 export { GrasslandsMap } from "./grasslandLevel";
-export { SoundActor } from "./actors/soundactor";
+export { FlappyRectangleController } from "./controllers/flappyRectangleController";
+export { FlappyRectangleGameMode } from "./flappyRectangleGameMode";
+export { FLAPPY_UI_EVENTS } from "./flappyEvents";
+
+export * from "./actors";
+export * from "./ui/FlappyRectangleScoreUI";
+export { flappyUiModule } from "./ui/flappyUiModule";
+export { FlappyRectangleCharacter } from "./flappyRectangleGameMode";
+export { FlappyRectangleObstacleActor, FlappyRectangleGapDetectorActor } from "./actors/flappyRectangleObsticleGeneratorActor";
+

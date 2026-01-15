@@ -7,4 +7,5 @@ export { Material, type MaterialRenderContext } from "./material";
 export type { MaterialRenderPass } from "./material";
 export { PostProcessMaterial } from "./postProcessMaterial";
 export { SphereWarpPostProcessMaterial } from "./sphereWarpPostProcessMaterial";
+export { VhsPostProcessMaterial } from "./vhsPostProcessMaterial";
 export { PostProcessingVolumeActor } from "./postProcessingVolumeActor";

@@ -1,0 +1,13 @@
+{
+    "$schema": "nostalgi2d.object",
+    "type": "actor",
+    "name": "Grassland Tile Map Actor",
+    "description": "An actor representing the tile map for the grasslands level.",
+    "position": {
+        "x": 0,
+        "y": 0
+    },
+    "properties": {
+        "mapUrl": "content/tilemaps/grasslands.tmx"
+    }
+}

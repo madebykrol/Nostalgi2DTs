@@ -2,30 +2,53 @@ import {
     Vector2,
     CollisionComponent,
     WorldSettings,
-    PhysicsComponent
+    PhysicsComponent,
+    Container
 } from "@repo/engine";
 import { World as PWorld, Vec2, Fixture, AABB } from "planck";
 import { Actor, World } from "@repo/engine";
 import { PhysicsBody } from "@repo/engine";
-import { Frustum } from "../engine/camera/frustum";
 import { PlanckPhysicsBody } from "./planckPhysicsBody";
 
 export class PlanckWorld extends World {
     
     private world: PWorld;
 
-    constructor(settings?: WorldSettings|undefined) {
-        super(settings);
+    constructor(settings?: WorldSettings|undefined, container?: Container) {
+        super(settings, container!);
 
         this.world = new PWorld({
             gravity: settings?.gravity ? new Vec2(settings.gravity.x, settings.gravity.y) : new Vec2(0, 0),
             allowSleep: settings?.allowSleep ?? true
         });
+
+        this.world.on('begin-contact', (contact) => {
+            const fixtureA: Fixture = contact.getFixtureA();
+            const fixtureB: Fixture = contact.getFixtureB();    
+            const userDataA = fixtureA.getUserData() as CollisionComponent;
+            const userDataB = fixtureB.getUserData() as CollisionComponent;
+
+            userDataA?.triggerCollisionCallbacks(userDataB!.getActor()!, userDataA);
+            userDataB?.triggerCollisionCallbacks(userDataA!.getActor()!, userDataB);
+
+            this.collisionCallbacks.get("begin")?.forEach(callback => {
+                callback(userDataA!, userDataB!);
+            });
+        });
+    }
+
+    public resetForces(): void {
+        let body = this.world.getBodyList();
+        this.world.clearForces();
+        while (body) {
+            body.setLinearVelocity(new Vec2(0, 0));
+            body.setAngularVelocity(0);
+            body = body.getNext();
+        }
     }
 
     aabbCast<T extends Actor>(point: Vector2, includeStatic: boolean, includeDynamic: boolean, ctor: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)): Actor[] {
         const hits = new Map<T, number>();
-
         const epsilon = 1e-5;
         const lower = new Vec2(point.x - epsilon, point.y - epsilon);
         const upper = new Vec2(point.x + epsilon, point.y + epsilon);
@@ -106,7 +129,7 @@ export class PlanckWorld extends World {
     radialCast<T extends Actor>(start: Vector2, radius: number, includeStatic: boolean, includeDynamic: boolean, ctor: (abstract new (...args: any[]) => T) | (new (...args: any[]) => T)): Actor[] {
         // Cast a ray in multiple directions to simulate a radial cast
         const hits = new Map<T, number>();
-        const segments = 16;
+        const segments = 32;
         const angleStep = (Math.PI * 2) / segments;
         const startVec = new Vec2(start.x, start.y);
 
@@ -125,36 +148,7 @@ export class PlanckWorld extends World {
             .sort((a, b) => a[1] - b[1])
             .map(([actor]) => actor);
     }
-  
 
-    checkWorldBounds(actor: Actor, frustum: Frustum): boolean {
-        const collisionComponents = actor.getComponentsOfType(CollisionComponent);
-        if (collisionComponents.length === 0) return true;
-
-        const position = actor.getPosition();
-        for (const component of collisionComponents) {
-            const localBounds = component.getBounds();
-            const worldMinX = localBounds.min.x + position.x;
-            const worldMinY = localBounds.min.y + position.y;
-            const worldMaxX = localBounds.max.x + position.x;
-            const worldMaxY = localBounds.max.y + position.y;
-
-            if (this.boundsOverlapFrustum(worldMinX, worldMinY, worldMaxX, worldMaxY, frustum)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private boundsOverlapFrustum(minX: number, minY: number, maxX: number, maxY: number, frustum: Frustum): boolean {
-        return !(maxX < frustum.left || minX > frustum.right || maxY < frustum.bottom || minY > frustum.top);
-    }
-
-    // Implement the abstract method from base World by delegating to the existing checkWorldBounds.
-    checkWithinBounds(actor: Actor, bounds: Frustum): boolean {
-        return this.checkWorldBounds(actor, bounds);
-    }
 
     createPhysicsBody(actor: Actor, physics: PhysicsComponent): PhysicsBody {
         const body = new PlanckPhysicsBody(this, actor, physics, this.world);
@@ -176,6 +170,9 @@ export class PlanckWorld extends World {
     }
 
     _tick(timestep: number): void {
+        if (!this.isSimulating) {
+            return;
+        }
         this.world.step(timestep);
 
         let body = this.world.getBodyList();

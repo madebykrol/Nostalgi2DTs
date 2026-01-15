@@ -1,6 +1,10 @@
 import { AbstractConstructor, Constructor, Container } from "./container";
 
 import { Container as InvContainer } from "inversify"; 
+import { normalizeClassName } from "./type";
+
+// Normalize identifiers so suffixed names like Foo2 still resolve to Foo
+
 
 export class InversifyContainer implements Container {
     private container: InvContainer;
@@ -9,11 +13,13 @@ export class InversifyContainer implements Container {
     constructor() {
         this.container = new InvContainer({
             autobind: true,
+            
         });
     }
 
     getTypeForIdentifier(identifier: string): Constructor<unknown> | AbstractConstructor<unknown> | null {
-      return this.identifierBindingMap.get(identifier) || null;
+      const normalized = normalizeClassName(identifier);
+      return this.identifierBindingMap.get(identifier) || this.identifierBindingMap.get(normalized!) || null;
     }
 
     verify(): string {
@@ -24,16 +30,33 @@ export class InversifyContainer implements Container {
       try {
         return this.container.get<T>(identifier);
       } catch (e) {
+        const normalized = normalizeClassName(identifier);
+        if (normalized && normalized !== identifier) {
+          try {
+            return this.container.get<T>(normalized);
+          } catch (inner) {
+            // fall through
+          }
+        }
         return null as T;
       }
     }
 
 
     registerSelf<T>(ctor: Constructor<T>, identifier: string|undefined = undefined): void {
-        this.container.bind(ctor).toSelf();
-        this.container.bind(identifier || ctor.name).to(ctor);
+        const id = identifier || ctor.name;
+        const normalized = normalizeClassName(id);
 
-        this.identifierBindingMap.set(identifier || ctor.name, ctor);
+        this.container.bind(ctor).toSelf();
+        this.container.bind(id).to(ctor);
+        if (normalized && normalized !== id) {
+          this.container.bind(normalized).to(ctor);
+        }
+
+        this.identifierBindingMap.set(id, ctor);
+        if (normalized) {
+          this.identifierBindingMap.set(normalized, ctor);
+        }
     }
 
     registerSingletonInstance<T>(ctor: Constructor<T> | AbstractConstructor<T>, instance: T): void {

@@ -1,7 +1,6 @@
-import http from "http";
-
-import { Endpoint, Engine, Container, InputManager, World, Vector2 } from "@repo/engine";
+import { Endpoint, Engine, Container, InputManager, World, Vector2, TimerManager } from "@repo/engine";
 import { inject, injectable } from "inversify";
+import { IncomingMessage, Socket } from "../engine/network/endpoint";
 
 export class DefaultInputManager extends InputManager {
   private isAttached = false;
@@ -13,7 +12,7 @@ export class DefaultInputManager extends InputManager {
         shift: event.shiftKey,
         alt: event.altKey,
       }),
-      event.key,
+      event,
       { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey }
     );
   };
@@ -25,10 +24,56 @@ export class DefaultInputManager extends InputManager {
         shift: event.shiftKey,
         alt: event.altKey,
       }),
-      event.key,
+      event,
       { ctrlDown: event.ctrlKey, shiftDown: event.shiftKey, altDown: event.altKey }
     );
   };
+
+  private readonly onTouchStart = (event: TouchEvent) =>  {
+    if (!this.checkGameScreen(event)) {
+      return;
+    }
+
+
+    const { x, y, width, height } = this.calculateTouchPosition(event);
+    const worldPosition = this.getWorldPosition(x, y, width, height);
+    
+    this.emit(
+      this.generateEvent("touch", "down", {ctrl: false, shift: false, alt: false}),
+      {
+        touches: event.touches,
+      },
+      {
+        screenX: x,
+        screenY: y,
+        worldX: worldPosition?.x ?? x,
+        worldY: worldPosition?.y ?? y,
+      }
+    );
+  }
+
+  private readonly onTouchEnd = (event: TouchEvent) =>  {
+    if (!this.checkGameScreen(event)) {
+      return;
+    }
+
+
+    const { x, y, width, height } = this.calculateTouchPosition(event);
+    const worldPosition = this.getWorldPosition(x, y, width, height);
+    
+    this.emit(
+      this.generateEvent("touch", "up", {ctrl: false, shift: false, alt: false}),
+      {
+        touches: event.touches,
+      },
+      {
+        screenX: x,
+        screenY: y,
+        worldX: worldPosition?.x ?? x,
+        worldY: worldPosition?.y ?? y,
+      }
+    );
+  }  
 
   private readonly onMouseMove = (event: MouseEvent) => {
     if (!this.checkGameScreen(event)) {
@@ -137,7 +182,7 @@ export class DefaultInputManager extends InputManager {
   };
 
   constructor(
-    @inject(Engine<WebSocket, http.IncomingMessage>) protected engine: Engine<WebSocket, http.IncomingMessage>
+    @inject(Engine) protected engine: Engine
   ) {
     super();
   }
@@ -154,6 +199,9 @@ export class DefaultInputManager extends InputManager {
     window.addEventListener("mouseup", this.onMouseUp);
     window.addEventListener("wheel", this.onWheel, { passive: true });
     window.addEventListener("contextmenu", this.onContextMenu);
+    window.addEventListener("touchstart", this.onTouchStart);
+    window.addEventListener("touchend", this.onTouchEnd);
+    // window.addEventListener("touchmove", this.onTouchMove);
 
     this.isAttached = true;
   }
@@ -171,12 +219,14 @@ export class DefaultInputManager extends InputManager {
     window.removeEventListener("mouseup", this.onMouseUp);
     window.removeEventListener("wheel", this.onWheel);
     window.removeEventListener("contextmenu", this.onContextMenu);
+    window.removeEventListener("touchstart", this.onTouchStart);
+    window.removeEventListener("touchend", this.onTouchEnd);
 
     this.isAttached = false;
     super.dispose();
   }
 
-  private checkGameScreen(event: MouseEvent): boolean {
+  private checkGameScreen(event: Event): boolean {
     const target = event.target as HTMLElement | null;
     return target?.id === "gamescreen";
   }
@@ -216,31 +266,54 @@ export class DefaultInputManager extends InputManager {
 
     return { x: canvasX, y: canvasY, width: target.width, height: target.height };
   }
+
+  private calculateTouchPosition(event: TouchEvent): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } {
+    const target = event.target as HTMLCanvasElement | null;
+    if (!target) {
+      return { x: event.touches[0]?.clientX ?? 0, y: event.touches[0]?.clientY ?? 0, width: 1, height: 1 };
+    }
+    const rect = target.getBoundingClientRect();
+    const scaleX = rect.width !== 0 ? target.width / rect.width : 1;
+    const scaleY = rect.height !== 0 ? target.height / rect.height : 1;
+    const canvasX = (event.touches[0]?.clientX ?? 0 - rect.left) * scaleX;
+    const canvasY = (event.touches[0]?.clientY ?? 0 - rect.top) * scaleY;
+    return { x: canvasX, y: canvasY, width: target.width, height: target.height };
+  }
 }
 
-export class ClientEndpoint extends Endpoint<WebSocket, http.IncomingMessage> {
+
+export class ClientEndpoint extends Endpoint {
   send(_command: string, _data: any): void {
     throw new Error("Method not implemented.");
   }
-  connect(_onConnection: (socket: WebSocket, req: http.IncomingMessage) => void): Promise<void> {
+  connect(_onConnection: (socket: Socket, req: IncomingMessage) => void): Promise<void> {
     throw new Error("Method not implemented.");
   }
   disconnect(): Promise<void> {
-    throw new Error("Method not implemented.");
+    return Promise.resolve();
   }
   cleanup(): void {
     throw new Error("Method not implemented.");
   }
+
+  dispose(): void {
+  }
+
 }
 
 @injectable()
-export class ClientEngine extends Engine<WebSocket, http.IncomingMessage> {
+export class ClientEngine extends Engine {
   // Implement client-specific engine logic here
   /**
    *
    */
-  constructor(@inject(World) world: World, @inject(Endpoint) endPoint: Endpoint<WebSocket, http.IncomingMessage> | undefined, @inject(Container) container: Container) {
-    super(world, endPoint, "singleplayer", container);
+  constructor(@inject(World) world: World, @inject(Endpoint) endPoint: Endpoint | undefined, @inject(Container) container: Container, @inject(TimerManager) timerManager: TimerManager) {
+    super(world, endPoint, "singleplayer", container, timerManager);
   }
 }
 

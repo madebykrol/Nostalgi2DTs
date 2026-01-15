@@ -38,6 +38,10 @@ export abstract class Controller {
         actor.isOwnedBy(this);
     }
 
+    public getCurrentPossessedPawn(): Actor | null {
+        return this.possessedActor;
+    }
+
 
     // User-overrideable tick method
     tick(_deltaTime: number): void {}

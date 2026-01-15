@@ -286,7 +286,7 @@ type MeshDesignerModalProps = {
   onClose: () => void;
 };
 
-const MeshDesignerModal = ({ asset, onApply, onClose }: MeshDesignerModalProps) => {
+export const MeshDesignerModal = ({ asset, onApply, onClose }: MeshDesignerModalProps) => {
   const payload = asset.payload as MeshComponentAssetPayload;
   const baseMetadata = useMemo(() => ensureMeshMetadata(payload), [asset]);
   const [vertices, setVertices] = useState<MeshVertex[]>(() => cloneVertices(baseMetadata.vertices));
@@ -911,7 +911,9 @@ const meshComponentDesignerPlugin: EditorUIPlugin = {
 
     const registerListener = (listener: () => void) => {
       listeners.add(listener);
-      return () => listeners.delete(listener);
+      return () => {
+        listeners.delete(listener);
+      };
     };
 
     const notify = () => {
@@ -934,12 +936,11 @@ const meshComponentDesignerPlugin: EditorUIPlugin = {
     const unregisterPanel = panels.register({
       id: "builtin.mesh-designer.panel",
       title: "Meshes",
-      location: "right",
+      location: "bottom",
       order: 70,
       render: () => {
-        const [revision, setRevision] = useState(0);
-        useEffect(() => {
-            registerListener(() => setRevision((value) => value + 1)), []});
+    const [revision, setRevision] = useState(0);
+    useEffect(() => registerListener(() => setRevision((value) => value + 1)), []);
 
         const assets = useMemo(() => assetsRef.current, [revision]);
         const selectedActor = editor.getSelectedActors()[0] ?? null;

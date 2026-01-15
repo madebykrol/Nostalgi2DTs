@@ -5,6 +5,8 @@ import { MeshComponent } from "./meshComponent";
 import { Mesh } from "./mesh";
 import { Quad } from "./quad";
 import type { Material } from "./material";
+import { property } from "../utils";
+import { actor } from "..";
 
 function ensurePostProcessMaterial(material: Material): void {
     if (material.getRenderPass() !== "postprocess") {
@@ -12,16 +14,15 @@ function ensurePostProcessMaterial(material: Material): void {
     }
 }
 
+@actor()
 export class PostProcessingVolumeActor extends Actor {
-    private extent: Vector2 = new Vector2(20, 20);
+    private _extent: Vector2 = new Vector2(20, 20);
     private meshComponent: MeshComponent | null = null;
     private readonly quad: Mesh = new Quad();
 
-    constructor(material?: Material) {
+    constructor() {
         super();
-        if (material) {
-            this.setMaterial(material);
-        }
+      
         this.shouldTick = false;
     }
 
@@ -46,16 +47,17 @@ export class PostProcessingVolumeActor extends Actor {
         return this.meshComponent?.getMaterial() ?? null;
     }
 
-    public setExtent(extent: Vector2): void {
-        this.extent = extent.clone();
+    @property
+    public set extent(extent: Vector2) {
+        this._extent = extent.clone();
     }
 
-    public getExtent(): Vector2 {
-        return this.extent.clone();
+    public get extent(): Vector2 {
+        return this._extent;
     }
 
     public containsCamera(camera: Camera): boolean {
-        const center = this.getPosition();
+        const center = this.position;
         const halfWidth = this.extent.x * 0.5;
         const halfHeight = this.extent.y * 0.5;
         const cameraPos = camera.getPosition();

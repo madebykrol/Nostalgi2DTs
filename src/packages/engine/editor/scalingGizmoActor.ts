@@ -1,14 +1,16 @@
+import { actor } from "../actorRegistry";
 import { Vector2 } from "../math";
 import { GizmoActor } from "./gizmoActor";
 import { GizmoHandle } from "./gizmoHandle";
 
+@actor()
 export class ScalingGizmoActor extends GizmoActor {
     /**
      *
      */
     constructor() {
-        super();
-        this.setName("ScalingGizmo");
+        super(null as any);
+        this.name = "ScalingGizmo";
     }
 
     public getHandle(_worldPoint: Vector2, _cameraZoom: number): GizmoHandle | null {

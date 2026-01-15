@@ -1,5 +1,5 @@
 
-export abstract class Endpoint<TSocket,TReq> {
+export abstract class Endpoint {
     constructor(protected address: string, protected port: number) {}
 
     toString(): string {
@@ -12,10 +12,20 @@ export abstract class Endpoint<TSocket,TReq> {
 
 
     // callback when a new connection is established
-    abstract connect(onConnection: (socket: TSocket, req: TReq) => void): Promise<void>;
+    abstract connect(onConnection: (socket: Socket, req: IncomingMessage) => void): Promise<void>;
 
     abstract disconnect(): Promise<void>;
     onDisconnection(): void {}
 
     abstract cleanup(): void;
+}
+
+export abstract class Socket {
+    abstract send(data: any): void;
+    abstract close(): void;
+}
+
+
+export abstract class IncomingMessage {
+
 }

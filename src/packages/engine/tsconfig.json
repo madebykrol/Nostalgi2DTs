@@ -5,6 +5,7 @@
   "compilerOptions": {
     "lib": ["DOM", "ESNext"],
     "target": "esnext",
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
 }

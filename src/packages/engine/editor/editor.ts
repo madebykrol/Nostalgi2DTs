@@ -1,26 +1,89 @@
-import { Actor, Engine, GizmoActor, inject, injectable, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
+import { Actor, Engine, getRegisteredPropertiesForInstance, GizmoActor, inject, injectable, Level, normalizeClassName, Property, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
 import { EditorPluginManifestEntry, EditorUIPlugin } from "./";
+import { SerializedNode, SerializedProperty } from "../serialization";
+import { SerializedLevel } from "../level/level";
 
 export type GizmoType = "translation" | "rotation" | "scaling";
 
 type SelectionController = {
     selectActors(actors: Actor[], focus?: Actor | null): void;
 };
-@injectable()
 
+export class Edit {
+    revert: (() => void) | undefined;
+    apply: (() => void) | undefined
+}
+
+export class EditStream {
+    stack: Array<Edit> = [];
+    cursor: number = 0;
+    maxSize: number = 100;
+
+    push(edit: Edit) {
+        this.stack.push(edit);
+        this.cursor = this.stack.length-1;
+    }
+
+    getAtCursor(): Edit {
+        return this.stack[this.cursor];
+    }
+
+    trimAfterCursor() {
+
+        if( this.cursor >= this.stack.length -1) return;
+        // Remove all stack items passed cursor
+        var newSlice = this.stack.slice(undefined, this.cursor);
+
+        this.stack = newSlice;
+    }
+}
+
+@injectable()
 export class Editor {
 
     private activeGizmoActor: GizmoActor | null = null;
     private selectionController: SelectionController | null = null;
     private currentSelection: Actor[] = [];
     private editorPluginManifest: EditorPluginManifestEntry[] = [];
+    
+    private editStack: Map<string, EditStream> = new Map();
 
     eventListeners: Map<string, Set<Function>> = new Map();
-
     /**
      *
      */
-    constructor(@inject(Engine<unknown, unknown>) private readonly engine: Engine<unknown, unknown>) {
+    constructor(@inject(Engine) private readonly engine: Engine) {
+    }
+
+    public pushEdit(editor: string, edit: Edit) {
+        var hasEditor = this.editStack.has(editor);
+        if (!hasEditor)
+            this.editStack.set(editor, new EditStream())
+
+        var stream = this.editStack.get(editor)!;
+
+        stream.push(edit);
+        
+        stream.trimAfterCursor(); 
+    }
+
+    public undoEdit(editor: string) {
+        var stream = this.editStack.get(editor);
+
+        if(stream) {
+            var edit = stream.getAtCursor();
+            if (edit.revert)
+                edit.revert();
+        }
+    }
+
+    public redoEdit(editor: string) {
+        var stream = this.editStack.get(editor);
+        if(stream) {
+            var edit = stream.getAtCursor();
+            if (edit.apply)
+                edit.apply();
+        }
     }
 
     public emit(event: string, data: any): void {
@@ -29,6 +92,208 @@ export class Editor {
 
     public registerPlugin(plugin: EditorPluginManifestEntry): void {
         this.editorPluginManifest.push(plugin);
+    }
+
+    public getPropertiesForInstance(actor: Object): Property[] {
+        return getRegisteredPropertiesForInstance(actor);
+    }
+
+    public getPropertyValue(actor: Object, property: Property): any {
+        return Reflect.get(actor, property.key);
+    }
+
+    public setPropertyValue(actor: Object, property: Property, value: any): void {
+        Reflect.set(actor, property.key, value);
+    }
+
+    public serializeLevel<T extends Level>(level: T): string {
+        const serializedLevel = this.serializeLevelNode(level);
+        return JSON.stringify(serializedLevel, null, 2);
+    }
+
+    private isPrimitive(value: unknown): value is string | number | boolean | null | Date {
+        return value === null ||
+            typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean" ||
+            value instanceof Date;
+    }
+
+    private isTypeReference(value: unknown): value is Function {
+        if (typeof value !== "function") {
+            return false;
+        }
+        // Filter out plain bound accessors without a prototype
+        return Object.prototype.hasOwnProperty.call(value, "prototype") || value.prototype !== undefined;
+    }
+
+    private getTypeIdentifier(value: Function | undefined | null): string | null {
+        if (!value) {
+            return null;
+        }
+        const ctorName = typeof value.name === "string" && value.name.length > 0 ? value.name : "AnonymousType";
+        return normalizeClassName(ctorName);
+    }
+
+    private serializePropertyRecursive(owner: Object, prop: Property): SerializedProperty {
+        const serializedProp = new SerializedProperty();
+        serializedProp.key = typeof prop.key === "string" ? prop.key : String(prop.key);
+        const value = this.getPropertyValue(owner, prop);
+        const resolvedType = prop.type ?? (value && (value as any).constructor?.name) ?? "Object";
+        serializedProp.type = normalizeClassName(resolvedType);
+
+        if (this.isTypeReference(value)) {
+            serializedProp.type = "Type";
+            serializedProp.value = this.getTypeIdentifier(value);
+            serializedProp.properties = null;
+            serializedProp.node = null;
+            return serializedProp;
+        }
+
+        if (this.isPrimitive(value)) {
+            serializedProp.value = value as any;
+            serializedProp.properties = null;
+            serializedProp.node = null;
+            return serializedProp;
+        }
+
+        if (Array.isArray(value)) {
+            serializedProp.value = null;
+            serializedProp.properties = value.map((entry, idx) => {
+                const childProp = new SerializedProperty();
+                childProp.key = String(idx);
+                if (this.isPrimitive(entry)) {
+                    childProp.type = normalizeClassName((entry as any)?.constructor?.name ?? "unknown");
+                    childProp.value = entry as any;
+                } else {
+                    childProp.type = normalizeClassName((entry as any)?.constructor?.name ?? "Object");
+                    childProp.properties = this.getPropertiesForInstance(entry ?? {}).map((p) => this.serializePropertyRecursive(entry as Object, p));
+                    childProp.value = null;
+                }
+                return childProp;
+            });
+            return serializedProp;
+        }
+
+        // Object with registered properties
+        const nestedProps = this.getPropertiesForInstance(value ?? {});
+        serializedProp.properties = nestedProps.map((p) => this.serializePropertyRecursive(value, p));
+        serializedProp.value = null;
+        return serializedProp;
+    }
+
+    private serializeActor(actor: Actor): SerializedNode {
+        const node = new SerializedNode();
+        node.type = normalizeClassName(actor.constructor.name);
+        node.value = null;
+        node.properties = this.getPropertiesForInstance(actor).map((prop) => this.serializePropertyRecursive(actor, prop));
+        node.children = actor.getChildren().map((child) => this.serializeActor(child as Actor));
+        return node;
+    }
+
+    private serializeLevelNode(level: Level): SerializedLevel {
+        const serializedLevel = new SerializedLevel();
+        serializedLevel.type = normalizeClassName(level.constructor.name);
+        serializedLevel.properties = this.getPropertiesForInstance(level).map((prop) => this.serializePropertyRecursive(level, prop));
+        serializedLevel.actors = level.getActors().map((actor) => this.serializeActor(actor));
+        return serializedLevel;
+    }
+
+    private deserializePropertyValue(serialized: SerializedProperty, container: any): any {
+        if (serialized.type === "Type" && typeof serialized.value === "string") {
+            try {
+                return container.getTypeForIdentifier(serialized.value) ?? null;
+            } catch {
+                return null;
+            }
+        }
+
+        if (serialized.value !== null) {
+            return serialized.value;
+        }
+
+        if (!serialized.properties || serialized.properties.length === 0) {
+            return null;
+        }
+
+        // Try to construct an instance from the container based on type; fall back to plain object
+        let instance: any;
+        try {
+            instance = container.getByIdentifier(normalizeClassName(serialized.type ?? "Object"));
+        } catch {
+            instance = {};
+        }
+
+        for (const p of serialized.properties) {
+            // Array entries are stored with numeric keys
+            if (Number.isInteger(Number(p.key))) {
+                const idx = Number(p.key);
+                if (!Array.isArray(instance)) {
+                    instance = [];
+                }
+                instance[idx] = this.deserializePropertyValue(p, container);
+                continue;
+            }
+
+            const targetProp = this.getPropertiesForInstance(instance).find((pp) => pp.key === p.key);
+            if (!targetProp) {
+                continue;
+            }
+            const value = this.deserializePropertyValue(p, container);
+            this.setPropertyValue(instance, targetProp, value);
+        }
+
+        return instance;
+    }
+
+    public deserializeLevel(levelData: string): Level | null {
+        const container = this.engine.getContainer();
+        try {
+            const parsedData = JSON.parse(levelData) as SerializedLevel;
+            const levelIdentifier = normalizeClassName(parsedData.type ?? "Level");
+            const level = container.getByIdentifier<Level>(levelIdentifier);
+            if (!level) {
+                throw new Error(`deserializeLevel: unknown level type \"${levelIdentifier}\"`);
+            }
+
+            // Deserialize level properties recursively
+            for (const prop of parsedData.properties) {
+                const property = this.getPropertiesForInstance(level).find((p) => p.key === prop.key);
+                if (!property) continue;
+                const value = this.deserializePropertyValue(prop, container);
+                this.setPropertyValue(level, property, value);
+            }
+
+            // If gameMode captured in serialized data, try to resolve it via type
+            const gameModeEntry = parsedData.properties.find((p) => p.key === "gameMode" && typeof p.value === "string");
+            if (gameModeEntry?.value) {
+                const gmType = container.getTypeForIdentifier(gameModeEntry.value as string) as (new () => unknown) | undefined;
+                level.gameMode = gmType as any;
+            }
+
+            // Deserialize actors
+            for (const actorNode of parsedData.actors) {
+                const actorIdentifier = normalizeClassName(actorNode.type ?? "Actor");
+                const actor = container.getByIdentifier<Actor>(actorIdentifier);
+                if (!actor) {
+                    console.warn(`deserializeLevel: unknown actor type \"${actorIdentifier}\" – skipping`, actorNode);
+                    continue;
+                }
+                // Deserialize actor properties
+                for (const prop of actorNode.properties) {
+                    const property = this.getPropertiesForInstance(actor).find((p) => p.key === prop.key);
+                    if (!property) continue;    
+                    const value = this.deserializePropertyValue(prop, container);
+                    this.setPropertyValue(actor, property, value);
+                }
+                level.addChild(actor);
+            }
+
+            return level;
+        } catch (error) {
+            console.error("Failed to parse level data:", error);
+            return null;
+        }
     }
 
     public loadEnabledEditorPlugins = async (): Promise<EditorUIPlugin[]> => {
@@ -80,7 +345,7 @@ export class Editor {
             return;
         }
 
-        this.engine.despawnActor(this.activeGizmoActor);
+        this.engine.getWorld().despawnActor(this.activeGizmoActor);
         this.activeGizmoActor = null;
     }
 
@@ -153,22 +418,26 @@ export class Editor {
     }
 
     private async spawnIfNeeded(actor: GizmoActor): Promise<void> {
-        if (actor.getWorld()) {
+        const parent = this.engine.getEditorRoot();
+
+        // Ensure the gizmo lives under the engine root so it gets ticked and rendered.
+        if (actor.getParent() !== parent) {
+            parent.addChild(actor);
+        }
+
+        if (actor.getWorld() && actor.isSpawned) {
             return;
         }
-        
-        if (actor.isSpawned)
-            return;
 
-        this.engine.spawnActorInstance(actor);
+        await this.engine.getWorld().spawnActorInstance(actor, parent);
     }
 
-    private async ensureGizmoInstance<T extends GizmoActor>(ctor: new () => T): Promise<T> {
+    private async ensureGizmoInstance<T extends GizmoActor>(ctor: new (editor: Editor) => T): Promise<T> {
         if (!(this.activeGizmoActor instanceof ctor)) {
             if (this.activeGizmoActor) {
-                this.engine.despawnActor(this.activeGizmoActor);
+                this.engine.getWorld().despawnActor(this.activeGizmoActor);
             }
-            this.activeGizmoActor = new ctor();
+            this.activeGizmoActor = this.engine.createActor(ctor);
         }
 
         const gizmo = this.activeGizmoActor as T;
@@ -177,3 +446,4 @@ export class Editor {
     }
 
 }
+

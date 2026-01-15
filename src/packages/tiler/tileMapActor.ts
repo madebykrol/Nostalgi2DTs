@@ -1,4 +1,4 @@
-import { Actor, PhysicsComponent, PolygonCollisionComponent, Vector2, Container } from "@repo/engine";
+import { Actor, Vector2, property, Engine } from "@repo/engine";
 import { Parser, TiledMap, type TiledObject, TiledObjectLayer } from "./parser";
 
 export interface TileMapActorOptions {
@@ -31,26 +31,6 @@ export class WaterActor extends Actor {
     }
 }
 
-export class WallActor extends Actor {
-    private readonly collisionComponent: PolygonCollisionComponent;
-
-    constructor(
-        polygonPoints: { x: number; y: number }[],
-        public readonly layerName: string,
-        public readonly objectData: TiledObject
-    ) {
-        super();
-        this.shouldTick = false;
-        const physics = this.addComponent(new PhysicsComponent());
-        physics.setSimulationState(true, "static");
-        this.collisionComponent = this.addComponent(new PolygonCollisionComponent(polygonPoints));
-    }
-
-    getCollisionComponent(): PolygonCollisionComponent {
-        return this.collisionComponent;
-    }
-}
-
 export class TileMapActor extends Actor {
     private mapData: TiledMap | null = null;
     private objectActorsCreated = false;
@@ -59,13 +39,14 @@ export class TileMapActor extends Actor {
     private normalizedMapUrl: string | null = null;
     private basePath: string | null = null;
     private isRemote: boolean | null = null;
+
     private mapWorldSize: Vector2 | null = null;
     private renderTranslation: Vector2 = new Vector2(0, 0);
-    private mapUrl: string = "";
+    private _mapUrl: string = "";
 
     constructor(
         private readonly parser: Parser,
-        protected readonly container:Container,
+        protected readonly engine: Engine,
         options: TileMapActorOptions = {}
     ) {
         super();
@@ -75,33 +56,38 @@ export class TileMapActor extends Actor {
         console.log(parser);
     }
 
-    public setMapUrl(map: string): void {
-        this.mapUrl = map;
-        this.normalizedMapUrl = this.mapUrl.replace(/\\/g, "/");
+   
+    public get mapUrl(): string {
+        return this._mapUrl;
+    }
+
+    @property
+    public set mapUrl(map: string) {
+        this._mapUrl = map;
+        this.normalizedMapUrl = this._mapUrl.replace(/\\/g, "/");
         this.basePath = this.computeBasePath(this.normalizedMapUrl);
-        this.isRemote = this.isRemoteUrl(this.mapUrl);
+        this.isRemote = this.isRemoteUrl(this._mapUrl);
     }
 
     async onLoad(): Promise<void> {
+        
         if (this.mapData) {
             return;
         }
 
-        this.mapData = await this.parser.parse(this.mapUrl);
+        this.mapData = await this.parser.parse(this._mapUrl);
         this.worldUnitsPerPixel = this.computeWorldUnitsPerPixel();
         this.updateWorldSize();
+    }
 
-        if (this.options.spawnObjects ?? true) {
+    onBeginPlay(): void {
+        
             this.createObjectActors();
-        }
+        
     }
 
     getMap(): TiledMap | null {
         return this.mapData;
-    }
-
-    getMapUrl(): string {
-        return this.mapUrl;
     }
 
     getWorldUnitsPerPixel(): number {
@@ -130,7 +116,7 @@ export class TileMapActor extends Actor {
         if (!this.mapWorldSize) {
             return null;
         }
-        const origin = this.getPosition();
+        const origin = this.position;
         const topLeft = new Vector2(origin.x + this.renderTranslation.x, origin.y + this.renderTranslation.y);
         const min = new Vector2(topLeft.x, topLeft.y - this.mapWorldSize.y);
         const max = new Vector2(topLeft.x + this.mapWorldSize.x, topLeft.y);
@@ -167,7 +153,7 @@ export class TileMapActor extends Actor {
         if (resource.startsWith("/")) {
             if (this.isRemote) {
                 try {
-                    return new URL(resource, this.mapUrl).toString();
+                    return new URL(resource, this._mapUrl).toString();
                 } catch {
                     return resource;
                 }
@@ -177,7 +163,7 @@ export class TileMapActor extends Actor {
 
         if (this.isRemote) {
             try {
-                return new URL(resource, this.mapUrl).toString();
+                return new URL(resource, this._mapUrl).toString();
             } catch {
                 return `${this.basePath}${resource}`;
             }
@@ -200,7 +186,7 @@ export class TileMapActor extends Actor {
 
     private isRemoteUrl(value: string): boolean {
         try {
-            const parsed = new URL(value);
+            const parsed =  new URL(value);
             return parsed.protocol === "http:" || parsed.protocol === "https:";
         } catch {
             return false;
@@ -252,24 +238,10 @@ export class TileMapActor extends Actor {
             let actorsToAdd: Actor[] = [];
             try {
                 if(object.properties.Type) {
-                    const createdActor = this.container.getByIdentifier<Actor>(object.properties.Type as  string);
+                    const createdActor = this.engine.createActorFromIdentifier<Actor>(object.properties.Type as string);
                     console.log("Created actor from container for type:", object.properties.Type, createdActor);
                     actorsToAdd.push(createdActor);
                 }
-                // } else {
-
-                //     // const createdActor = create(baseName, uniqueName); // Example of creating a WaterActor
-                //     // console.log(createdActor)
-                //     const defaultActor = new TileMapObjectActor(uniqueName, object, layer.name);
-                //     const factoryResult = this.options.objectActorFactory?.({
-                //         tileMap: this,
-                //         layer,
-                //         object,
-                //         index,
-                //         defaultActor
-                //     });
-                //     actorsToAdd = this.normalizeFactoryResult(factoryResult, defaultActor);
-                // }
                 
             } catch (e) {
                 console.error(`Error creating actor for object of type '${object.properties.Type}':`, e);
@@ -287,8 +259,8 @@ export class TileMapActor extends Actor {
             actorsToAdd.forEach((actorToAdd) => {
                 const localX = posX + this.renderTranslation.x;
                 const localY = posY + this.renderTranslation.y;
-                actorToAdd.setPosition(new Vector2(localX, localY));
-                actorToAdd.setRotation(rotation);
+                actorToAdd.position = new Vector2(localX, localY);
+                actorToAdd.rotation = rotation;
                 this.addChild(actorToAdd);
             });
         });

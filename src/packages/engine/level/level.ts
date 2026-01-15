@@ -1,32 +1,52 @@
 import { GameMode } from "../game/gameMode";
 import { Vector2 } from "../math";
-import { Constructor } from "../utils";
+import { SerializedNode, SerializedProperty } from "../serialization";
+import { type Constructor, property, injectable } from "../utils";
 import { Actor } from "../world";
-import { BaseObject } from "../world/baseobject";
+import { SceneNode } from "../world/baseobject";
 
-export class Level {
+@injectable()
+export class Level extends SceneNode {
 
-    private gravity: Vector2 = new Vector2(0, 0);
+    private _gravity: Vector2 = new Vector2(0, 10);
+    
+    private _gameMode: Constructor<GameMode> | undefined;
+
+    @property()
     public name: string = "Unnamed Level";
+
+    @property()
+    public  set gravity(gravity: Vector2) {
+        this._gravity = gravity;
+    }
+
+    get gravity(): Vector2 {
+        return this._gravity;
+    }
+
+    @property()
+    set gameMode(gameMode: Constructor<GameMode>){
+        this._gameMode = gameMode;
+    }
+
+    get gameMode(): Constructor<GameMode> | undefined {
+        return this._gameMode;
+    }
+
+    @property({ label: "UI Modules" })
+    public uiModules: string[] = [];
 
     /**
      *
      */
     constructor() {
-        
+        super();
     }
 
-    protected setGravity(gravity: Vector2): void {
-        this.gravity = gravity;
-    }
-
-    getGravity(): Vector2 {
-        return this.gravity;
-    }
-    protected objects: BaseObject[] = [];
+    protected objects: SceneNode[] = [];
 
     findActor(id:string): Actor | null {
-        for(const actor of this.objects.filter(o => o instanceof Actor)) {
+        for(const actor of this.children.filter(o => o instanceof Actor)) {
             if(actor.getId() === id) {
                 return actor;
             }
@@ -39,10 +59,6 @@ export class Level {
         return null;
     }
 
-    getGameMode(): Constructor<GameMode> | undefined {
-        return;
-    }
-
     getWorldSize(): Vector2 | null {
         let maxX = 0;
         let maxY = 0;
@@ -50,24 +66,8 @@ export class Level {
         return new Vector2(maxX, maxY);
     }
 
-    addActor(actor: Actor): void {
-        if (this.findActor(actor.getId())) {
-            return;
-        }
-        this.objects.push(actor);
-    }
-
-    addActors(actors: Actor[]): void {
-        for(const actor of actors) {
-            if (this.findActor(actor.getId())) {
-                continue;
-            }
-            this.objects.push(actor);
-        }
-    }
-
     getActors(): Actor[] {
-        return this.objects.filter(o => o instanceof Actor) as Actor[];
+        return this.children.filter(o => o instanceof Actor) as Actor[];
     }
 
     protected getChildActors(actor:Actor): Actor[] {
@@ -80,4 +80,10 @@ export class Level {
 
         return childActors;
     }
+}
+
+export class SerializedLevel {
+    type: string|null = null;
+    properties: SerializedProperty[] = [];
+    actors: SerializedNode[] = [];
 }

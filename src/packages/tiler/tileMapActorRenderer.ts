@@ -1,5 +1,5 @@
 import { TileMapActor, TiledMap, TiledTileLayer, TiledTilesetReference } from "@repo/tiler";
-import { Material, MaterialRenderContext } from "@repo/engine";
+import { inject, Material, MaterialRenderContext, ResourceManager } from "@repo/engine";
 
 interface DrawCall {
     vao: WebGLVertexArrayObject | null;
@@ -39,6 +39,13 @@ export class TileMapMaterial extends Material {
     /**
      *
      */
+    constructor(@inject(ResourceManager) protected resourceManager: ResourceManager) {
+        super();
+    }
+
+    /**
+     *
+     */
     private caches = new WeakMap<TileMapActor, RenderCache>();
     private textureCache = new WeakMap<WebGL2RenderingContext, Map<string, TextureRecord>>();
     private loggedDiagonalWarning = false;
@@ -68,7 +75,7 @@ export class TileMapMaterial extends Material {
             gl.uniformMatrix3fv(this.uniformLocations.viewProj, false, viewProjection);
         }
 
-        const actorPos = actor.getPosition();
+        const actorPos = actor.position;
         const translation = actorPos.add(actor.getRenderTranslation());
         if (this.uniformLocations.translation) {
             gl.uniform2f(this.uniformLocations.translation, translation.x, translation.y);
@@ -444,13 +451,20 @@ export class TileMapMaterial extends Material {
         return texture;
     }
 
-    private loadImage(src: string): Promise<HTMLImageElement> {
+    private async loadImage(src: string): Promise<HTMLImageElement> {
+
+       
         return new Promise((resolve, reject) => {
-            const image = new Image();
-            image.crossOrigin = "anonymous";
-            image.onload = () => resolve(image);
-            image.onerror = () => reject(new Error(`Failed to load image '${src}'`));
-            image.src = src;
+            this.resourceManager.loadResource(src, true, true).then(resource => {
+                const image = new Image();
+                image.crossOrigin = "anonymous";
+                image.onload = () => resolve(image);
+                image.onerror = () => reject(new Error(`Failed to load image '${src}'`));
+                image.src = 'data:image/png;base64,' + resource;
+                console.log(image.src);
+            }).catch(err => {
+                reject(err);
+            });
         });
     }
 }

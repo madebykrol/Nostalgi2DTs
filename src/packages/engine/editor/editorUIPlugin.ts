@@ -2,7 +2,7 @@ import type { DragEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react"
 import { Editor } from ".";
 import { Actor, Engine } from "..";
 
-export type PanelLocation = "left" | "right";
+export type PanelLocation = "left" | "right" | "bottom";
 
 export type PanelRenderProps = {
   editor: Editor;
@@ -34,7 +34,7 @@ export type SceneContextMenuItemDescriptor = {
 
 export type SceneDragContext = {
   editor: Editor;
-  engine: Engine<unknown, unknown> | null;
+  engine: Engine | null;
   canvas: HTMLCanvasElement | null;
 };
 

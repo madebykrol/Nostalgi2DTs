@@ -80,7 +80,7 @@ export class RotationGizmoMaterial extends Material {
         gl.useProgram(this.program);
         gl.bindVertexArray(this.vao);
 
-        const worldPosition = actor.getPosition();
+        const worldPosition = actor.position;
         const zoom = camera.getZoom();
 
         const aspect = gl.canvas.height === 0 ? 1 : gl.canvas.width / gl.canvas.height;

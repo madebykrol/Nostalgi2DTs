@@ -1,4 +1,4 @@
-import { Vector2 } from "../math";
+import { Vector2, Vertex2 } from "../math";
 
 export type CollisionShapeKind = "circle" | "polygon";
 
@@ -18,7 +18,7 @@ export interface CircleCollisionShapeDescriptor extends CollisionShapeDescriptor
 
 export interface PolygonCollisionShapeDescriptor extends CollisionShapeDescriptorBase {
     type: "polygon";
-    vertices: Vector2[];
+    vertices: Vertex2[];
 }
 
 export type CollisionShapeDescriptor = CircleCollisionShapeDescriptor | PolygonCollisionShapeDescriptor;

@@ -56,6 +56,11 @@ export class TranslationGizmoMaterial extends Material {
     public override render(context: MaterialRenderContext): void {
         const { actor, camera, gl } = context;
         if (!this.program || !this.positionBuffer || !this.vao) {
+            // Gizmos can be spawned after the initial material compilation pass; compile lazily on first render.
+            this.compile(gl);
+        }
+
+        if (!this.program || !this.positionBuffer || !this.vao) {
             return;
         }
 
@@ -66,7 +71,7 @@ export class TranslationGizmoMaterial extends Material {
 
         const aspect = gl.canvas.height === 0 ? 1 : gl.canvas.width / gl.canvas.height;
         const vp = camera.getViewProjectionMatrix(aspect).elements as Float32Array;
-        const position = targetActor.getPosition();
+        const position = targetActor.position;
 
         const wasDepthEnabled = gl.isEnabled(gl.DEPTH_TEST);
         if (wasDepthEnabled) {

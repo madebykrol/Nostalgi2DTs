@@ -4,7 +4,8 @@ import {
   SoundManager, 
   SoundHandle,
   createBoinkSound,
-  GainChannel
+  GainChannel,
+  actor
 } from "@repo/engine";
 import { inject, injectable } from 'inversify';
 
@@ -12,6 +13,7 @@ import { inject, injectable } from 'inversify';
  * SoundActor plays a continuous sound with volume based on proximity to the player
  */
 @injectable()
+@actor("SoundActor")
 export class SoundActor extends Actor {
   private soundHandle: SoundHandle | null = null;
   private audioSource: AudioBufferSourceNode | null = null;
@@ -19,7 +21,7 @@ export class SoundActor extends Actor {
   private minDistance: number = 5;   // Minimum distance for full volume
 
   constructor(
-    @inject(Engine) private engine: Engine<unknown, unknown>,
+    @inject(Engine) private engine: Engine,
     @inject(SoundManager) private soundManager: SoundManager
   ) {
     super();
@@ -72,8 +74,8 @@ export class SoundActor extends Actor {
     if (!playerActor) return;
 
     // Calculate distance between this actor and the player
-    const playerPosition = playerActor.getPosition();
-    const myPosition = this.getPosition();
+    const playerPosition = playerActor.position;
+    const myPosition = this.position;
     const distance = Math.sqrt(
       Math.pow(playerPosition.x - myPosition.x, 2) + 
       Math.pow(playerPosition.y - myPosition.y, 2)

@@ -3,12 +3,13 @@ import { Vector2 } from "../math";
 import type { EngineNetworkMode } from "../engine";
 import { EditorActor } from "./editorActor";
 import { GizmoHandle } from "./gizmoHandle";
+import { Editor } from "./editor";
 
 export abstract class GizmoActor extends EditorActor {
 
     private targetActors: Set<Actor> = new Set();
 
-    constructor() {
+    constructor(public editor: Editor) {
         super();
         this.shouldTick = true;
         this.tickComponents = false;
@@ -20,7 +21,7 @@ export abstract class GizmoActor extends EditorActor {
 
     public override tick(_deltaTime: number, _engineNetworkMode: EngineNetworkMode): void {
         var position = this.calculateGizmoPosition(Array.from(this.targetActors));
-        this.setPosition(position);
+        this.position = position;
     }
 
     public getTargetActors(): Set<Actor> {
@@ -35,7 +36,7 @@ export abstract class GizmoActor extends EditorActor {
         }
 
         if( selectedActors.length === 1) {
-            return selectedActors[0].getPosition();
+            return selectedActors[0].position;
         }
 
         // Calculate the middle point of all selected actors
@@ -46,7 +47,7 @@ export abstract class GizmoActor extends EditorActor {
         
         for (const actor of selectedActors) {
             // calculate the left most, right most, top most, bottom most positions
-            const actorPosition = actor.getPosition();
+            const actorPosition = actor.position;
             if (actorPosition.x > biggestX) {
                 biggestX = actorPosition.x;
             }

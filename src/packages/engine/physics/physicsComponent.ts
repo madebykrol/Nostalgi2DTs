@@ -1,16 +1,50 @@
-import { Vector2 } from "../math";
-import { Component } from "../world/component";
 import type { BodyType } from "./bodyType";
 import type { PhysicsBody } from "./body";
-import { Actor } from "../world/actor";
+import { inject, injectable, World, Actor, nobject, Vector2, Component, property } from "@repo/engine";
 
+
+@injectable()
+@nobject()
 export class PhysicsComponent extends Component {
+    getLinearVelocity(): Vector2 {
+        if (!this.body) {
+            return new Vector2(0, 0);
+        }
+        return this.body.getLinearVelocity();
+    }
     private body: PhysicsBody | null = null;
     private simulated = false;
     private bodyType: BodyType = "static";
+    private linearDamping = 3;
+    private angularDamping = 1;
+    private _gravityScale = 1;
 
-    tick(_deltaTime: number, _engineNetworkMode: "client" | "server" | "singleplayer"): void {
-        // Physics component does not tick by default.
+    /**
+     *
+     */
+    constructor(
+        @inject(World) protected world: World,
+    ) {
+        super();
+    }
+
+    @property()
+    public set gravityScale(scale: number) {
+        this._gravityScale = scale;
+    }
+
+    public get gravityScale(): number {
+        return this._gravityScale;
+    }
+
+    tick(deltaTime: number, _engineNetworkMode: "client" | "server" | "singleplayer"): void {
+        if (!this.simulated || !this.body || deltaTime <= 0) {
+            return;
+        }
+
+        this.body.applyLinearDamping(this.world.getAirfriction(), deltaTime);
+        this.body.applyAngularDamping(this.world.getAirfriction(), deltaTime);
+        
     }
 
     setBody(body: PhysicsBody | null): void {
@@ -23,8 +57,8 @@ export class PhysicsComponent extends Component {
         body.setIsActive(this.simulated);
         const actor = this.getActor();
         if (actor) {
-            const position = actor.getPosition();
-            const rotation = actor.getRotation();
+            const position = actor.position;
+            const rotation = actor.rotation;
             body.setTransform(position, rotation);
         }
     }
@@ -81,5 +115,21 @@ export class PhysicsComponent extends Component {
             return;
         }
         this.body.addImpulse(impulse);
+    }
+
+    setLinearDamping(damping: number): void {
+        this.linearDamping = Math.max(0, damping);
+    }
+
+    getLinearDamping(): number {
+        return this.linearDamping;
+    }
+
+    setAngularDamping(damping: number): void {
+        this.angularDamping = Math.max(0, damping);
+    }
+
+    getAngularDamping(): number {
+        return this.angularDamping;
     }
 }

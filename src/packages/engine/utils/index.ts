@@ -7,7 +7,9 @@ export * from "./inversifyContainer";
 export {inject, injectable, multiInject, optional, unmanaged} from "inversify";
 export * from "./resourcemanager";
 export * from "./stringUtils";
+export * from "./decorators";
 
+export * from "./type";
 
 export const isServer = () =>
   typeof process !== 'undefined' &&

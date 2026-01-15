@@ -275,21 +275,8 @@ const simpleModalPlugin: EditorUIPlugin = {
       ),
     });
 
-    const unregisterToolsMenu = modalTriggers.register({
-      id: "builtin.simple-modal.tools-menu",
-      event: "toolbar.menu",
-      menuId: "tools",
-      render: (_context: any, api: any) => (
-        <ModalContainer title="Tools Menu" onClose={api.close}>
-          <p>Select a tool from this menu placeholder.</p>
-          <p>Extend this modal or replace it via a plugin.</p>
-        </ModalContainer>
-      ),
-    });
-
     return () => {
       unregisterActorDoubleClick();
-      unregisterToolsMenu();
     };
   },
 };
