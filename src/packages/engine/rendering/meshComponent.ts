@@ -2,15 +2,37 @@ import { Component } from "../world";
 import { Material, MaterialRenderContext, MaterialRenderPass } from "./material";
 import { Mesh } from "./mesh";
 import { Camera } from "../camera/Camera";
+import { property } from "../utils";
 
 export class MeshComponent extends Component {
 
-    constructor(public mesh: Mesh, public material: Material) {
+    private _mesh: Mesh;
+    private _material: Material;
+    constructor(mesh: Mesh, material: Material) {
         super();
+        this._mesh = mesh;
+        this._material = material;
+    }
+
+    @property()
+    set mesh(mesh: Mesh) {
+        this._mesh = mesh;
+    }
+
+    get mesh(): Mesh {
+        return this._mesh;
+    }
+    
+    @property()
+    set material(material: Material) {
+        this._material = material;
+    }
+    get material(): Material {
+        return this._material;
     }
 
     public override tick(deltaTime: number, _engineNetworkMode: "client" | "server" | "singleplayer"): void {
-        this.material.tick(deltaTime);
+        this._material.tick(deltaTime);
     }
 
     public render(gl: WebGL2RenderingContext, camera: Camera | undefined): void {
@@ -18,11 +40,11 @@ export class MeshComponent extends Component {
             return;
         }
 
-        if (this.material.getRenderPass() !== "forward") {
+        if (this._material.getRenderPass() !== "forward") {
             return;
         }
 
-        this.material.render(this.createContext(gl, camera));
+        this._material.render(this.createContext(gl, camera));
     }
 
     public renderPostProcess(
@@ -35,11 +57,11 @@ export class MeshComponent extends Component {
             return;
         }
 
-        if (this.material.getRenderPass() !== "postprocess") {
+        if (this._material.getRenderPass() !== "postprocess") {
             return;
         }
 
-        this.material.render(
+        this._material.render(
             this.createContext(gl, camera, false, {
                 sceneTexture,
                 sceneTextureSize: sceneSize,
@@ -48,39 +70,39 @@ export class MeshComponent extends Component {
     }
 
     public renderDebug(gl: WebGL2RenderingContext, camera: Camera): void {
-        if (!this.actor || this.actor.isHiddenInGame || !this.material.renderDebug) {
+        if (!this.actor || this.actor.isHiddenInGame || !this._material.renderDebug) {
             return;
         }
 
-        this.material.renderDebug(this.createContext(gl, camera, true));
+        this._material.renderDebug(this.createContext(gl, camera, true));
     }
 
     public renderHighlight(gl: WebGL2RenderingContext, camera: Camera, color?: [number, number, number, number]): void {
-        if (!this.actor || this.actor.isHiddenInGame || !this.material.renderHighlight) {
+        if (!this.actor || this.actor.isHiddenInGame || !this._material.renderHighlight) {
             return;
         }
 
-        this.material.renderHighlight(this.createContext(gl, camera), color);
+        this._material.renderHighlight(this.createContext(gl, camera), color);
     }
 
     public setMesh(mesh: Mesh): void {
-        this.mesh = mesh;
+        this._mesh = mesh;
     }
 
     public getMesh(): Mesh {
-        return this.mesh;
+        return this._mesh;
     }
 
     public setMaterial(material: Material): void {
-        this.material = material;
+        this._material = material;
     }
 
     public getMaterial(): Material {
-        return this.material;
+        return this._material;
     }
 
     public getRenderPass(): MaterialRenderPass {
-        return this.material.getRenderPass();
+        return this._material.getRenderPass();
     }
 
     private createContext(
@@ -97,7 +119,7 @@ export class MeshComponent extends Component {
             actor: this.actor,
             camera,
             gl,
-            mesh: this.mesh,
+            mesh: this._mesh,
             debugPass,
             ...overrides
         };

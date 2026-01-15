@@ -20,6 +20,8 @@ export abstract class Actor extends SceneNode {
     willSpawn() {
         throw new Error("Method not implemented.");
     }
+
+    @property()
     // If true, this actor will tick its children when it ticks
     tickComponents: boolean = true;
 
@@ -31,7 +33,8 @@ export abstract class Actor extends SceneNode {
     // The tick group this actor belongs to
     // Actors in the "physics" group will tick after the physics simulation step
     tickGroup: TickGroup = "default";
-    
+
+    @property()
     // All components attached to this actor
     // Components can be used to add functionality to actors
     // e.g. a SpriteComponent to render a sprite or a animation component to animate a sprite
@@ -46,9 +49,11 @@ export abstract class Actor extends SceneNode {
     // If true, this actor will replicate over the network
     shouldReplicate: boolean = false;
     
+    @property()
     // Rendering layer, higher layers are rendered on top of lower layers
     layer: number = 0; 
 
+    @property()
     // If true, the actor will be hidden in-game (not rendered) but visible in editor collision still apply
     isHiddenInGame: boolean = false;
 

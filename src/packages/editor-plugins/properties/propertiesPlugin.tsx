@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-	Actor,
+ 	Actor,
 	Editor,
 	EditorUIPlugin,
 	Vector2,
@@ -9,16 +9,23 @@ import {
 	AssetService,
 	type AssetPayloadPackedEntry,
 	type AssetManifest,
+	Component as EngineComponent,
 } from "@repo/engine";
+import {
+	isArrayType,
+	isVector2Type,
+	propertyRepresentsVector2,
+	type ArrayItemType,
+	inferArrayItemTypeFromName,
+	resolveArrayItemType,
+	inferValueKindFromProperty,
+} from "./propertyTypeUtils";
+import { renderEditorForKind } from "./propertyEditors";
 import { ArrayEditor, NumberEditor, Vector2Editor } from "@repo/ui";
 
 const hasNativeNumberIsFinite = typeof Number.isFinite === "function";
 const isFiniteNumber = (value: unknown): value is number =>
 	typeof value === "number" && (hasNativeNumberIsFinite ? Number.isFinite(value) : isFinite(value));
-
-
-
-
 
 const radiansToDegrees = (value: number): number => (value * 180) / Math.PI;
 const degreesToRadians = (value: number): number => (value * Math.PI) / 180;
@@ -129,15 +136,6 @@ const coerceLevelPropertyValue = (type: string | null | undefined, value: string
 	}
 };
 
-const VECTOR2_TYPE_NAME = "vector2";
-
-const isVector2Type = (type: string | null | undefined): boolean => {
-	if (typeof type !== "string") {
-		return false;
-	}
-	return type.trim().toLowerCase() === VECTOR2_TYPE_NAME;
-};
-
 type Vector2Components = { x: number; y: number };
 
 const parseVector2DraftValue = (value: string): Vector2Components => {
@@ -184,27 +182,6 @@ const runtimeVector2ToDraftValue = (value: unknown): string | null => {
 	return null;
 };
 
-const propertyRepresentsVector2 = (property: Property | null | undefined): boolean => {
-	if (!property) {
-		return false;
-	}
-	const candidates = [
-		property.type,
-		property.valueTypeName,
-		property.returnTypeName,
-		property.getterReturnTypeName,
-	];
-	return candidates.some((candidate) => isVector2Type(candidate));
-};
-
-const isArrayType = (type: string | null | undefined): boolean => {
-	if (typeof type !== "string") {
-		return false;
-	}
-	const normalized = type.trim().toLowerCase();
-	return normalized === "array" || normalized.endsWith("[]") || normalized.startsWith("array<") || normalized.includes("array of");
-};
-
 const parseArrayDraftValue = (value: string | Array<string | number | Vector2>): Array<string | number | Vector2> => {
 	if (Array.isArray(value)) {
 		return value;
@@ -217,64 +194,12 @@ const parseArrayDraftValue = (value: string | Array<string | number | Vector2>):
 		return [];
 	}
 	try {
-		const parsed = JSON.parse(trimmed);
-		return Array.isArray(parsed) ? (parsed as Array<string | number | Vector2>) : [];
+			const parsed = JSON.parse(trimmed);
+			return Array.isArray(parsed) ? (parsed as Array<string | number | Vector2>) : [];
 	} catch (error) {
 		console.warn("Failed to parse array draft value", error);
 		return [];
 	}
-};
-
-type ArrayItemType = "string" | "number" | "vector2";
-
-const inferArrayItemTypeFromName = (typeName: string | null | undefined): ArrayItemType | null => {
-	if (typeof typeName !== "string") {
-		return null;
-	}
-	const normalized = typeName.trim().toLowerCase();
-	if (normalized.includes("vector2")) {
-		return "vector2";
-	}
-	if (normalized.includes("number")) {
-		return "number";
-	}
-	if (normalized.includes("string")) {
-		return "string";
-	}
-	return null;
-};
-
-const inferArrayItemTypeFromValue = (values: unknown[]): ArrayItemType | null => {
-	for (const entry of values) {
-		if (entry instanceof Vector2) {
-			return "vector2";
-		}
-		if (typeof entry === "number") {
-			return "number";
-		}
-		if (typeof entry === "string") {
-			return "string";
-		}
-	}
-	return null;
-};
-
-const resolveArrayItemType = (property: Property, currentValue: unknown): ArrayItemType => {
-	const metadataGuess =
-		inferArrayItemTypeFromName(property.type) ??
-		inferArrayItemTypeFromName(property.valueTypeName) ??
-		inferArrayItemTypeFromName(property.returnTypeName) ??
-		inferArrayItemTypeFromName(property.getterReturnTypeName);
-	if (metadataGuess) {
-		return metadataGuess;
-	}
-	if (Array.isArray(currentValue)) {
-		const valueGuess = inferArrayItemTypeFromValue(currentValue);
-		if (valueGuess) {
-			return valueGuess;
-		}
-	}
-	return "string";
 };
 
 type SerializedDraftValue = {
@@ -396,7 +321,7 @@ type PropertiesPanelProps = {
 };
 
 const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
-	const [selection, setSelection] = useState<Actor[]>(() => editor.getSelectedActors());
+	const [selection, setSelection] = useState<Actor[]>([]);
 	const [selectedAsset, setSelectedAsset] = useState<AssetSelection | null>(null);
 	const [manifestTypeInput, setManifestTypeInput] = useState<string>("");
 	const [isSavingType, setIsSavingType] = useState(false);
@@ -411,11 +336,12 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 	const [isSavingLevelProperties, setIsSavingLevelProperties] = useState(false);
 	const [levelPropertiesError, setLevelPropertiesError] = useState<string | null>(null);
 	const [levelPropertiesMessage, setLevelPropertiesMessage] = useState<string | null>(null);
-	const [, setRevision] = useState(0);
+	const [revision, setRevision] = useState(0);
 	const transformSnapshotRef = useRef<{ position: { x: number; y: number }; rotation: number }>(
 		{ position: { x: 0, y: 0 }, rotation: 0 }
 	);
 	const propertySnapshotRef = useRef<Map<PropertyKey, unknown>>(new Map());
+	const propertyMetadataRef = useRef<Property[]>([]);
 	const levelMetadataKind = (selectedAsset?.metadata as { kind?: string } | undefined)?.kind?.toString().toLowerCase();
 	const isLevelAsset = Boolean(
 		selectedAsset && (
@@ -432,6 +358,7 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 		};
 
 		editor.subscribe("actor:selected", handleSelectionChanged);
+		handleSelectionChanged();
 		return () => {
 			editor.unsubscribe("actor:selected", handleSelectionChanged);
 		};
@@ -489,6 +416,7 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 		if (!actor) {
 			transformSnapshotRef.current = { position: { x: 0, y: 0 }, rotation: 0 };
 			propertySnapshotRef.current = new Map();
+			propertyMetadataRef.current = [];
 			return;
 		}
 		const position = actor.position;
@@ -496,8 +424,10 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 			position: { x: position.x, y: position.y },
 			rotation: actor.rotation,
 		};
+		const registered = getRegisteredPropertiesForInstance(actor);
+		propertyMetadataRef.current = registered;
 		const snapshot = new Map<string | symbol, unknown>();
-		for (const property of getRegisteredPropertiesForInstance(actor)) {
+		for (const property of registered) {
 			snapshot.set(property.key, Reflect.get(actor, property.key));
 		}
 		propertySnapshotRef.current = snapshot;
@@ -672,6 +602,7 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 				const snapshot = propertySnapshotRef.current;
 				const keysSeen = new Set<PropertyKey>();
 				const registered = getRegisteredPropertiesForInstance(actor);
+				propertyMetadataRef.current = registered;
 				for (const property of registered) {
 					const key = property.key;
 					keysSeen.add(key);
@@ -1144,7 +1075,10 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 																	if (isSavingLevelProperties || !selectedAsset?.entryId) {
 																		return;
 																	}
-																	handleLevelPropertyValueChange(draft.id, next);
+																	handleLevelPropertyValueChange(
+																		draft.id,
+																		next as Array<string | number | Vector2>,
+																	);
 																}}
 															/>
 														);
@@ -1278,7 +1212,7 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 	const actor = selection[0];
 	const position = actor.position;
 	const rotationDegrees = radiansToDegrees(actor.rotation);
-	const registeredProperties = actor ? editor.getPropertiesForInstance(actor) : [];
+	const registeredProperties = propertyMetadataRef.current;
 	const propertyGroups: Array<{ owner: string; properties: Property[] }> = [];
 	const groupLookup = new Map<string, Property[]>();
 
@@ -1320,7 +1254,9 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 		const key = property.key;
 		const label = formatPropertyLabel(property);
 		const description = property.description;
-		const currentValue = editor.getPropertyValue(actor, property);
+		const snapshot = propertySnapshotRef.current;
+		const hasSnapshot = snapshot.has(key);
+		const currentValue = hasSnapshot ? snapshot.get(key) : Reflect.get(actor, key);
 		const applyValue = (nextValue: unknown) => {
 			if (Object.is(currentValue, nextValue)) {
 				return;
@@ -1368,64 +1304,17 @@ const PropertiesPanel = ({ editor }: PropertiesPanelProps) => {
 			);
 		}
 
-			const resolvedType = (property.valueType as unknown) ?? property.designType;
-			if (resolvedType === Vector2 || property.valueTypeName === "Vector2" || property.type === "Vector2") {
-				const vector = currentValue instanceof Vector2 ? currentValue : new Vector2(0, 0);
-				return (
-					<Vector2Editor
-						key={key}
-						label={label}
-						value={vector}
-						onChange={(next) => applyValue(next)}
-						description={description}
-					/>
-				);
-			}
-
-			switch (property.type) {
-			case "Boolean": {
-				return (
-					<div key={key} className="space-y-1 rounded border border-white/10 bg-white/5 px-3 py-2">
-						<label className="flex items-center justify-between gap-2">
-							<span className="text-[10px] uppercase text-white/60">{label}</span>
-							<input
-								type="checkbox"
-								checked={Boolean(currentValue)}
-								onChange={(event) => applyValue(event.target.checked)}
-							/>
-						</label>
-						{description ? <p className="text-[10px] text-white/40">{description}</p> : null}
-					</div>
-				);
-			}
-			case "Number": {
-				return (
-					<label key={key} className="flex flex-col gap-1">
-						<span className="text-[10px] uppercase text-white/50">{label}</span>
-						<NumberEditor
-							value={typeof currentValue === "number" ? currentValue : 0}
-							step={1}
-							onChange={(value) => applyValue(value)}
-						/>
-						{description ? <p className="text-[10px] text-white/40">{description}</p> : null}
-					</label>
-				);
-			}
-			default: {
-				return (
-					<label key={key} className="flex flex-col gap-1">
-						<span className="text-[10px] uppercase text-white/50">{label}</span>
-						<input
-							type="text"
-							className="rounded border border-white/20 bg-slate-900 px-2 py-1 text-xs text-white"
-							value={typeof currentValue === "string" ? currentValue : String(currentValue ?? "")}
-							onChange={(event) => applyValue(event.target.value)}
-						/>
-						{description ? <p className="text-[10px] text-white/40">{description}</p> : null}
-					</label>
-				);
-			}
-		}
+		const kind = inferValueKindFromProperty(property, currentValue);
+		return (
+			<div key={key} className="flex flex-col gap-1">
+				{renderEditorForKind(kind, {
+					value: currentValue,
+					label,
+					description,
+					onChange: applyValue,
+				})}
+			</div>
+		);
 	};
 
 	return (

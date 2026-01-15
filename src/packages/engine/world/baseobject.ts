@@ -5,17 +5,20 @@ export abstract class BaseObject {
     @property()
     public readonly id: string = "";
 
-    private _networkId: string = "";
+    private _networkId: string|undefined = "";
 
     constructor() {
         this.id = uuidv4();
     }
 
     set networkdId(networkId: string){
+        if (this._networkId !== undefined) 
+            throw new Error("Network ID is already set and cannot be modified.");
+        
         this._networkId = networkId;
     }
 
-    get networkId(): string {
+    get networkId(): string | undefined {
         return this._networkId;
     }
     /**
