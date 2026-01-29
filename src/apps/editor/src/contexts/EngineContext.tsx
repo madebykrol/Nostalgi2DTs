@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { ClientEngine } from "@repo/client";
+import type { ClientEngine } from "@nostalgi2d/client";
 
 export type EngineContextValue = {
   engine: ClientEngine | null;

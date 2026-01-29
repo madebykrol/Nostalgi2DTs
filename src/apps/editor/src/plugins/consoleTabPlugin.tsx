@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { theme } from "../theme";
-import type { EditorUIPlugin } from "@repo/engine";
+import type { EditorUIPlugin } from "@nostalgi2d/engine";
 import { useConsole } from "../contexts/ConsoleContext";
 
 export type ConsoleEntryType = "log" | "warn" | "error";

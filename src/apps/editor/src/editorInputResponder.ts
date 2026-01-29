@@ -8,7 +8,7 @@ import {
   PostProcessingVolumeActor,
   SphereWarpPostProcessMaterial,
   Vector2,
-} from "@repo/engine";
+} from "@nostalgi2d/engine";
 
 type DragInteraction = {
   handle: GizmoHandle;

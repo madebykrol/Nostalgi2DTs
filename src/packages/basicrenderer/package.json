@@ -1,5 +1,5 @@
 {
-  "name": "@repo/basicrenderer",
+  "name": "@nostalgi2d/basicrenderer",
   "version": "1.0.0",
   "type": "module",
   "exports": {
@@ -12,13 +12,13 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@repo/engine": "*"
+    "@nostalgi2d/engine": "*"
   },
   "devDependencies": {
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
+    "@nostalgi2d/eslint-config": "*",
+    "@nostalgi2d/typescript-config": "*",
     "eslint": "^8.57.0",
     "typescript": "5.5.4"
   }

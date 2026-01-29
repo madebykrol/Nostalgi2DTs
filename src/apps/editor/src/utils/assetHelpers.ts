@@ -1,4 +1,4 @@
-import type { ComponentAsset, MeshComponentAssetPayload } from "@repo/engine";
+import type { ComponentAsset, MeshComponentAssetPayload } from "@nostalgi2d/engine";
 
 export type MeshMetadataVertex = { x: number; y: number };
 

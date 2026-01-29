@@ -1,4 +1,4 @@
-import { Engine, GameMode, inject, World } from "@repo/engine";
+import { Engine, GameMode, inject, World } from "@nostalgi2d/engine";
 import { DemoCharacter } from "./actors/demo";
 import { TopDownRPGController } from "./controllers/topDownRPGController";
 

@@ -1,4 +1,4 @@
-import { Actor, Engine, getRegisteredPropertiesForInstance, GizmoActor, inject, injectable, Level, normalizeClassName, Property, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@repo/engine";
+import { Actor, Engine, getRegisteredPropertiesForInstance, GizmoActor, inject, injectable, Level, normalizeClassName, Property, RotationGizmoActor, ScalingGizmoActor, TranslationGizmoActor } from "@nostalgi2d/engine";
 import { EditorPluginManifestEntry, EditorUIPlugin } from "./";
 import { SerializedNode, SerializedProperty } from "../serialization";
 import { SerializedLevel } from "../level/level";
@@ -186,7 +186,9 @@ export class Editor {
         const node = new SerializedNode();
         node.type = normalizeClassName(actor.constructor.name);
         node.value = null;
-        node.properties = this.getPropertiesForInstance(actor).map((prop) => this.serializePropertyRecursive(actor, prop));
+        // Temporarily skip serializing components; they can be rebuilt at runtime.
+        const actorProperties = this.getPropertiesForInstance(actor).filter((prop) => prop.key !== "components");
+        node.properties = actorProperties.map((prop) => this.serializePropertyRecursive(actor, prop));
         node.children = actor.getChildren().map((child) => this.serializeActor(child as Actor));
         return node;
     }
@@ -437,7 +439,7 @@ export class Editor {
             if (this.activeGizmoActor) {
                 this.engine.getWorld().despawnActor(this.activeGizmoActor);
             }
-            this.activeGizmoActor = this.engine.createActor(ctor);
+            this.activeGizmoActor = this.engine.createObject(ctor, "editor-gizmo-" + ctor.name);
         }
 
         const gizmo = this.activeGizmoActor as T;

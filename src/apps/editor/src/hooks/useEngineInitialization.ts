@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { EngineBuilder, type Container, Engine, TimerManager } from "@repo/engine";
+import { EngineBuilder, type Container, Engine, TimerManager } from "@nostalgi2d/engine";
 
 // Synchronous, one-time engine + container initialization. Avoids a null window between render phases.
 export const useEngineInitialization = <TSocket, TReq>(factory: (builder: EngineBuilder<TSocket, TReq>) => Engine) => {

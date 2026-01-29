@@ -35,7 +35,10 @@ export class MeshComponent extends Component {
         this._material.tick(deltaTime);
     }
 
-    public render(gl: WebGL2RenderingContext, camera: Camera | undefined): void {
+    public render(gl: WebGL2RenderingContext,
+        camera: Camera | undefined,
+        renderPass: MaterialRenderPass = "forward",
+        sceneTexture?: WebGLTexture): void {
         if (!this.actor || !camera || this.actor.isHiddenInGame) {
             return;
         }

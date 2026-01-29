@@ -14,13 +14,14 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@repo/basicrenderer": "*",
-    "@repo/client": "*",
-    "@repo/engine": "*",
-    "@repo/example": "*",
-    "@repo/planckphysics": "*",
-    "@repo/tiler": "*",
-    "@repo/ui": "*",
+    "@nostalgi2d/basicrenderer": "*",
+    "@nostalgi2d/client": "*",
+    "@nostalgi2d/engine": "*",
+    "@nostalgi2d/example": "*",
+    "@nostalgi2d/planckphysics": "*",
+    "@nostalgi2d/tiler": "*",
+    "@nostalgi2d/ui": "*",
+    "@nostalgi2d/editor": "*",
     "@tailwindcss/vite": "^4.1.13",
     "clone": "^2.1.2",
     "gh-pages": "^6.3.0",
@@ -33,8 +34,8 @@
     "tailwindcss": "^4.1.13"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
+    "@nostalgi2d/eslint-config": "*",
+    "@nostalgi2d/typescript-config": "*",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@types/clone": "^2.1.4",

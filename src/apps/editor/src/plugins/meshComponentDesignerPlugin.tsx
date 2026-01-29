@@ -7,12 +7,12 @@ import {
   type ChangeEvent as ReactChangeEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Actor, MeshComponent } from "@repo/engine";
+import { Actor, MeshComponent } from "@nostalgi2d/engine";
 import type {
   ComponentAsset,
   MeshComponentAssetPayload,
   EditorUIPlugin,
-} from "@repo/engine";
+} from "@nostalgi2d/engine";
 
 type MeshVertex = { x: number; y: number };
 

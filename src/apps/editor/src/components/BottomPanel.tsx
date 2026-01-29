@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { theme } from "../theme";
 import type { PanelRegistry } from "../plugins/pluginSystem";
-import type { Editor } from "@repo/engine";
+import type { Editor } from "@nostalgi2d/engine";
 
 type BottomPanelProps = {
   panelRegistry: PanelRegistry;

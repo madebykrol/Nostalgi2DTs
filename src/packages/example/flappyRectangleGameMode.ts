@@ -16,8 +16,8 @@ import {
     property,
     Vector2,
     Rpc,
-} from "@repo/engine";
-import { UnlitMaterial } from "@repo/basicrenderer";
+} from "@nostalgi2d/engine";
+import { UnlitMaterial } from "@nostalgi2d/basicrenderer";
 
 import { FlappyRectangleController } from "./controllers/flappyRectangleController";
 import { Character } from "../engine/game";

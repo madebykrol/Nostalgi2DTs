@@ -1,18 +1,19 @@
-import { MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine, PolygonCollisionComponent, ResourceManager } from "@repo/engine";
-import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, TileMapMaterial, type TileMapActorOptions } from "@repo/tiler";
+import { MeshComponent, Quad, inject, unmanaged, Vector2, Vertex2, actor, Engine, PolygonCollisionComponent, ResourceManager } from "@nostalgi2d/engine";
+import { Parser, TiledObjectLayer, TiledPoint, TileMapActor, TileMapMaterial, type TileMapActorOptions } from "@nostalgi2d/tiler";
 import { WallActor } from "./wall";
 
 @actor()
 export class GameTileMapActor extends TileMapActor {
   constructor(
     @inject(Parser) parser: Parser,
-    @inject(Engine) container: Engine,
-    @inject(ResourceManager) resourceManager: ResourceManager,
+    @inject(Engine) engine: Engine,
     @unmanaged() options: TileMapActorOptions = {}
   ) {
-    super(parser, container, options);
-    const material = new TileMapMaterial(resourceManager);
-    this.addComponent(new MeshComponent(new Quad(), material));
+    super(parser, engine, options);
+    var material = engine.createObject<TileMapMaterial>(TileMapMaterial, "TileMapMaterial1");
+
+    var quadComponent = new MeshComponent(new Quad(), material);
+    this.addComponent(quadComponent);
   }
 
   protected handleLayer(layer: TiledObjectLayer): boolean {
@@ -77,7 +78,7 @@ export class GameTileMapActor extends TileMapActor {
           // }
 
 
-          const wallActor = this.engine.createActor<WallActor>(WallActor);
+          const wallActor = this.engine.createObject<WallActor>(WallActor, object.id.toString());
 
           var collisionComponent = new PolygonCollisionComponent();
           collisionComponent.points = vertices;

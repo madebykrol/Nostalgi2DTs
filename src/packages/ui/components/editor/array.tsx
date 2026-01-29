@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NumberEditor } from "./number";
 import { Vector2Editor } from "./vector2";
-import { Vector2, Component as EngineComponent } from "@repo/engine";
+import { Vector2, Component as EngineComponent } from "@nostalgi2d/engine";
 
 type ItemType = "string" | "number" | "vector2" | "component";
 

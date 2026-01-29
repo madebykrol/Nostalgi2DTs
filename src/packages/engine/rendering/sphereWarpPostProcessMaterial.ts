@@ -67,7 +67,7 @@ export class SphereWarpPostProcessMaterial extends PostProcessMaterial {
             if (typeof entry === "string") {
                 ids.add(entry);
             } else {
-                ids.add(entry.getId());
+                ids.add(entry.id!);
             }
         }
         this.highlightedActorIds = ids;
@@ -100,7 +100,7 @@ export class SphereWarpPostProcessMaterial extends PostProcessMaterial {
                 break;
             }
 
-            if (highlighted && !highlighted.has(actor.getId())) {
+            if (highlighted && !highlighted.has(actor.id!)) {
                 continue;
             }
 

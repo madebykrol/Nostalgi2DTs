@@ -6,7 +6,7 @@ import {
   createBoinkSound,
   GainChannel,
   actor
-} from "@repo/engine";
+} from "@nostalgi2d/engine";
 import { inject, injectable } from 'inversify';
 
 /**

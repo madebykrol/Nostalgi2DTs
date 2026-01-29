@@ -28,8 +28,8 @@ Game UI
 
 ```typescript
 // In your engine setup or main game file
-import { Engine } from "@repo/engine";
-import { GUIManager, GUIComponentRegistry } from "@repo/engine";
+import { Engine } from "@nostalgi2d/engine";
+import { GUIManager, GUIComponentRegistry } from "@nostalgi2d/engine";
 
 const engine = new Engine();
 const guiManager = new GUIManager();
@@ -43,7 +43,7 @@ engine.componentRegistry = componentRegistry;
 ### 2. Wrap your React app with GUIProvider
 
 ```tsx
-import { GUIProvider, GUIRenderer } from "@repo/engine";
+import { GUIProvider, GUIRenderer } from "@nostalgi2d/engine";
 import { createRoot } from "react-dom/client";
 
 function GameUI() {
@@ -74,7 +74,7 @@ root.render(<GameUI />);
 ### From an Actor
 
 ```typescript
-import { Actor } from "@repo/engine";
+import { Actor } from "@nostalgi2d/engine";
 
 export class Player extends Actor {
     private health: number = 100;
@@ -100,7 +100,7 @@ export class Player extends Actor {
 ### From a GameMode
 
 ```typescript
-import { GameMode } from "@repo/engine";
+import { GameMode } from "@nostalgi2d/engine";
 
 export class MyGameMode extends GameMode {
     private score: number = 0;
@@ -129,7 +129,7 @@ export class MyGameMode extends GameMode {
 ### From a Controller
 
 ```typescript
-import { Controller } from "@repo/engine";
+import { Controller } from "@nostalgi2d/engine";
 
 export class PlayerController extends Controller {
     
@@ -150,8 +150,8 @@ export class PlayerController extends Controller {
 ### Example 1: Simple State Display
 
 ```tsx
-import { useGUIManager } from "@repo/engine";
-import { useGUIState } from "@repo/engine";
+import { useGUIManager } from "@nostalgi2d/engine";
+import { useGUIState } from "@nostalgi2d/engine";
 
 export function PlayerHealthBar() {
     const guiManager = useGUIManager();
@@ -169,7 +169,7 @@ export function PlayerHealthBar() {
 ### Example 2: Interactive Component (UI to Game)
 
 ```tsx
-import { useGUIManager, useGUIEmitter } from "@repo/engine";
+import { useGUIManager, useGUIEmitter } from "@nostalgi2d/engine";
 
 export function PauseMenu() {
     const guiManager = useGUIManager();
@@ -198,7 +198,7 @@ engine.guiManager.on('ui:mainMenu', () => {
 ### Example 3: Complex Component with Multiple Events
 
 ```tsx
-import { useGUIManager, useGUIState, useGUIEmitter, useGUIEvent } from "@repo/engine";
+import { useGUIManager, useGUIState, useGUIEmitter, useGUIEvent } from "@nostalgi2d/engine";
 import { useState } from "react";
 
 export function InventoryPanel() {
@@ -414,7 +414,7 @@ Here's a full example putting it all together:
 
 ```typescript
 // game/myGame.ts
-import { Engine, GUIManager, GUIComponentRegistry } from "@repo/engine";
+import { Engine, GUIManager, GUIComponentRegistry } from "@nostalgi2d/engine";
 
 export class MyGame {
     private engine: Engine;
@@ -461,7 +461,7 @@ export class MyGame {
 
 ```tsx
 // ui/App.tsx
-import { GUIProvider, GUIRenderer } from "@repo/engine";
+import { GUIProvider, GUIRenderer } from "@nostalgi2d/engine";
 import { myGame } from "./game/myGame";
 
 export function App() {
@@ -483,7 +483,7 @@ export function App() {
 
 ```tsx
 // ui/components/PlayerHUD.tsx
-import { useGUIManager, useGUIState, useGUIEmitter } from "@repo/engine";
+import { useGUIManager, useGUIState, useGUIEmitter } from "@nostalgi2d/engine";
 
 export function PlayerHUD() {
     const guiManager = useGUIManager();

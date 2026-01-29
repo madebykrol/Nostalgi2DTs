@@ -1,10 +1,10 @@
 import http from "http";
 import { WebSocketServer, WebSocket } from "ws";
 
-import { Actor, Container, DefaultResourceManager, Engine, EngineBuilder, inject, TimerManager, World } from "@repo/engine";
-import { PlanckWorld } from "@repo/planckphysics";
+import { Actor, Container, DefaultResourceManager, Engine, EngineBuilder, inject, TimerManager, World } from "@nostalgi2d/engine";
+import { PlanckWorld } from "@nostalgi2d/planckphysics";
 import { Endpoint, ClientInputMessage, ClientSetUsernameMessage, ClientPostScoreMessage } from "../../packages/engine/network";
-import { DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor} from "@repo/example";
+import { DemoActor, ExampleTopDownRPGGameMode, GameTileMapActor} from "@nostalgi2d/example";
 import { Parser } from "../../packages/tiler/parser";
 
 import { DOMParser } from "@xmldom/xmldom";

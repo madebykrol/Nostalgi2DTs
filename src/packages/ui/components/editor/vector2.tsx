@@ -1,6 +1,6 @@
 
 import { NumberEditor } from "./number";
-import { Vector2 } from "@repo/engine";
+import { Vector2 } from "@nostalgi2d/engine";
 
 type Vector2EditorProps = {
 	label?: string;

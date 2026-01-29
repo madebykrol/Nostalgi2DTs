@@ -3,9 +3,9 @@ import http from "http";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
-import { Canvas } from "@repo/basicrenderer";
+import { Canvas } from "@nostalgi2d/basicrenderer";
 import { ContainerContext } from "./ioc/ioc";
-import { EngineContext } from "@repo/ui";
+import { EngineContext } from "@nostalgi2d/ui";
 import {
   Vector2,
   EngineBuilder,
@@ -21,22 +21,22 @@ import {
     DefaultGameMode,
     GUIProvider,
     GUIRenderer,
-} from "@repo/engine";
-import { PlanckWorld } from "@repo/planckphysics";
+} from "@nostalgi2d/engine";
+import { PlanckWorld } from "@nostalgi2d/planckphysics";
 import {
   ExampleTopDownRPGGameMode,
   FlappyRectangleGameMode,
   GrasslandsMap,
   TopDownRPGController,
   flappyUiModule,
-} from "@repo/example";
+} from "@nostalgi2d/example";
 import { DEFAULT_LEVEL_PATH, saveResourceLevel, loadBinaryResource, saveBinaryResource } from "./services/resourceLoader";
-import { Parser, tileMapEditorPlugin } from "@repo/tiler";
-import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
+import { Parser, tileMapEditorPlugin } from "@nostalgi2d/tiler";
+import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@nostalgi2d/client";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { FolderOpen, Play, Save, Square, Undo, Redo } from "lucide-react";
 import { EditorInputResponder } from "./editorInputResponder";
-import { Editor } from "@repo/engine";
+import { Editor } from "@nostalgi2d/engine";
 import { theme } from "./theme";
 import {
   ModalHost,
@@ -53,20 +53,20 @@ import type {
   EditorComponentAssembler,
   ComponentAsset,
   MeshComponentAssetPayload,
-} from "@repo/engine";
-import { transformPropertiesPlugin } from "@repo/editor-plugins";
+} from "@nostalgi2d/engine";
+import { transformPropertiesPlugin } from "@nostalgi2d/editor-plugins";
 import sceneGraphPanelPlugin from "./plugins/sceneGraphPanelPlugin";
 import actorPalettePlugin from "./plugins/actorPalettePlugin";
 import simpleModalPlugin from "./plugins/simpleModalPlugin";
 import meshComponentDesignerPlugin, { MeshDesignerModal } from "./plugins/meshComponentDesignerPlugin";
 import assetBrowserPanelPlugin from "./plugins/assetBrowserPanelPlugin";
 import spriteSheetEditorPlugin, { openSpriteSheetEditor } from "./plugins/spriteEditor/spriteSheetEditorPlugin";
-import type { EditorUIPlugin } from "@repo/engine";
+import type { EditorUIPlugin } from "@nostalgi2d/engine";
 import consoleTabPlugin, { type ConsoleEntry, type ConsoleEntryType } from "./plugins/consoleTabPlugin";
 import metricsTabPlugin from "./plugins/metricsTabPlugin";
 import fileMenuPlugin from "./plugins/fileMenuPlugin";
 
-import { FlappyRectangleController } from "@repo/example";
+import { FlappyRectangleController } from "@nostalgi2d/example";
 
 // Extracted utilities
 import { type SceneNode, areSceneGraphsEqual} from "./utils/sceneGraph";

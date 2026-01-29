@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Editor } from "@repo/engine";
+import { Editor } from "@nostalgi2d/engine";
 import {
   EditorUIPlugin,
   EditorUIPluginContext,
   ModalHandle,
   ModalRenderer,
-  PanelDescriptor,
-  PanelLocation,
   SceneContextMenuContext,
   SceneContextMenuItemDescriptor,
   SceneDragHandlerDescriptor,
@@ -16,57 +14,11 @@ import {
   ModalTriggerContextMap,
   ComponentAssetStorage,
   EditorComponentAssembler,
-} from "@repo/engine";
+} from "@nostalgi2d/engine";
 import { theme } from "../theme";
+import { PanelRegistry, RegistryListener } from "@nostalgi2d/editor";
 
-type RegistryListener = () => void;
 
-type RegisteredPanel = PanelDescriptor & { order: number };
-
-export class PanelRegistry {
-  private panels: RegisteredPanel[] = [];
-  private listeners = new Set<RegistryListener>();
-
-  register(descriptor: PanelDescriptor): () => void {
-    const entry: RegisteredPanel = { ...descriptor, order: descriptor.order ?? 0 };
-    this.panels.push(entry);
-    this.panels.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
-    this.emit();
-
-    return () => {
-      const index = this.panels.indexOf(entry);
-      if (index !== -1) {
-        this.panels.splice(index, 1);
-        this.emit();
-      }
-    };
-  }
-
-  resolve(location: PanelLocation): RegisteredPanel[] {
-    return this.panels.filter((panel) => panel.location === location);
-  }
-
-  clear(): void {
-    if (this.panels.length === 0) {
-      return;
-    }
-    this.panels = [];
-    this.emit();
-  }
-
-  subscribe(listener: RegistryListener): () => void {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
-  }
-
-  private emit(): void {
-    for (const listener of this.listeners) {
-      listener();
-    }
-  }
-}
 
 type RegisteredSceneContextMenuItem = SceneContextMenuItemDescriptor & { order: number };
 

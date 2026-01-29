@@ -1,4 +1,4 @@
-import { FragmentShader } from "@repo/engine";
+import { FragmentShader } from "@nostalgi2d/engine";
 
 export class BaseActorFragmentShader extends FragmentShader {
     getSource(): string {

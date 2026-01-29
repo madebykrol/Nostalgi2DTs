@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/typescript-config/react-library.json",
+  "extends": "@nostalgi2d/typescript-config/react-library.json",
   "include": [".", "../engine/rendering/fragment.ts", "../engine/rendering/vertex.ts"],
   "exclude": ["node_modules"],
   "compilerOptions": {

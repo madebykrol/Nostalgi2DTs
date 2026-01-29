@@ -1,4 +1,4 @@
-import { StringUtils } from "@repo/engine";
+import { StringUtils } from "@nostalgi2d/engine";
 
 export const formatConsoleArg = (arg: unknown): string => {
   if (typeof arg === "string") {

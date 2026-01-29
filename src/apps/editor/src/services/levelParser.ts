@@ -1,6 +1,6 @@
-import { Actor, Container, Level, Vector2 } from "@repo/engine";
-import type { Constructor, GameMode } from "@repo/engine";
-import { TileMapActor } from "@repo/tiler";
+import { Actor, Container, Level, Vector2 } from "@nostalgi2d/engine";
+import type { Constructor, GameMode } from "@nostalgi2d/engine";
+import { TileMapActor } from "@nostalgi2d/tiler";
 
 export type LevelActorDefinition = {
   id?: string;

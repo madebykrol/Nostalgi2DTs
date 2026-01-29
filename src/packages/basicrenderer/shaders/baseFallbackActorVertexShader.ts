@@ -1,4 +1,4 @@
-import { VertexShader } from "@repo/engine";
+import { VertexShader } from "@nostalgi2d/engine";
 
 export class BaseFallbackActorVertexShader extends VertexShader {
     getAttributes(): { [key: string]: number; } {

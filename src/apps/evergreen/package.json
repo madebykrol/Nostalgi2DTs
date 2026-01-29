@@ -15,12 +15,12 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@repo/basicrenderer": "*",
-    "@repo/client": "*",
-    "@repo/engine": "*",
-    "@repo/example": "*",
-    "@repo/tiler": "*",
-    "@repo/ui": "*",
+    "@nostalgi2d/basicrenderer": "*",
+    "@nostalgi2d/client": "*",
+    "@nostalgi2d/engine": "*",
+    "@nostalgi2d/example": "*",
+    "@nostalgi2d/tiler": "*",
+    "@nostalgi2d/ui": "*",
     "gh-pages": "^6.3.0",
     "inversify": "^7.1.1",
     "react": "^18.2.0",
@@ -28,8 +28,8 @@
     "reflect-metadata": "0.2.2"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
+    "@nostalgi2d/eslint-config": "*",
+    "@nostalgi2d/typescript-config": "*",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^4.7.0",

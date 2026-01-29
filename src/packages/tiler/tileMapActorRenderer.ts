@@ -1,5 +1,5 @@
-import { TileMapActor, TiledMap, TiledTileLayer, TiledTilesetReference } from "@repo/tiler";
-import { inject, Material, MaterialRenderContext, ResourceManager } from "@repo/engine";
+import { TileMapActor, TiledMap, TiledTileLayer, TiledTilesetReference } from "@nostalgi2d/tiler";
+import { inject, Material, MaterialRenderContext, nobject, ResourceManager } from "@nostalgi2d/engine";
 
 interface DrawCall {
     vao: WebGLVertexArrayObject | null;
@@ -22,6 +22,7 @@ interface TextureRecord {
     promise: Promise<void> | null;
 }
 
+@nobject()
 export class TileMapMaterial extends Material {
     private program: WebGLProgram | null = null;
     private uniformLocations: {

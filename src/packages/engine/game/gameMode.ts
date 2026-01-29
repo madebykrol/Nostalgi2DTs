@@ -74,7 +74,7 @@ export abstract class GameMode {
         const playerPawnCtor = this.playerCharacterType;
 
         if (playerState && playerPawnCtor) {
-            const pawn = this.engine.createActor(playerPawnCtor);
+            const pawn = this.engine.createObject(playerPawnCtor, playerState.playerId);
             const sceneRoot = this.engine.getRootObject();
 
             this.world.spawnActorInstance(pawn, sceneRoot, this.pickPlayerStart()?.position);

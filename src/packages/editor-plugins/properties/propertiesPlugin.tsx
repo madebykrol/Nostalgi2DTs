@@ -10,7 +10,7 @@ import {
 	type AssetPayloadPackedEntry,
 	type AssetManifest,
 	Component as EngineComponent,
-} from "@repo/engine";
+} from "@nostalgi2d/engine";
 import {
 	isArrayType,
 	isVector2Type,
@@ -21,7 +21,7 @@ import {
 	inferValueKindFromProperty,
 } from "./propertyTypeUtils";
 import { renderEditorForKind } from "./propertyEditors";
-import { ArrayEditor, NumberEditor, Vector2Editor } from "@repo/ui";
+import { ArrayEditor, NumberEditor, Vector2Editor } from "@nostalgi2d/ui";
 
 const hasNativeNumberIsFinite = typeof Number.isFinite === "function";
 const isFiniteNumber = (value: unknown): value is number =>

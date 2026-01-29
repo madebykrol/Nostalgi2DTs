@@ -57,19 +57,6 @@ export abstract class World {
         return this.settings?.airFriction ?? 0.02;
     }
 
-    spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent: SceneNode, position?: Vector2, properties?: Record<string, any>): Actor {
-
-        const actor = this.container.get<TActor>(ctor);
-        if (properties)
-            actor.applyProperties(properties);
-
-        actor.initialize();
-
-        this.spawnActorInstance(actor, parent, position);
-
-        return actor;
-    }
-
     spawnActorInstance(actor: Actor, parent?: SceneNode, position?: Vector2): void {
         let resolvedParent = parent ?? actor.getParent();
 

@@ -1,5 +1,5 @@
 {
-  "name": "@tiler/server",
+  "name": "server",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "ws": "^8.18.0",
-    "@repo/engine": "*",
-    "@repo/planckphysics": "*",
-    "@repo/example": "*",
+    "@nostalgi2d/engine": "*",
+    "@nostalgi2d/planckphysics": "*",
+    "@nostalgi2d/example": "*",
     "@xmldom/xmldom": "^0.8.11"
   },
   "devDependencies": {

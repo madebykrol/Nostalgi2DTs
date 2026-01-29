@@ -1,5 +1,5 @@
-import { actor, Actor, CircleCollisionComponent, GainChannel, inject, injectable, MeshComponent, PhysicsComponent, PolygonCollisionComponent, property, Quad, SoundManager, TimerHandle, TimerManager, Vector2, Vertex2, World } from "@repo/engine";
-import { UnlitMaterial } from "@repo/basicrenderer";
+import { actor, Actor, CircleCollisionComponent, Engine, GainChannel, inject, injectable, MeshComponent, PhysicsComponent, PolygonCollisionComponent, property, Quad, SoundManager, TimerHandle, TimerManager, Vector2, Vertex2, World } from "@nostalgi2d/engine";
+import { UnlitMaterial } from "@nostalgi2d/basicrenderer";
 import { Character } from "../../engine/game";
 
 @injectable()
@@ -169,7 +169,10 @@ export class DemoCharacter extends Character {
     @property()
     public shouldSpawnBombs: boolean = true;
 
-    constructor(@inject(World) protected world: World, @inject(TimerManager) protected timerManager: TimerManager) {
+    constructor(
+        @inject(World) protected world: World,
+        @inject(Engine) protected engine: Engine,
+        @inject(TimerManager) protected timerManager: TimerManager) {
         super();
 
         this.shouldTick = true;
@@ -195,13 +198,14 @@ export class DemoCharacter extends Character {
                 const worldPosition = this.position.add(radialDirection.multiply(3));
                 const parent = this.getParent(); // place bombs alongside the character to avoid parent-physics double transforms
 
-                const bomb = this.getWorld()?.spawnActor(BombActor, parent ?? this, worldPosition) as BombActor;
+                const bomb = this.engine?.createObject(BombActor, (parent?.id ?? "bomb")+"-"+i) as BombActor;
+
+                this.getWorld()?.spawnActorInstance(bomb,
+                    parent ?? this, 
+                    worldPosition
+                );
+
                 const launchVector = radialDirection.multiply(launchForce);
-                console.log("bomb spawn", {
-                    parentId: parent?.getId?.(),
-                    worldPos: { x: worldPosition.x, y: worldPosition.y },
-                    launch: { x: launchVector.x, y: launchVector.y }
-                });
                 bomb.applyImpulse(launchVector);
                 bomb.fuseTimer = 60000;
                 bomb.blastRadius = 10;

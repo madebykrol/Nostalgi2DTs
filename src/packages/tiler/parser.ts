@@ -1,4 +1,4 @@
-import { inject, ResourceManager } from "@repo/engine";
+import { inject, ResourceManager } from "@nostalgi2d/engine";
 import { DOMParser } from "@xmldom/xmldom";
 
 export type TiledMapOrientation = "orthogonal" | "isometric" | "staggered" | "hexagonal" | string;

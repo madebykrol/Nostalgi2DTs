@@ -9,8 +9,8 @@ import React, {
 } from "react";
 
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { MeshComponent, type EditorUIPlugin } from "@repo/engine";
-import { GameTileMapActor } from "@repo/example";
+import { MeshComponent, type EditorUIPlugin } from "@nostalgi2d/engine";
+import { GameTileMapActor } from "@nostalgi2d/example";
 
 import {
   TileMapMaterial,
@@ -20,7 +20,7 @@ import {
   type TiledPoint,
   type TiledTilesetReference,
   TiledObjectLayer,
-} from "@repo/tiler";
+} from "@nostalgi2d/tiler";
 
 const loadImage = (source: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {

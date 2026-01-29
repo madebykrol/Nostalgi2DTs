@@ -1,4 +1,4 @@
-import { AssetService, type AssetPayloadPackedEntry, type AssetManifest } from "@repo/engine";
+import { AssetService, type AssetPayloadPackedEntry, type AssetManifest } from "@nostalgi2d/engine";
 
 type ResourceEncoding = "utf-8" | "base64";
 

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
-import type { Editor, EditorUIPlugin } from "@repo/engine";
-import { AssetService, type AssetManifest, type AssetPayloadPackedEntry } from "@repo/engine";
+import type { Editor, EditorUIPlugin } from "@nostalgi2d/engine";
+import { AssetService, type AssetManifest, type AssetPayloadPackedEntry } from "@nostalgi2d/engine";
 import { fetchAssetTree, saveBinaryResource, type AssetCategory, type AssetNode } from "../services/resourceLoader";
 
 const TYPE_FILTERS: Array<{ id: AssetCategory | "all"; label: string }> = [

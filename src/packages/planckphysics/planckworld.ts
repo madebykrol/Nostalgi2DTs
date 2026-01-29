@@ -4,10 +4,10 @@ import {
     WorldSettings,
     PhysicsComponent,
     Container
-} from "@repo/engine";
+} from "@nostalgi2d/engine";
 import { World as PWorld, Vec2, Fixture, AABB } from "planck";
-import { Actor, World } from "@repo/engine";
-import { PhysicsBody } from "@repo/engine";
+import { Actor, World } from "@nostalgi2d/engine";
+import { PhysicsBody } from "@nostalgi2d/engine";
 import { PlanckPhysicsBody } from "./planckPhysicsBody";
 
 export class PlanckWorld extends World {

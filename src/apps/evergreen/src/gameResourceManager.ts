@@ -1,4 +1,4 @@
-import { ResourceManager, StringUtils, isBrowser, isServer } from "@repo/engine";
+import { ResourceManager, StringUtils, isBrowser, isServer } from "@nostalgi2d/engine";
 
 const DEFAULT_RESOURCE_BASE = "http://localhost:4000";
 

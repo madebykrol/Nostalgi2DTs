@@ -1,4 +1,4 @@
-import { PlayerState } from "@repo/engine";
+import { PlayerState } from "@nostalgi2d/engine";
 
 export class GameInstance {
     private players: Map<string, PlayerState> = new Map();

@@ -1,4 +1,4 @@
-import { Actor, BoundingVolume, CollisionComponent, PhysicsBody, PhysicsComponent, Vector2, World } from "@repo/engine";
+import { Actor, BoundingVolume, CollisionComponent, PhysicsBody, PhysicsComponent, Vector2, World } from "@nostalgi2d/engine";
 import { World as PWorld, Vec2, Body } from "planck";
 import { BodyType } from "planck";
 import { PlanckBoundingVolume } from "./planckBoundingVolume";
@@ -26,13 +26,6 @@ export class PlanckPhysicsBody extends PhysicsBody {
 
     addImpulse(impulse: Vector2): void {
         this.body.applyLinearImpulse(new Vec2(impulse.x, impulse.y), this.body.getWorldCenter(), true);
-        // Debug: capture resulting velocity to verify impulse application
-        const v = this.body.getLinearVelocity();
-        console.log("planck impulse", {
-            actorId: this.actor.getId(),
-            impulse: { x: impulse.x, y: impulse.y },
-            velocity: { x: v.x, y: v.y }
-        });
     }
 
     addForce(force: Vector2): void {

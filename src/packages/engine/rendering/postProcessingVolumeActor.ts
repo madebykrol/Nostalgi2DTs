@@ -8,12 +8,6 @@ import type { Material } from "./material";
 import { property } from "../utils";
 import { actor } from "..";
 
-function ensurePostProcessMaterial(material: Material): void {
-    if (material.getRenderPass() !== "postprocess") {
-        throw new Error("PostProcessingVolumeActor requires a material that renders in the post-process pass.");
-    }
-}
-
 @actor()
 export class PostProcessingVolumeActor extends Actor {
     private _extent: Vector2 = new Vector2(20, 20);
@@ -35,7 +29,6 @@ export class PostProcessingVolumeActor extends Actor {
     }
 
     public setMaterial(material: Material): void {
-        ensurePostProcessMaterial(material);
         if (this.meshComponent) {
             this.meshComponent.setMaterial(material);
             return;

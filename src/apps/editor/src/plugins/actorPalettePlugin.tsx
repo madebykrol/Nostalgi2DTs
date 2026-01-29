@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Actor, Editor, Engine, Vector2 } from "@repo/engine";
-import { EditorUIPlugin } from "@repo/engine";
+import { Actor, Editor, Engine, Vector2 } from "@nostalgi2d/engine";
+import { EditorUIPlugin } from "@nostalgi2d/engine";
 import { withInjection } from "../ioc/ioc";
 
 type ActorRegistryEntry = {

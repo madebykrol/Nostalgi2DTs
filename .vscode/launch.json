@@ -79,8 +79,8 @@
         "vite://@fs/*": "${workspaceFolder}/src/*",
         "/@fs/*": "${workspaceFolder}/src/*",
         "vite://packages/*": "${workspaceFolder}/src/packages/*",
-        "http://localhost:5174/node_modules/@repo/*": "${workspaceFolder}/src/packages/*",
-        "vite://node_modules/@repo/*": "${workspaceFolder}/src/packages/*",
+        "http://localhost:5174/node_modules/@nostalgi2d/*": "${workspaceFolder}/src/packages/*",
+        "vite://node_modules/@nostalgi2d/*": "${workspaceFolder}/src/packages/*",
         "webpack://*": "${workspaceFolder}/src/*"
       }
     },
@@ -99,8 +99,8 @@
         "vite://@fs/*": "${workspaceFolder}/src/*",
         "/@fs/*": "${workspaceFolder}/src/*",
         "vite://packages/*": "${workspaceFolder}/src/packages/*",
-        "http://localhost:5175/node_modules/@repo/*": "${workspaceFolder}/src/packages/*",
-        "vite://node_modules/@repo/*": "${workspaceFolder}/src/packages/*",
+        "http://localhost:5175/node_modules/@nostalgi2d/*": "${workspaceFolder}/src/packages/*",
+        "vite://node_modules/@nostalgi2d/*": "${workspaceFolder}/src/packages/*",
         "webpack://*": "${workspaceFolder}/src/*"
       }
     }

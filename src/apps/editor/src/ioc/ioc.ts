@@ -1,5 +1,5 @@
 import { createContext, createElement, useContext, useMemo, type ComponentType } from "react";
-import { Container, Constructor, type AbstractConstructor } from "@repo/engine";
+import { Container, Constructor, type AbstractConstructor } from "@nostalgi2d/engine";
 
 export const ContainerContext = createContext<Container|null>(null);
 

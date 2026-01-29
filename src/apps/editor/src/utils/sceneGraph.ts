@@ -1,4 +1,4 @@
-import { Actor } from "@repo/engine";
+import { Actor } from "@nostalgi2d/engine";
 
 export type SceneNode = {
   id: string;

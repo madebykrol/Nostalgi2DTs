@@ -1,4 +1,4 @@
-import { useGUIManager, useGUIState, useGUIEmitter } from "@repo/engine";
+import { useGUIManager, useGUIState, useGUIEmitter } from "@nostalgi2d/engine";
 import { FLAPPY_UI_EVENTS } from "../flappyEvents";
 import React, { ChangeEvent } from "react";
 

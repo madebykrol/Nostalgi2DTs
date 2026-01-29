@@ -4,8 +4,8 @@ Container,
   Vector2,
   injectable,
   inject
-} from "@repo/engine";
-import { GameTileMapActor } from "@repo/example";
+} from "@nostalgi2d/engine";
+import { GameTileMapActor } from "@nostalgi2d/example";
 
 
 @injectable()

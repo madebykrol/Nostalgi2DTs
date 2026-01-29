@@ -1,5 +1,5 @@
 {
-  "name": "@repo/example",
+  "name": "@nostalgi2d/example",
   "version": "1.0.0",
   "exports": {
     ".": "./index.ts"
@@ -10,13 +10,13 @@
     "lint": "eslint \"**/*.ts\""
   },
   "dependencies": {
-    "@repo/engine": "*",
-    "@repo/tiler": "*",
+    "@nostalgi2d/engine": "*",
+    "@nostalgi2d/tiler": "*",
     "react": "^18.2.0"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
+    "@nostalgi2d/eslint-config": "*",
+    "@nostalgi2d/typescript-config": "*",
     "eslint": "^8.57.0",
     "typescript": "5.5.4"
   }

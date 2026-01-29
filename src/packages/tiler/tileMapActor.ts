@@ -1,4 +1,4 @@
-import { Actor, Vector2, property, Engine } from "@repo/engine";
+import { Actor, Vector2, property, Engine } from "@nostalgi2d/engine";
 import { Parser, TiledMap, type TiledObject, TiledObjectLayer } from "./parser";
 
 export interface TileMapActorOptions {
@@ -238,7 +238,7 @@ export class TileMapActor extends Actor {
             let actorsToAdd: Actor[] = [];
             try {
                 if(object.properties.Type) {
-                    const createdActor = this.engine.createActorFromIdentifier<Actor>(object.properties.Type as string);
+                    const createdActor = this.engine.createObjectFromIdentifier<Actor>(object.properties.Type as string, object.id.toString());
                     console.log("Created actor from container for type:", object.properties.Type, createdActor);
                     actorsToAdd.push(createdActor);
                 }

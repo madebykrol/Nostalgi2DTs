@@ -15,8 +15,8 @@ import {
     actor,
     inject,
     property,
-} from "@repo/engine";
-import { UnlitMaterial } from "@repo/basicrenderer";
+} from "@nostalgi2d/engine";
+import { UnlitMaterial } from "@nostalgi2d/basicrenderer";
 import { FLAPPY_UI_EVENTS } from "../flappyEvents";
 import { FlappyRectangleGameMode } from "../flappyRectangleGameMode";
 

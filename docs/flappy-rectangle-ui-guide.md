@@ -12,7 +12,7 @@ Three React components are available:
 
 ## Events
 
-Use the shared keys from `FLAPPY_UI_EVENTS` in `@repo/example/flappyEvents` to avoid typos and keep UI and gameplay in sync.
+Use the shared keys from `FLAPPY_UI_EVENTS` in `@nostalgi2d/example/flappyEvents` to avoid typos and keep UI and gameplay in sync.
 
 | Direction | Event key | Payload | When it fires |
 |-----------|-----------|---------|---------------|
@@ -31,7 +31,7 @@ Use the shared keys from `FLAPPY_UI_EVENTS` in `@repo/example/flappyEvents` to a
 Register components when the game mode starts:
 
 ```typescript
-import { FlappyRectangleScoreUI, FlappyRectangleGameOverUI } from "@repo/example";
+import { FlappyRectangleScoreUI, FlappyRectangleGameOverUI } from "@nostalgi2d/example";
 
 // During game initialization or in GameMode.onGameStart()
 engine.componentRegistry.register({
@@ -52,7 +52,7 @@ engine.componentRegistry.register({
 Then in your React app:
 
 ```tsx
-import { GUIProvider, GUIRenderer } from "@repo/engine";
+import { GUIProvider, GUIRenderer } from "@nostalgi2d/engine";
 
 function App() {
     return (
@@ -73,8 +73,8 @@ function App() {
 If you prefer to render the components directly:
 
 ```tsx
-import { GUIProvider } from "@repo/engine";
-import { FlappyRectangleScoreUI, FlappyRectangleGameOverUI } from "@repo/example";
+import { GUIProvider } from "@nostalgi2d/engine";
+import { FlappyRectangleScoreUI, FlappyRectangleGameOverUI } from "@nostalgi2d/example";
 
 function FlappyRectangleUI() {
     return (
@@ -140,7 +140,7 @@ export function CustomFlappyScoreUI() {
 You can use `useGUIEvent` to trigger sound effects when score changes:
 
 ```tsx
-import { useGUIManager, useGUIEvent } from "@repo/engine";
+import { useGUIManager, useGUIEvent } from "@nostalgi2d/engine";
 
 export function FlappyRectangleSoundManager() {
     const guiManager = useGUIManager();

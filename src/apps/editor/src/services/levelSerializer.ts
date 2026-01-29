@@ -1,5 +1,5 @@
-import { Actor, Level } from "@repo/engine";
-import { getRegisteredPropertiesForInstance } from "@repo/engine";
+import { Actor, Level } from "@nostalgi2d/engine";
+import { getRegisteredPropertiesForInstance } from "@nostalgi2d/engine";
 import type { LevelData, LevelActorDefinition } from "./levelParser";
 
 const stripSuffix = (value: string) => value.replace(/\d+$/, "");

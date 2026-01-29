@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type PointerEvent as ReactPointerEvent } from "react";
-import { AssetManifest, AssetPayloadPackedEntry, AssetService, EditorUIPlugin } from "@repo/engine";
+import { AssetManifest, AssetPayloadPackedEntry, AssetService, EditorUIPlugin } from "@nostalgi2d/engine";
 import {
   fetchSpriteSheets,
   loadBinaryResource,

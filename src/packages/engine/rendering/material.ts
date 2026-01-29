@@ -1,5 +1,5 @@
 import { Shader } from "./shader";
-import { Actor } from "../world";
+import { Actor, BaseObject } from "../world";
 import { Camera } from "../camera/Camera";
 import { Mesh } from "./mesh";
 
@@ -21,10 +21,11 @@ export interface MaterialRenderContext {
     sceneTextureSize?: { width: number; height: number };
 }
 
-export abstract class Material {
+export abstract class Material extends BaseObject {
     public shader?: Shader;
 
     constructor(shader?: Shader) {
+        super();
         this.shader = shader;
     }
 

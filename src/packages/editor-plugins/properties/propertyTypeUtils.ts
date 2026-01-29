@@ -1,4 +1,4 @@
-import { Vector2, Component as EngineComponent, type Property } from "@repo/engine";
+import { Vector2, Component as EngineComponent, type Property } from "@nostalgi2d/engine";
 
 export const VECTOR2_TYPE_NAME = "vector2";
 

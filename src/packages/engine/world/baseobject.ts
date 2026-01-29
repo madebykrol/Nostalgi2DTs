@@ -1,14 +1,27 @@
-import { v4 as uuidv4 } from "uuid";
 import { property } from "../utils";
 
 export abstract class BaseObject {
-    @property()
-    public readonly id: string = "";
 
-    private _networkId: string|undefined = "";
+
+    private _id: string | undefined = undefined;
+
+    @property()
+    public set id(id: string) {
+        if (this._id !== undefined) {
+            throw new Error("ID is already set and cannot be modified.");
+        } 
+        this._id = id;
+
+    }
+
+    public get id(): string | undefined {
+        return this._id;
+    }
+
+    private _networkId: string|undefined = undefined;
 
     constructor() {
-        this.id = uuidv4();
+        
     }
 
     set networkdId(networkId: string){
@@ -25,7 +38,7 @@ export abstract class BaseObject {
      * 
      * @returns The world id, this is unique for every actor for every session.
      */
-    getId(): string {
+    getId(): string | undefined {
         return this.id;
     }
 
@@ -76,7 +89,9 @@ export class SceneNode extends BaseObject {
     }
 
     addChild(child: SceneNode): void {
-        if (this.id === child.id) {
+        // Prevent a node from being added as a child of itself.
+        // Use object identity first, and only fall back to IDs when both are defined.
+        if (this === child || (this.id !== undefined && this.id === child.id)) {
             throw new Error("Cannot add actor as child of itself");
         }
 

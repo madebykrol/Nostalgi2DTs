@@ -7,7 +7,7 @@ export default defineConfig(({ watch }) => ({
   clean: !watch,
   target: "node20",
   tsconfig: "tsconfig.json",
-  noExternal: [/^@repo\//],
+  noExternal: [/^@nostalgi2d\//],
   external: ["ws"],
   minify: false,
 }));

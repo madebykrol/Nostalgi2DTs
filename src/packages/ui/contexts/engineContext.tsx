@@ -1,4 +1,4 @@
-import { Engine } from "@repo/engine";
+import { Engine } from "@nostalgi2d/engine";
 import {createContext} from "react";
 export const EngineContext = createContext<Engine | null>(null);
 

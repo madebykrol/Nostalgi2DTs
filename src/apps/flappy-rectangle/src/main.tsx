@@ -4,8 +4,8 @@ import http from "http";
 import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
-import { Canvas } from "@repo/basicrenderer";
-import { EngineContext } from "@repo/ui";
+import { Canvas } from "@nostalgi2d/basicrenderer";
+import { EngineContext } from "@nostalgi2d/ui";
 import {
   Vector2,
   EngineBuilder,
@@ -18,8 +18,8 @@ import {
   Level,
   AssetService,
   DefaultGameMode,
-} from "@repo/engine";
-import { PlanckWorld } from "@repo/planckphysics";
+} from "@nostalgi2d/engine";
+import { PlanckWorld } from "@nostalgi2d/planckphysics";
 import {
   FlappyRectangleGameMode,
   FlappyRectangleController,
@@ -27,9 +27,9 @@ import {
   ExampleTopDownRPGGameMode,
   GrasslandsMap,
   TopDownRPGController,
-} from "@repo/example";
-import { Parser } from "@repo/tiler";
-import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@repo/client";
+} from "@nostalgi2d/example";
+import { Parser } from "@nostalgi2d/tiler";
+import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@nostalgi2d/client";
 import { GameResourceManager } from "./gameResourceManager";
 const App = () => {
   const [engine, setEngine] = useState<ClientEngine | null>(null);

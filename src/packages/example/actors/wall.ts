@@ -1,4 +1,4 @@
-import { actor, Actor, inject, PhysicsComponent, Vertex2, World } from "@repo/engine";
+import { actor, Actor, inject, PhysicsComponent, Vertex2, World } from "@nostalgi2d/engine";
 
 @actor()
 export class WallActor extends Actor {

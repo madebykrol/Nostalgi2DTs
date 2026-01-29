@@ -1,5 +1,5 @@
 {
-  "name": "@repo/ui",
+  "name": "@nostalgi2d/ui",
   "version": "0.0.0",
   "exports": {
     ".": "./index.ts",
@@ -12,15 +12,15 @@
     "lint": "eslint \"**/*.ts\""
   },
   "dependencies": {
-    "@repo/engine": "*",
-    "@repo/planckphysics": "*",
-    "@repo/example": "*",
+    "@nostalgi2d/engine": "*",
+    "@nostalgi2d/planckphysics": "*",
+    "@nostalgi2d/example": "*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/typescript-config": "*",
+    "@nostalgi2d/eslint-config": "*",
+    "@nostalgi2d/typescript-config": "*",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "eslint": "^8.57.0",

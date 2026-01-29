@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 
-// import { actor, Actor, create, Engine, listTypes } from "@repo/engine";
-// import { Level } from "@repo/engine";
-// import { Vector2 } from "@repo/engine";
-// import { PlanckWorld } from "@repo/planckphysics";
-// import { BombActor, DemoActor } from "@repo/example";
+// import { actor, Actor, create, Engine, listTypes } from "@nostalgi2d/engine";
+// import { Level } from "@nostalgi2d/engine";
+// import { Vector2 } from "@nostalgi2d/engine";
+// import { PlanckWorld } from "@nostalgi2d/planckphysics";
+// import { BombActor, DemoActor } from "@nostalgi2d/example";
 // import { listRendererForActor } from "../../engine/actorRegistroy";
 import { EngineContext } from "../contexts";
 import { Vector2 } from "../../engine/math";

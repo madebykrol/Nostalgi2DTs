@@ -7,8 +7,8 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { EditorUIPlugin } from "@repo/engine";
-import { Actor } from "@repo/engine";
+import { EditorUIPlugin } from "@nostalgi2d/engine";
+import { Actor } from "@nostalgi2d/engine";
 
 const VIEWPORT_MARGIN = 16;
 const MIN_WIDTH = 320;

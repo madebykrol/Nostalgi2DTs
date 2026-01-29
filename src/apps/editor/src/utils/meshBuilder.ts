@@ -1,4 +1,4 @@
-import { Mesh } from "@repo/engine";
+import { Mesh } from "@nostalgi2d/engine";
 import type { MeshMetadata, MeshMetadataVertex } from "./assetHelpers";
 import { DEFAULT_MESH_VERTICES, normalizeMeshMetadataPayload } from "./assetHelpers";
 

@@ -1,4 +1,4 @@
-import { VertexShader } from "@repo/engine";
+import { VertexShader } from "@nostalgi2d/engine";
 
 
 // Optimized renderer: reuses a single static quad buffer & shader program.

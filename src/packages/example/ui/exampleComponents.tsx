@@ -1,4 +1,4 @@
-import { useGUIManager, useGUIState, useGUIEmitter } from "@repo/engine";
+import { useGUIManager, useGUIState, useGUIEmitter } from "@nostalgi2d/engine";
 
 /**
  * Example: Player Health UI Component

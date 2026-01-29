@@ -8,9 +8,9 @@ import {
   PhysicsComponent,
   SoundHandle,
   SoundManager,
-  Vector2 } from "@repo/engine";
+  Vector2 } from "@nostalgi2d/engine";
 import { inject, injectable } from 'inversify';
-import { BombActor } from "@repo/example";
+import { BombActor } from "@nostalgi2d/example";
 
 @injectable()
 export class TopDownRPGController extends Controller {

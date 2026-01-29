@@ -1,10 +1,12 @@
 import { EngineNetworkMode } from "../engine";
 import { Actor } from "./actor";
+import { BaseObject } from "./baseobject";
 
-export abstract class Component {
+export abstract class Component extends BaseObject {
     protected actor: Actor | null;
     
     constructor() {
+        super();
         this.actor = null;
     }
 

@@ -75,11 +75,8 @@ export class InversifyContainer implements Container {
         this.container.bind(ctor).toConstantValue(instance);
     }
 
-    get<T>(ctor?: Constructor<T> | AbstractConstructor<T>): T {
+    get<T>(ctor: Constructor<T> | AbstractConstructor<T>, args?: any[]): T {
       try {
-        if (!ctor) {
-         return this.container.get<T>(Text.prototype.constructor);
-        }
         return this.container.get(ctor);
       } catch (e) {
         console.log(e);

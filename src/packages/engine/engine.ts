@@ -14,7 +14,7 @@ import { GUIManager } from "./ui/guiManager";
 import { GUIComponentRegistry } from "./ui/guiComponentRegistry";
 import { GUIModuleRegistry } from "./ui/uiModuleRegistry";
 import { LevelParser } from "./level/levelParser";
-import { SceneNode } from "./world/baseobject";
+import { BaseObject, SceneNode } from "./world/baseobject";
 
 export type EngineNetworkMode = "client" | "server" | "singleplayer";
 
@@ -159,23 +159,22 @@ export class Engine {
 
     spawnActorInstance(actor: Actor, parent?: SceneNode, position?: Vector2): void {
         this.world.spawnActorInstance(actor, parent, position);
-
-    }
-
-    spawnActor<TActor extends Actor>(ctor: Constructor<TActor>, parent: SceneNode, position?: Vector2, properties?: Record<string, any>): Actor {
-        return this.world.spawnActor(ctor, parent, position, properties);
     }
 
     despawnActor(actor: Actor): void {
         this.world.despawnActor(actor);
     }
 
-    createComponent<T extends Component>(ctor: Constructor<T>): T {
-        return this.container.get(ctor) as T;
+    createObject<T extends BaseObject>(ctor: Constructor<T>, id: string): T {
+        var object = this.container.get(ctor) as T;
+        object.id = id;
+        return object;
     }
 
-    createActor<T extends Actor>(ctor: Constructor<T>): T {
-        return this.container.get(ctor) as T;
+    createObjectFromIdentifier<T extends BaseObject>(identifier: string, id: string): T {
+        var object = this.container.getByIdentifier<T>(identifier)
+        object.id = id;
+        return object;
     }
 
     createActorFromIdentifier<T extends Actor>(identifier: string): T {
@@ -363,7 +362,7 @@ export class Engine {
                     if (component.getRenderPass() !== "forward") {
                         continue;
                     }
-                    component.render(gl, camera);
+                    component.render(gl, camera, "forward");
                 }
 
             } else {

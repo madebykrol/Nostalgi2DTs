@@ -1,4 +1,4 @@
-import { Endpoint, Engine, Container, InputManager, World, Vector2, TimerManager } from "@repo/engine";
+import { Endpoint, Engine, Container, InputManager, World, Vector2, TimerManager } from "@nostalgi2d/engine";
 import { inject, injectable } from "inversify";
 import { IncomingMessage, Socket } from "../engine/network/endpoint";
 

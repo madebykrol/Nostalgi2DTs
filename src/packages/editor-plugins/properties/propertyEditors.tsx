@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Vector2 } from "@repo/engine";
-import { ArrayEditor, NumberEditor, Vector2Editor } from "@repo/ui";
+import { Vector2 } from "@nostalgi2d/engine";
+import { ArrayEditor, NumberEditor, Vector2Editor } from "@nostalgi2d/ui";
 import type { ValueKind, ScalarKind } from "./propertyTypeUtils";
 
 export type EditorContext = {

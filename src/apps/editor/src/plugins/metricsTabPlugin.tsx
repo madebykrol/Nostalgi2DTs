@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { theme } from "../theme";
-import type { ClientEngine } from "@repo/client";
-import type { EditorUIPlugin } from "@repo/engine";
+import type { ClientEngine } from "@nostalgi2d/client";
+import type { EditorUIPlugin } from "@nostalgi2d/engine";
 import { useEditorEngine } from "../contexts/EngineContext";
 
 // Extend Performance type to include memory (Chrome-specific)

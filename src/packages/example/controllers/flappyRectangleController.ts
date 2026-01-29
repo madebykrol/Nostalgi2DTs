@@ -1,4 +1,4 @@
-import { Controller, InputManager, PhysicsComponent, Vector2 } from "@repo/engine";
+import { Controller, InputManager, PhysicsComponent, Vector2 } from "@nostalgi2d/engine";
 import { inject, injectable } from "inversify";
 
 @injectable()

@@ -1,4 +1,4 @@
-import type { Editor } from "@repo/engine";
+import type { Editor } from "@nostalgi2d/engine";
 import type { PanelRegistry } from "../plugins/pluginSystem";
 
 type RegisteredPanelInstance = ReturnType<PanelRegistry["resolve"]>[number];

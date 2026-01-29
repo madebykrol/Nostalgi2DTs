@@ -1,6 +1,6 @@
 import type { BodyType } from "./bodyType";
 import type { PhysicsBody } from "./body";
-import { inject, injectable, World, Actor, nobject, Vector2, Component, property } from "@repo/engine";
+import { inject, injectable, World, Actor, nobject, Vector2, Component, property } from "@nostalgi2d/engine";
 
 
 @injectable()

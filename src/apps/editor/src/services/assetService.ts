@@ -4,9 +4,9 @@ import type {
   EditorComponentAssembler,
   Actor,
   MeshComponent,
-} from "@repo/engine";
-import { MeshComponent as MeshComp } from "@repo/engine";
-import { UnlitMaterial } from "@repo/basicrenderer";
+} from "@nostalgi2d/engine";
+import { MeshComponent as MeshComp } from "@nostalgi2d/engine";
+import { UnlitMaterial } from "@nostalgi2d/basicrenderer";
 import {
   cloneComponentAsset,
   hashStringToColor,

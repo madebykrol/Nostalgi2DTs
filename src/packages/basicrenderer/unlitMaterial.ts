@@ -1,5 +1,5 @@
-import { Material, MaterialRenderContext, Mesh, Quad, PhysicsComponent, BoundingVolume, Vector2, Vertex2 } from "@repo/engine";
-import { FragmentShader } from "@repo/engine";
+import { Material, MaterialRenderContext, Mesh, Quad, PhysicsComponent, BoundingVolume, Vector2, Vertex2 } from "@nostalgi2d/engine";
+import { FragmentShader } from "@nostalgi2d/engine";
 import { BaseFallbackActorVertexShader } from "./shaders/baseFallbackActorVertexShader";
 import { BaseActorFragmentShader } from "./shaders/baseActorFragmentShader";
 

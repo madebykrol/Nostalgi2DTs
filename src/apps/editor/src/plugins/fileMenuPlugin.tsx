@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { EditorUIPlugin } from "@repo/engine";
+import type { EditorUIPlugin } from "@nostalgi2d/engine";
 import { createBlankLevelAsset } from "../services/resourceLoader";
 
 const LEVEL_TYPE_SUGGESTIONS = [

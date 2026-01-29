@@ -14,8 +14,8 @@ Paste the following starter code:
 
 ```tsx
 import { useMemo } from "react";
-import { Editor } from "@repo/engine";
-import { EditorUIPlugin } from "@repo/engine/editor/editorUIPlugin";
+import { Editor } from "@nostalgi2d/engine";
+import { EditorUIPlugin } from "@nostalgi2d/engine/editor/editorUIPlugin";
 import { withInjection } from "../ioc/ioc";
 
 const SelectionPanelBase = ({ editor }: { editor: Editor }) => {
@@ -66,7 +66,7 @@ export default selectionInfoPlugin;
 
 Key points:
 
-- `EditorUIPlugin` now lives in `@repo/engine/editor/editorUIPlugin`, shared between the runtime and plugin authors.
+- `EditorUIPlugin` now lives in `@nostalgi2d/engine/editor/editorUIPlugin`, shared between the runtime and plugin authors.
 - `panels.register` takes an ID, title, `location` (`"left"` or `"right"`), optional sort `order`, and a `render` function that receives `{ editor }`.
 - The dispose function returned from `activate` must clean up every registry contribution.
 
@@ -76,7 +76,7 @@ Before plugins load, push an entry into the editor manifest using `editor.regist
 
 ```ts
 // src/apps/editor/src/registerBuiltInEditorPlugins.ts
-import { Editor } from "@repo/engine";
+import { Editor } from "@nostalgi2d/engine";
 
 export const registerBuiltInEditorPlugins = (editor: Editor) => {
   editor.registerPlugin({
