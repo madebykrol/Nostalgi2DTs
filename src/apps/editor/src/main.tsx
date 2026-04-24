@@ -41,7 +41,6 @@ import { theme } from "./theme";
 import {
   ModalHost,
   ModalManager,
-  PanelRegistry,
   SceneContextMenuRegistry,
   SceneContextMenuSurface,
   SceneDragDropRegistry,
