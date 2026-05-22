@@ -6,7 +6,8 @@ import { dirname, resolve } from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const resourcesContentDir = resolve(__dirname, "../resources/content");
+const resourcesContentDir = resolve(__dirname, "../projects/content");
+const skipStaticCopy = process.env.NOSTALGI_SKIP_STATIC_COPY === "1";
 
 export default defineConfig({
   plugins: [
@@ -17,18 +18,20 @@ export default defineConfig({
         },
       },
     }),
-    viteStaticCopy({
-      targets: [
-        {
-          src: `${resourcesContentDir}/**/*`,
-          dest: "content",
-        },
-      ],
-      watch: {
-        reloadPageOnChange: true,
-      },
-    })
-  ],
+    !skipStaticCopy
+      ? viteStaticCopy({
+          targets: [
+            {
+              src: `${resourcesContentDir}/**/*`,
+              dest: "content",
+            },
+          ],
+          watch: {
+            reloadPageOnChange: true,
+          },
+        })
+      : undefined,
+  ].filter(Boolean),
   base: "/",
   server: {
     port: 5176

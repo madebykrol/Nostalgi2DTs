@@ -1,0 +1,12 @@
+{
+  "projects": [
+    {
+      "id": "grasslands-demo",
+      "manifest": "./grasslands-demo/project.manifest.json"
+    },
+    {
+      "id": "flappy-rectangle",
+      "manifest": "./flappy-rectangle/project.manifest.json"
+    }
+  ]
+}

@@ -40,7 +40,8 @@ export default defineConfig({
     alias: {
       // Pin @nostalgi2d/* imports to the single source copy to avoid duplicate module instances
       "@nostalgi2d/engine": path.resolve(__dirname, "../../packages/engine"),
-      "@nostalgi2d/example": path.resolve(__dirname, "../../packages/example"),
+      "@nostalgi2d-projects/flappy-rectangle": path.resolve(__dirname, "../../projects/flappy-rectangle"),
+      "@nostalgi2d-projects/grasslands-demo": path.resolve(__dirname, "../../projects/grasslands-demo"),
       "@nostalgi2d/tiler": path.resolve(__dirname, "../../packages/tiler"),
       "@nostalgi2d/ui": path.resolve(__dirname, "../../packages/ui"),
       "@nostalgi2d/client": path.resolve(__dirname, "../../packages/client"),
@@ -50,7 +51,8 @@ export default defineConfig({
     },
     dedupe: [
       "@nostalgi2d/engine",
-      "@nostalgi2d/example",
+      "@nostalgi2d-projects/flappy-rectangle",
+      "@nostalgi2d-projects/grasslands-demo",
       "@nostalgi2d/tiler",
       "@nostalgi2d/ui",
       "@nostalgi2d/client",

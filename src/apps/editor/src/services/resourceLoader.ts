@@ -34,6 +34,16 @@ export type AssetNode = {
   isContainer?: boolean;
 };
 
+export type ProjectDescriptor = {
+  id: string;
+  title: string;
+  startupLevel: string;
+  manifestPath: string;
+  projectPath: string;
+  assetRoots: string[];
+  assetFiles: string[];
+};
+
 export async function loadResourceContent(path: string, options?: ResourceRequestOptions): Promise<string> {
   const baseUrl = options?.baseUrl ?? DEFAULT_RESOURCE_BASE;
   const encoding = options?.encoding ?? "utf-8";
@@ -66,7 +76,7 @@ export async function saveResourceContent(path: string, content: string, options
   }
 }
 
-export const DEFAULT_LEVEL_PATH = "levels/grasslands.n2asset";
+export const DEFAULT_LEVEL_PATH = "projects/grasslands-demo/levels/grasslands.n2asset";
 
 const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
   const binary = atob(base64);
@@ -328,6 +338,15 @@ export async function fetchAssetTree(baseUrl: string = DEFAULT_RESOURCE_BASE): P
   return payload.data as AssetNode;
 }
 
+export async function fetchProjects(baseUrl: string = DEFAULT_RESOURCE_BASE): Promise<ProjectDescriptor[]> {
+  const res = await fetch(`${baseUrl}/api/resources/projects`);
+  if (!res.ok) {
+    throw new Error(`Failed to load projects: ${res.status} ${res.statusText}`);
+  }
+  const payload = await res.json();
+  return Array.isArray(payload?.data) ? (payload.data as ProjectDescriptor[]) : [];
+}
+
 export type CreateBlankLevelOptions = BlankLevelOptions & { baseUrl?: string };
 
 export const createBlankLevelPayload = (options?: BlankLevelOptions): string => {
@@ -338,4 +357,82 @@ export async function createBlankLevelAsset(path: string, options?: CreateBlankL
   const payload = createBlankLevelPayload(options);
   const baseUrl = options?.baseUrl ?? DEFAULT_RESOURCE_BASE;
   await saveResourceLevel(path, payload, baseUrl);
+}
+
+export type CreateProjectOptions = {
+  id: string;
+  title: string;
+  startupLevelName?: string;
+  assetRoots?: string[];
+  baseUrl?: string;
+};
+
+const slugifyProjectId = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const slugifyLevelStem = (value: string): string => {
+  const sanitized = value
+    .trim()
+    .toLowerCase()
+    .replace(/\.n2asset$/i, "")
+    .replace(/[^a-z0-9-_]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return sanitized.length > 0 ? sanitized : "level";
+};
+
+/**
+ * Create a brand-new project on disk: writes a `project.manifest.json` and an initial
+ * empty level container. Returns the created `ProjectDescriptor` (re-fetched from the server).
+ */
+export async function createProject(options: CreateProjectOptions): Promise<ProjectDescriptor> {
+  const baseUrl = options.baseUrl ?? DEFAULT_RESOURCE_BASE;
+  const id = slugifyProjectId(options.id);
+  if (!id) {
+    throw new Error("Project id is required");
+  }
+  const title = options.title?.trim() || id;
+  const levelStem = slugifyLevelStem(options.startupLevelName ?? "main");
+  const startupLevel = `levels/${levelStem}`;
+  const assetRoots = options.assetRoots && options.assetRoots.length > 0
+    ? options.assetRoots
+    : ["levels", "objects", "textures", "tilemaps"];
+
+  const projectPath = `projects/${id}`;
+  const manifestPath = `${projectPath}/project.manifest.json`;
+  const levelAssetPath = `${projectPath}/${startupLevel}.n2asset`;
+
+  // 404-check via fetchProjects to avoid clobbering an existing project.
+  const existing = await fetchProjects(baseUrl);
+  if (existing.some((p) => p.id === id)) {
+    throw new Error(`A project with id "${id}" already exists`);
+  }
+
+  const manifest = {
+    id,
+    title,
+    startupLevel,
+    assetRoots,
+    assetFiles: [],
+  };
+
+  await saveResourceContent(manifestPath, JSON.stringify(manifest, null, 2), {
+    baseUrl,
+    encoding: "utf-8",
+  });
+
+  await createBlankLevelAsset(levelAssetPath, {
+    baseUrl,
+    levelName: title,
+  });
+
+  const refreshed = await fetchProjects(baseUrl);
+  const created = refreshed.find((p) => p.id === id);
+  if (!created) {
+    throw new Error("Project was created but could not be loaded");
+  }
+  return created;
 }

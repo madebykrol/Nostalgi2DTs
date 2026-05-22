@@ -57,6 +57,12 @@ export abstract class World {
         return this.settings?.airFriction ?? 0.02;
     }
 
+    spawnActor<T extends Actor>(ctor: Constructor<T>, parent?: SceneNode, position?: Vector2): T {
+        const actor = this.container.get(ctor);
+        this.spawnActorInstance(actor, parent, position);
+        return actor;
+    }
+
     spawnActorInstance(actor: Actor, parent?: SceneNode, position?: Vector2): void {
         let resolvedParent = parent ?? actor.getParent();
 

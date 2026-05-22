@@ -24,10 +24,12 @@ import {
   FlappyRectangleGameMode,
   FlappyRectangleController,
   flappyUiModule,
+} from "@nostalgi2d-projects/flappy-rectangle";
+import {
   ExampleTopDownRPGGameMode,
   GrasslandsMap,
   TopDownRPGController,
-} from "@nostalgi2d/example";
+} from "@nostalgi2d-projects/grasslands-demo";
 import { Parser } from "@nostalgi2d/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@nostalgi2d/client";
 import { GameResourceManager } from "./gameResourceManager";

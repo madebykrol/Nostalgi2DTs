@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const resourcesContentDir = resolve(__dirname, "../resources/content");
+const resourcesContentDir = resolve(__dirname, "../projects/content");
 
 export default defineConfig({
   plugins: [

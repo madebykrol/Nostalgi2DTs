@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import type { Editor, EditorUIPlugin } from "@nostalgi2d/engine";
 import { AssetService, type AssetManifest, type AssetPayloadPackedEntry } from "@nostalgi2d/engine";
 import { fetchAssetTree, saveBinaryResource, type AssetCategory, type AssetNode } from "../services/resourceLoader";
+import { useProjectScope } from "../contexts/ProjectScopeContext";
 
 const TYPE_FILTERS: Array<{ id: AssetCategory | "all"; label: string }> = [
 	{ id: "all", label: "All" },
@@ -81,7 +82,47 @@ const guessAssetTypeFromName = (fileName: string, mime?: string): AssetCategory 
 
 const generateLocalId = () => Math.random().toString(36).slice(2, 10);
 
+const normalizePath = (value: string | null | undefined) => {
+	if (!value) {
+		return "";
+	}
+	return value.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\//, "").replace(/\/$/, "");
+};
+
+const joinPath = (base: string, child: string) => {
+	const normalizedBase = normalizePath(base);
+	const normalizedChild = normalizePath(child);
+	if (!normalizedBase) {
+		return normalizedChild;
+	}
+	if (!normalizedChild) {
+		return normalizedBase;
+	}
+	return `${normalizedBase}/${normalizedChild}`;
+};
+
+const findNodeByPath = (node: AssetNode | null, targetPath: string): AssetNode | null => {
+	if (!node) {
+		return null;
+	}
+	const normalizedTarget = normalizePath(targetPath);
+	if (normalizePath(node.path) === normalizedTarget) {
+		return node;
+	}
+	if (!node.children || node.children.length === 0) {
+		return null;
+	}
+	for (const child of node.children) {
+		const found = findNodeByPath(child, normalizedTarget);
+		if (found) {
+			return found;
+		}
+	}
+	return null;
+};
+
 const AssetBrowserPanel = ({ editor }: { editor: Editor }) => {
+	const projectScope = useProjectScope();
 	const [tree, setTree] = useState<AssetNode | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -250,7 +291,40 @@ const AssetBrowserPanel = ({ editor }: { editor: Editor }) => {
 	}, []);
 
 	const filteredTree = useMemo(() => {
-		if (!tree) {
+		const scopedTree = (() => {
+			if (!tree) {
+				return null;
+			}
+
+			const projectPath = normalizePath(projectScope.projectPath);
+			if (!projectPath) {
+				return tree;
+			}
+
+			const projectNode = findNodeByPath(tree, projectPath);
+			if (!projectNode) {
+				return null;
+			}
+
+			const scopedRoots = (projectScope.assetRoots ?? [])
+				.map((assetRoot) => findNodeByPath(tree, joinPath(projectPath, assetRoot)))
+				.filter((node): node is AssetNode => Boolean(node));
+
+			if (scopedRoots.length === 0) {
+				return {
+					...projectNode,
+					name: projectScope.projectTitle ?? projectNode.name,
+				};
+			}
+
+			return {
+				...projectNode,
+				name: projectScope.projectTitle ?? projectNode.name,
+				children: scopedRoots,
+			};
+		})();
+
+		if (!scopedTree) {
 			return null;
 		}
 
@@ -276,8 +350,22 @@ const AssetBrowserPanel = ({ editor }: { editor: Editor }) => {
 			return null;
 		};
 
-		return applyFilters(tree);
-	}, [tree, search, typeFilter]);
+		return applyFilters(scopedTree);
+	}, [tree, search, typeFilter, projectScope]);
+
+	useEffect(() => {
+		if (!filteredTree?.path) {
+			return;
+		}
+		setExpanded((previous) => {
+			if (previous.has(filteredTree.path)) {
+				return previous;
+			}
+			const next = new Set(previous);
+			next.add(filteredTree.path);
+			return next;
+		});
+	}, [filteredTree?.path]);
 
 	const handleImportInputChange = useCallback(
 		async (event: ChangeEvent<HTMLInputElement>) => {
@@ -671,6 +759,11 @@ const AssetBrowserPanel = ({ editor }: { editor: Editor }) => {
 		<div className="relative flex h-full flex-col text-xs text-white/80">
 			<input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleImportInputChange} />
 			<div className="border-b border-white/10 px-4 py-3">
+				{projectScope.projectTitle ? (
+					<p className="mb-2 text-[11px] uppercase tracking-wide text-cyan-300/80">
+						Project: {projectScope.projectTitle}
+					</p>
+				) : null}
 				<div className="flex flex-wrap items-center gap-2">
 					<input
 						type="text"

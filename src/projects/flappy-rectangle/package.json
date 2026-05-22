@@ -1,0 +1,25 @@
+{
+  "name": "@nostalgi2d-projects/flappy-rectangle",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "@nostalgi2d/engine": "*",
+    "@nostalgi2d/basicrenderer": "*",
+    "inversify": "^6.0.2",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@nostalgi2d/eslint-config": "*",
+    "@nostalgi2d/typescript-config": "*",
+    "eslint": "^8.57.0",
+    "typescript": "5.5.4"
+  }
+}

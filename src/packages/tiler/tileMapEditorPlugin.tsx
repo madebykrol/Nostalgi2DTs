@@ -10,9 +10,9 @@ import React, {
 
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { MeshComponent, type EditorUIPlugin } from "@nostalgi2d/engine";
-import { GameTileMapActor } from "@nostalgi2d/example";
 
 import {
+  TileMapActor,
   TileMapMaterial,
   type TiledMap,
   type TiledTileLayer,
@@ -119,7 +119,7 @@ type SelectedTile = {
 };
 
 type TileMapEditorModalProps = {
-  actor: GameTileMapActor | null;
+  actor: TileMapActor | null;
   onClose: () => void;
 };
 
@@ -188,7 +188,7 @@ const TileMapEditorModal = ({ actor, onClose }: TileMapEditorModalProps) => {
   useEffect(() => {
     if (!actor) {
       setLoading(false);
-      setError("Select a GameTileMapActor to edit its tiles.");
+      setError("Select a TileMapActor to edit its tiles.");
       return;
     }
 
@@ -1641,12 +1641,12 @@ const TileMapEditorModal = ({ actor, onClose }: TileMapEditorModalProps) => {
                 {activeTab === "tiles" ? (
                   <>
                     <p>Left click to paint the selected tile. Right click or choose Eraser to clear tiles.</p>
-                    <p className="mt-1">Alt + drag (or middle mouse) to pan while zoomed. Changes apply immediately to the selected GameTileMapActor.</p>
+                    <p className="mt-1">Alt + drag (or middle mouse) to pan while zoomed. Changes apply immediately to the selected TileMapActor.</p>
                   </>
                 ) : (
                   <>
                     <p>Left click objects to select them for editing. Use the form on the right to adjust metadata and custom properties.</p>
-                    <p className="mt-1">Alt + drag (or middle mouse) to pan while zoomed. Changes apply immediately to the selected GameTileMapActor.</p>
+                    <p className="mt-1">Alt + drag (or middle mouse) to pan while zoomed. Changes apply immediately to the selected TileMapActor.</p>
                   </>
                 )}
               </div>
@@ -1689,7 +1689,7 @@ export const tileMapEditorPlugin: EditorUIPlugin = {
 
     const openModal = () => {
       const selected = editor.getSelectedActors();
-      const tileMap = selected.find((actor): actor is GameTileMapActor => actor instanceof GameTileMapActor) ?? null;
+      const tileMap = selected.find((actor): actor is TileMapActor => actor instanceof TileMapActor) ?? null;
       modals.open((api) => <TileMapEditorModal actor={tileMap} onClose={api.close} />);
     };
 

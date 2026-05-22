@@ -25,12 +25,22 @@ import {
 import { PlanckWorld } from "@nostalgi2d/planckphysics";
 import {
   ExampleTopDownRPGGameMode,
-  FlappyRectangleGameMode,
   GrasslandsMap,
   TopDownRPGController,
+} from "@nostalgi2d-projects/grasslands-demo";
+import {
+  FlappyRectangleGameMode,
+  FlappyRectangleController,
   flappyUiModule,
-} from "@nostalgi2d/example";
-import { DEFAULT_LEVEL_PATH, saveResourceLevel, loadBinaryResource, saveBinaryResource } from "./services/resourceLoader";
+} from "@nostalgi2d-projects/flappy-rectangle";
+import {
+  saveResourceLevel,
+  loadBinaryResource,
+  saveBinaryResource,
+  fetchProjects,
+  createProject,
+  type ProjectDescriptor,
+} from "./services/resourceLoader";
 import { Parser, tileMapEditorPlugin } from "@nostalgi2d/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@nostalgi2d/client";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -41,6 +51,7 @@ import { theme } from "./theme";
 import {
   ModalHost,
   ModalManager,
+  PanelRegistry,
   SceneContextMenuRegistry,
   SceneContextMenuSurface,
   SceneDragDropRegistry,
@@ -65,7 +76,7 @@ import consoleTabPlugin, { type ConsoleEntry, type ConsoleEntryType } from "./pl
 import metricsTabPlugin from "./plugins/metricsTabPlugin";
 import fileMenuPlugin from "./plugins/fileMenuPlugin";
 
-import { FlappyRectangleController } from "@nostalgi2d/example";
+// (FlappyRectangleController already imported from @nostalgi2d-projects/flappy-rectangle above)
 
 // Extracted utilities
 import { type SceneNode, areSceneGraphsEqual} from "./utils/sceneGraph";
@@ -83,6 +94,7 @@ import { createPrototypeComponentAssetStorage, createPrototypeComponentAssembler
 // Contexts
 import { ConsoleContext } from "./contexts/ConsoleContext";
 import { EditorEngineContext } from "./contexts/EngineContext";
+import { ProjectScopeContext } from "./contexts/ProjectScopeContext";
 import { useEngineInitialization } from "./hooks/useEngineInitialization";
 
 type SerializedPropertyRecord = {
@@ -222,6 +234,183 @@ const mergeSerializedLevelJson = (existingContent: string | null | undefined, cu
   }
 };
 
+const normalizeResourcePath = (value: string | null | undefined) => {
+  if (!value) {
+    return "";
+  }
+  return value.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\//, "").trim();
+};
+
+const joinResourcePath = (base: string | null | undefined, relative: string | null | undefined) => {
+  const normalizedBase = normalizeResourcePath(base);
+  const normalizedRelative = normalizeResourcePath(relative);
+  if (!normalizedBase) {
+    return normalizedRelative;
+  }
+  if (!normalizedRelative) {
+    return normalizedBase;
+  }
+  return `${normalizedBase}/${normalizedRelative}`;
+};
+
+const ensureAssetContainerPath = (path: string) => {
+  const normalized = normalizeResourcePath(path);
+  if (!normalized) {
+    return normalized;
+  }
+  const leaf = normalized.split("/").pop() ?? normalized;
+  if (/\.[^./\\]+$/.test(leaf)) {
+    return normalized;
+  }
+  return `${normalized}.n2asset`;
+};
+
+const resolveProjectLevelPath = (project: ProjectDescriptor | null, levelPath: string | null | undefined) => {
+  const normalizedLevelPath = normalizeResourcePath(levelPath);
+  if (!normalizedLevelPath) {
+    return "";
+  }
+
+  const normalizedProjectPath = normalizeResourcePath(project?.projectPath);
+  const fullPath =
+    normalizedLevelPath.startsWith("projects/") ||
+    (normalizedProjectPath.length > 0 && normalizedLevelPath.startsWith(`${normalizedProjectPath}/`))
+      ? normalizedLevelPath
+      : joinResourcePath(normalizedProjectPath, normalizedLevelPath);
+
+  return ensureAssetContainerPath(fullPath);
+};
+
+const inferProjectPathFromLevelPath = (levelPath: string | null | undefined) => {
+  const normalized = normalizeResourcePath(levelPath);
+  const match = normalized.match(/^(projects\/[^/]+)/i);
+  return match ? match[1] : "";
+};
+
+const resolveProjectAssetPath = (projectPath: string | null | undefined, resourcePath: string | null | undefined) => {
+  const normalizedResourcePath = normalizeResourcePath(resourcePath);
+  if (!normalizedResourcePath) {
+    return "";
+  }
+  if (/^(?:[a-z]+:)?\/\//i.test(normalizedResourcePath)) {
+    return normalizedResourcePath;
+  }
+
+  const withoutContentPrefix = normalizedResourcePath.replace(/^content\//i, "");
+  if (/^projects\//i.test(withoutContentPrefix)) {
+    return withoutContentPrefix;
+  }
+
+  const normalizedProjectPath = normalizeResourcePath(projectPath);
+  if (!normalizedProjectPath) {
+    return withoutContentPrefix;
+  }
+
+  if (withoutContentPrefix.startsWith(`${normalizedProjectPath}/`)) {
+    return withoutContentPrefix;
+  }
+
+  return `${normalizedProjectPath}/${withoutContentPrefix}`;
+};
+
+const LAST_PROJECT_STORAGE_KEY = "nostalgi2d:editor:lastProjectId";
+const LAST_LEVEL_STORAGE_KEY_PREFIX = "nostalgi2d:editor:lastLevel:";
+
+const safeLocalStorage = () => {
+  try {
+    return typeof window !== "undefined" ? window.localStorage : null;
+  } catch {
+    return null;
+  }
+};
+
+const readLastProjectId = (): string | null => {
+  return safeLocalStorage()?.getItem(LAST_PROJECT_STORAGE_KEY) ?? null;
+};
+
+const writeLastProjectId = (projectId: string | null) => {
+  const storage = safeLocalStorage();
+  if (!storage) return;
+  if (projectId) {
+    storage.setItem(LAST_PROJECT_STORAGE_KEY, projectId);
+  } else {
+    storage.removeItem(LAST_PROJECT_STORAGE_KEY);
+  }
+};
+
+const readLastLevelForProject = (projectId: string | null | undefined): string | null => {
+  if (!projectId) return null;
+  return safeLocalStorage()?.getItem(`${LAST_LEVEL_STORAGE_KEY_PREFIX}${projectId}`) ?? null;
+};
+
+const writeLastLevelForProject = (projectId: string | null | undefined, levelPath: string | null) => {
+  if (!projectId) return;
+  const storage = safeLocalStorage();
+  if (!storage) return;
+  if (levelPath) {
+    storage.setItem(`${LAST_LEVEL_STORAGE_KEY_PREFIX}${projectId}`, levelPath);
+  } else {
+    storage.removeItem(`${LAST_LEVEL_STORAGE_KEY_PREFIX}${projectId}`);
+  }
+};
+
+const humanizeLevelPath = (path: string): string => {
+  const normalized = normalizeResourcePath(path);
+  if (!normalized) return "(no level)";
+  const leaf = normalized.split("/").pop() ?? normalized;
+  return leaf.replace(/\.n2asset$/i, "");
+};
+
+const collectProjectLevelPaths = (project: ProjectDescriptor | null): string[] => {
+  if (!project) return [];
+  const projectPath = normalizeResourcePath(project.projectPath);
+  const files = Array.isArray(project.assetFiles) ? project.assetFiles : [];
+  const fromFiles = files
+    .map((file) => normalizeResourcePath(file))
+    .filter(
+      (file) =>
+        file.endsWith(".n2asset") &&
+        (file.includes("/levels/") || file.startsWith("levels/")) &&
+        (!projectPath || file.startsWith(`${projectPath}/`) || file.startsWith("levels/"))
+    )
+    .map((file) =>
+      projectPath && !file.startsWith(`${projectPath}/`) ? `${projectPath}/${file}` : file
+    );
+
+  const startup = resolveProjectLevelPath(project, project.startupLevel);
+  const all = new Set<string>(fromFiles);
+  if (startup) all.add(startup);
+  return Array.from(all).sort();
+};
+
+const normalizeTileMapActorResourcePaths = (level: Level, projectPath: string | null | undefined) => {
+  const normalizedProjectPath = normalizeResourcePath(projectPath);
+  if (!normalizedProjectPath) {
+    return;
+  }
+
+  const queue: Actor[] = level.getChildrenOfType(Actor);
+  while (queue.length > 0) {
+    const actor = queue.shift();
+    if (!actor) {
+      continue;
+    }
+
+    const anyActor = actor as Actor & { mapUrl?: unknown; getChildrenOfType?: (type: any) => Actor[] };
+    if (typeof anyActor.mapUrl === "string") {
+      const nextPath = resolveProjectAssetPath(normalizedProjectPath, anyActor.mapUrl);
+      if (nextPath && nextPath !== anyActor.mapUrl) {
+        anyActor.mapUrl = nextPath;
+      }
+    }
+
+    const children = actor.getChildrenOfType(Actor);
+    if (children.length > 0) {
+      queue.push(...children);
+    }
+  }
+};
+
 const App = () => {
   // const [engine, setEngine] = useState<ClientEngine | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -229,8 +418,22 @@ const App = () => {
   const [logs, setLogs] = useState<ConsoleEntry[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const [sceneGraph, setSceneGraph] = useState<SceneNode[]>([]);
-  const [activeLevelPath, setActiveLevelPath] = useState<string>(DEFAULT_LEVEL_PATH);
+  const [activeLevelPath, setActiveLevelPath] = useState<string>("");
   const [playLevelPath, setPlayLevelPath] = useState<string | undefined>(undefined);
+  const [projects, setProjects] = useState<ProjectDescriptor[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [projectDialogMode, setProjectDialogMode] = useState<"open" | "create">("open");
+  const [projectDialogSelectionId, setProjectDialogSelectionId] = useState<string>("");
+  const [projectDialogLevelPath, setProjectDialogLevelPath] = useState<string>("");
+  const [createProjectTitle, setCreateProjectTitle] = useState<string>("");
+  const [createProjectId, setCreateProjectId] = useState<string>("");
+  const [createProjectLevelName, setCreateProjectLevelName] = useState<string>("main");
+  const [createProjectError, setCreateProjectError] = useState<string | null>(null);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [isLevelLoading, setIsLevelLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [availableLevels, setAvailableLevels] = useState<string[]>([]);
   const engineInitialized = useRef(false);
   const engineRef = useRef<ClientEngine | null>(null);
@@ -238,6 +441,7 @@ const App = () => {
   const inputManagerRef = useRef<InputManager | null>(null);
   const editorInputRef = useRef<EditorInputResponder | null>(null);
   const logIdRef = useRef(0);
+  const pendingLevelLoadPathRef = useRef<string | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const panelRegistryRef = useRef(new PanelRegistry());
   const modalManagerRef = useRef(new ModalManager());
@@ -262,6 +466,19 @@ const App = () => {
   const activeRightPanel = useMemo(
     () => rightPanels.find((panel) => panel.id === activeRightPanelId) ?? null,
     [rightPanels, activeRightPanelId]
+  );
+  const activeProject = useMemo(
+    () => (activeProjectId ? projects.find((project) => project.id === activeProjectId) ?? null : null),
+    [projects, activeProjectId]
+  );
+  const projectScopeValue = useMemo(
+    () => ({
+      projectId: activeProject?.id ?? null,
+      projectTitle: activeProject?.title ?? null,
+      projectPath: activeProject?.projectPath ?? null,
+      assetRoots: activeProject?.assetRoots ?? [],
+    }),
+    [activeProject]
   );
 
   const componentAssetStorage = useMemo(() => componentAssetStorageRef.current ?? createPrototypeComponentAssetStorage(), []);
@@ -469,6 +686,93 @@ const App = () => {
     }
     setActiveLevelPath(path);
   }, []);
+
+  const activeProjectIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeProjectIdRef.current = activeProjectId;
+  }, [activeProjectId]);
+
+  const projectsRef = useRef<ProjectDescriptor[]>([]);
+  useEffect(() => {
+    projectsRef.current = projects;
+  }, [projects]);
+
+  const loadLevelIntoEditor = useCallback(
+    async (targetPath: string) => {
+      const normalizedTargetPath = normalizeResourcePath(targetPath);
+      if (!normalizedTargetPath) {
+        return false;
+      }
+
+      const activeEngine = engineRef.current;
+      if (!activeEngine) {
+        pendingLevelLoadPathRef.current = normalizedTargetPath;
+        setPlayLevelPath(normalizedTargetPath);
+        rememberLevelPath(normalizedTargetPath);
+        return false;
+      }
+      setIsLevelLoading(true);
+      setStatusMessage(`Loading ${humanizeLevelPath(normalizedTargetPath)}…`);
+      try {
+        const projectPathForLevel =
+          normalizeResourcePath(activeProject?.projectPath) || inferProjectPathFromLevelPath(normalizedTargetPath);
+        const levelData = await activeEngine.loadLevel(normalizedTargetPath);
+        normalizeTileMapActorResourcePaths(levelData, projectPathForLevel);
+        await activeEngine.loadLevelObject(levelData);
+
+        const worldSize = levelData.getWorldSize();
+        if (worldSize) {
+          activeEngine.setCurrentCamera(new OrthoCamera(new Vector2(worldSize.x / 2, worldSize.y / 2), 1, 40));
+        }
+
+        rememberLevelPath(normalizedTargetPath);
+        setPlayLevelPath(normalizedTargetPath);
+        pendingLevelLoadPathRef.current = null;
+        writeLastLevelForProject(activeProjectIdRef.current, normalizedTargetPath);
+        setStatusMessage(`Loaded ${humanizeLevelPath(normalizedTargetPath)}`);
+        return true;
+      } catch (error) {
+        console.error(`Failed to load level ${normalizedTargetPath}`, error);
+        setStatusMessage(`Failed to load ${humanizeLevelPath(normalizedTargetPath)}`);
+        return false;
+      } finally {
+        setIsLevelLoading(false);
+      }
+    },
+    [rememberLevelPath, activeProject]
+  );
+
+  const applyProjectSelection = useCallback(
+    async (projectId: string | null, levelPath?: string | null, options?: { loadLevel?: boolean }) => {
+      const loadLevel = options?.loadLevel ?? true;
+      setActiveProjectId(projectId);
+      writeLastProjectId(projectId);
+
+      if (!projectId) {
+        setPlayLevelPath(undefined);
+        return;
+      }
+
+      const sourceProjects = projectsRef.current.length > 0 ? projectsRef.current : projects;
+      const selectedProject = sourceProjects.find((project) => project.id === projectId) ?? null;
+      const startupPath = resolveProjectLevelPath(selectedProject, selectedProject?.startupLevel);
+      const targetPath = normalizeResourcePath(levelPath ?? "") || startupPath || "";
+
+      setPlayLevelPath(targetPath || undefined);
+
+      if (loadLevel && targetPath) {
+        activeProjectIdRef.current = projectId;
+        await loadLevelIntoEditor(targetPath);
+      }
+    },
+    [projects, loadLevelIntoEditor]
+  );
+
+  const loadLevelIntoEditorRef = useRef(loadLevelIntoEditor);
+  useEffect(() => {
+    loadLevelIntoEditorRef.current = loadLevelIntoEditor;
+  }, [loadLevelIntoEditor]);
+
 
   const handleMenuButtonClick = useCallback(
     (menuId: string) => (event: MouseEvent<HTMLButtonElement>) => {
@@ -715,18 +1019,7 @@ const App = () => {
         (type === "data" && looksLikeLevelPath);
 
       if (isLevelLike) {
-        
-        try {
-          const levelJson = await activeEngine.loadLevel(targetPath);
-          const level = levelJson;
-          if (!level) {
-            throw new Error("Level deserialization failed");
-          }
-          await activeEngine.loadLevelObject(level);
-          rememberLevelPath(targetPath);
-        } catch (error) {
-          console.error("Failed to load level asset", error);
-        }
+        await loadLevelIntoEditor(targetPath);
         return;
       }
 
@@ -826,22 +1119,30 @@ const App = () => {
   const setupLevel = async () => {
     try {
       const levelStartTime = performance.now();
-      let levelToLoad: Level | null = fallbackLevel;
-      //let possessTarget: Actor = demoActor;
 
-      try {
-        const levelData = await e.loadLevel(DEFAULT_LEVEL_PATH);
-        const parsedLevel = levelData! ?? null;
-
-        levelToLoad = parsedLevel;
-        rememberLevelPath(DEFAULT_LEVEL_PATH);
-      } catch (err) {
-        console.warn("Failed to load level from resource API, falling back to default", err);
+      // Editor starts with no project/level loaded by default. The project picker dialog
+      // (or a restored last-selection) will trigger loadLevelIntoEditor when the user is ready.
+      // We still need a placeholder level + camera so the engine's render loop has something valid.
+      let levelToLoad: Level = fallbackLevel;
+      const pendingPath = pendingLevelLoadPathRef.current;
+      if (pendingPath) {
+        try {
+          const inferredProjectPath = inferProjectPathFromLevelPath(pendingPath);
+          const parsedLevel = await e.loadLevel(pendingPath);
+          if (parsedLevel) {
+            normalizeTileMapActorResourcePaths(parsedLevel, inferredProjectPath);
+            levelToLoad = parsedLevel;
+            rememberLevelPath(pendingPath);
+            pendingLevelLoadPathRef.current = null;
+          }
+        } catch (err) {
+          console.warn(`Failed to load pending level ${pendingPath}`, err);
+        }
       }
 
-      await e.loadLevelObject(levelToLoad!);
+      await e.loadLevelObject(levelToLoad);
 
-      const worldSize = levelToLoad!.getWorldSize();
+      const worldSize = levelToLoad.getWorldSize();
 
       if (worldSize) {
         const camera = new OrthoCamera(new Vector2(worldSize.x / 2, worldSize.y / 2), 1, 40);
@@ -852,15 +1153,12 @@ const App = () => {
       }
 
       const levelEndTime = performance.now();
-      console.log(`Level loaded in ${(levelEndTime - levelStartTime).toFixed(2)} ms`);
+      console.log(`Editor initialized in ${(levelEndTime - levelStartTime).toFixed(2)} ms`);
 
       e.addPlayer(new PlayerState("local_player", "LocalPlayer"));
-      //e.getLocalPlayerState()?.getController()?.possess(possessTarget);
     } catch (error) {
-      console.error("Failed to initialize level", error);
+      console.error("Failed to initialize editor scene", error);
     }
-
-    console.log(e.getLocalPlayerState());
   };
 
   e.setEditorMode(true);
@@ -868,6 +1166,10 @@ const App = () => {
   setupLevel();
 
   engineRef.current = e;
+
+  if (pendingLevelLoadPathRef.current) {
+    void loadLevelIntoEditorRef.current(pendingLevelLoadPathRef.current);
+  }
 
   const updateSceneGraph = () => {
 
@@ -924,6 +1226,64 @@ const App = () => {
   }, [engine, container, buildSceneGraph, rememberLevelPath]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadProjectCatalog = async () => {
+      try {
+        const result = await fetchProjects();
+        if (cancelled) {
+          return;
+        }
+
+        setProjects(result);
+        projectsRef.current = result;
+        setProjectsLoaded(true);
+
+        const lastProjectId = readLastProjectId();
+        const lastProject = lastProjectId
+          ? result.find((project) => project.id === lastProjectId) ?? null
+          : null;
+
+        if (lastProject) {
+          const lastLevel = readLastLevelForProject(lastProject.id);
+          const startup = resolveProjectLevelPath(lastProject, lastProject.startupLevel);
+          const target = normalizeResourcePath(lastLevel ?? "") || startup || "";
+          setProjectDialogSelectionId(lastProject.id);
+          setProjectDialogLevelPath(target);
+          setIsProjectDialogOpen(false);
+          void applyProjectSelection(lastProject.id, target, { loadLevel: true });
+          return;
+        }
+
+        const initialId = result[0]?.id ?? "";
+        const initialProject = result[0] ?? null;
+        const initialLevel = initialProject
+          ? resolveProjectLevelPath(initialProject, initialProject.startupLevel) || (collectProjectLevelPaths(initialProject)[0] ?? "")
+          : "";
+        setProjectDialogSelectionId(initialId);
+        setProjectDialogLevelPath(initialLevel);
+        setIsProjectDialogOpen(true);
+      } catch (error) {
+        console.warn("Failed to load projects", error);
+        if (!cancelled) {
+          setProjects([]);
+          setProjectsLoaded(true);
+          setActiveProjectId(null);
+          setProjectDialogSelectionId("");
+          setProjectDialogLevelPath("");
+          setIsProjectDialogOpen(true);
+        }
+      }
+    };
+
+    void loadProjectCatalog();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const registry = panelRegistryRef.current;
     const unsubscribe = registry.subscribe(() => {
       setPanelRevision((previous) => previous + 1);
@@ -934,42 +1294,54 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    const loadLevels = async () => {
-      try {
-        const res = await fetch("http://localhost:4000/api/resources/assets/search?types=level");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        const paths: string[] = Array.isArray(json?.data)
-          ? json.data
-              .map((n: any) => (typeof n?.path === "string" ? n.path : null))
-              .filter((p: string | null) => !!p)
-          : [];
-        if (!cancelled) {
-          setAvailableLevels(paths);
-        }
-      } catch (error) {
-        console.warn("Failed to fetch available levels", error);
-        if (!cancelled) {
-          setAvailableLevels([]);
-        }
+    const levels = collectProjectLevelPaths(activeProject);
+    setAvailableLevels(levels);
+    setPlayLevelPath((previous) => {
+      const previousNormalized = normalizeResourcePath(previous ?? "");
+      if (previousNormalized && levels.includes(previousNormalized)) {
+        return previousNormalized;
       }
-    };
-    loadLevels();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      const startup = resolveProjectLevelPath(activeProject, activeProject?.startupLevel);
+      if (startup && levels.includes(startup)) {
+        return startup;
+      }
+      return levels[0];
+    });
+  }, [activeProject]);
 
   const playLevelOptions = useMemo(() => {
     const options = new Set<string>(availableLevels);
-    if (activeLevelPath) options.add(activeLevelPath);
-    options.add(DEFAULT_LEVEL_PATH);
-    return Array.from(options);
-  }, [availableLevels, activeLevelPath]);
+    const startupPath = resolveProjectLevelPath(activeProject, activeProject?.startupLevel);
+    if (startupPath) {
+      options.add(startupPath);
+    }
+    if (activeLevelPath) {
+      options.add(normalizeResourcePath(activeLevelPath));
+    }
+    return Array.from(options).sort();
+  }, [availableLevels, activeLevelPath, activeProject]);
+
+  const handleLoadSelectedMap = useCallback(async () => {
+    const targetPath =
+      normalizeResourcePath(playLevelPath ?? "") ||
+      resolveProjectLevelPath(activeProject, activeProject?.startupLevel) ||
+      normalizeResourcePath(activeLevelPath) ||
+      playLevelOptions[0] ||
+      "";
+    if (!targetPath) {
+      setStatusMessage("Select a level to load.");
+      return;
+    }
+    await loadLevelIntoEditor(targetPath);
+  }, [activeProject, playLevelPath, activeLevelPath, playLevelOptions, loadLevelIntoEditor]);
 
   const handlePlay = async () => {
     if (!engine) {
+      return;
+    }
+    const targetPath = normalizeResourcePath(playLevelPath ?? "") || normalizeResourcePath(activeLevelPath);
+    if (!targetPath) {
+      setStatusMessage("Open a project and select a level before playing.");
       return;
     }
     editorInputRef.current?.dispose();
@@ -977,11 +1349,12 @@ const App = () => {
 
     levelSnapshotRef.current = editorRef.current?.serializeLevel(engine.getCurrentLevel()!) ?? null;
 
-    const targetPath = (playLevelPath && playLevelPath.trim()) || activeLevelPath || DEFAULT_LEVEL_PATH;
-
-    if (targetPath && targetPath !== activeLevelPath) {
+    if (targetPath !== normalizeResourcePath(activeLevelPath)) {
       try {
+        const projectPathForPlay =
+          normalizeResourcePath(activeProject?.projectPath) || inferProjectPathFromLevelPath(targetPath);
         const levelData = await engine.loadLevel(targetPath);
+        normalizeTileMapActorResourcePaths(levelData, projectPathForPlay);
         engine.loadLevelObject(levelData);
       } catch (error) {
         console.error(`Failed to load play level ${targetPath}`, error);
@@ -1036,6 +1409,88 @@ const App = () => {
   };
 
   const editorInstance = editorRef.current;
+  const dialogSelectedProject = projects.find((project) => project.id === projectDialogSelectionId) ?? null;
+  const dialogStartupPath = resolveProjectLevelPath(dialogSelectedProject, dialogSelectedProject?.startupLevel);
+  const dialogLevelOptions = useMemo(
+    () => collectProjectLevelPaths(dialogSelectedProject),
+    [dialogSelectedProject]
+  );
+
+  // Keep dialog's level selection consistent with the chosen project.
+  useEffect(() => {
+    if (!isProjectDialogOpen) return;
+    if (!dialogSelectedProject) {
+      if (projectDialogLevelPath !== "") setProjectDialogLevelPath("");
+      return;
+    }
+    if (projectDialogLevelPath && dialogLevelOptions.includes(projectDialogLevelPath)) {
+      return;
+    }
+    const lastSelected = readLastLevelForProject(dialogSelectedProject.id);
+    const candidate =
+      (lastSelected && dialogLevelOptions.includes(lastSelected) ? lastSelected : "") ||
+      (dialogStartupPath && dialogLevelOptions.includes(dialogStartupPath) ? dialogStartupPath : "") ||
+      dialogLevelOptions[0] ||
+      "";
+    setProjectDialogLevelPath(candidate);
+  }, [isProjectDialogOpen, dialogSelectedProject, dialogLevelOptions, dialogStartupPath, projectDialogLevelPath]);
+
+  const canCancelProjectDialog = activeProjectId !== null;
+  const projectStatusLabel = activeProject ? activeProject.title : projectsLoaded ? "No project" : "Loading…";
+  const levelStatusLabel = activeLevelPath ? humanizeLevelPath(activeLevelPath) : "—";
+
+  const openProjectDialog = useCallback(
+    (mode: "open" | "create" = "open") => {
+      setProjectDialogMode(mode);
+      setProjectDialogSelectionId(activeProjectId ?? projects[0]?.id ?? "");
+      if (mode === "create") {
+        setCreateProjectTitle("");
+        setCreateProjectId("");
+        setCreateProjectLevelName("main");
+        setCreateProjectError(null);
+      }
+      setIsProjectDialogOpen(true);
+    },
+    [activeProjectId, projects]
+  );
+
+  const handleCreateProjectSubmit = useCallback(async () => {
+    setCreateProjectError(null);
+    const titleInput = createProjectTitle.trim();
+    const idInput = createProjectId.trim() || titleInput;
+    if (!titleInput) {
+      setCreateProjectError("Title is required.");
+      return;
+    }
+    if (!idInput) {
+      setCreateProjectError("Project ID is required.");
+      return;
+    }
+    setIsCreatingProject(true);
+    try {
+      const created = await createProject({
+        id: idInput,
+        title: titleInput,
+        startupLevelName: createProjectLevelName.trim() || "main",
+      });
+      setProjects((previous) => {
+        const next = previous.filter((p) => p.id !== created.id);
+        next.push(created);
+        next.sort((a, b) => a.id.localeCompare(b.id));
+        projectsRef.current = next;
+        return next;
+      });
+      const startupPath = resolveProjectLevelPath(created, created.startupLevel);
+      setIsProjectDialogOpen(false);
+      setStatusMessage(`Created project "${created.title}"`);
+      void applyProjectSelection(created.id, startupPath, { loadLevel: true });
+    } catch (error) {
+      console.error("Failed to create project", error);
+      setCreateProjectError(error instanceof Error ? error.message : "Failed to create project");
+    } finally {
+      setIsCreatingProject(false);
+    }
+  }, [createProjectTitle, createProjectId, createProjectLevelName, applyProjectSelection]);
 
   return (
     <ContainerContext.Provider value={container}>
@@ -1048,6 +1503,7 @@ const App = () => {
         }}
       >
         <EditorEngineContext.Provider value={{ engine }}>
+          <ProjectScopeContext.Provider value={projectScopeValue}>
           {container ? (
           <div
             className="w-screen h-screen"
@@ -1059,6 +1515,196 @@ const App = () => {
                 "radial-gradient(800px 600px at 50% 120%, rgba(157, 78, 221, 0.06), transparent 60%)",
             }}
           >
+            {isProjectDialogOpen ? (
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                <div className="w-[min(640px,92vw)] rounded-xl border border-cyan-300/40 bg-slate-900/95 p-5 shadow-2xl shadow-cyan-500/20">
+                  <div className="flex items-center gap-2">
+                    <button
+                      className={`rounded px-3 py-1 text-xs uppercase tracking-wide transition-colors ${
+                        projectDialogMode === "open"
+                          ? "bg-cyan-500/20 text-cyan-100"
+                          : "text-slate-400 hover:text-cyan-200"
+                      }`}
+                      onClick={() => setProjectDialogMode("open")}
+                    >
+                      Open
+                    </button>
+                    <button
+                      className={`rounded px-3 py-1 text-xs uppercase tracking-wide transition-colors ${
+                        projectDialogMode === "create"
+                          ? "bg-fuchsia-500/20 text-fuchsia-100"
+                          : "text-slate-400 hover:text-fuchsia-200"
+                      }`}
+                      onClick={() => {
+                        setProjectDialogMode("create");
+                        setCreateProjectError(null);
+                      }}
+                    >
+                      Create New
+                    </button>
+                  </div>
+
+                  {projectDialogMode === "open" ? (
+                    <>
+                      <h2 className="mt-3 text-lg font-semibold text-cyan-200">Open Project</h2>
+                      <p className="mt-1 text-xs text-slate-300">
+                        Choose a project and the level to open. Levels are scoped to the selected project.
+                      </p>
+                      <div className="mt-4 grid gap-4">
+                        <div>
+                          <label className="mb-1 block text-xs uppercase tracking-wide text-slate-300">Project</label>
+                          <select
+                            className="w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                            value={projectDialogSelectionId}
+                            onChange={(e) => {
+                              setProjectDialogSelectionId(e.target.value);
+                              setProjectDialogLevelPath("");
+                            }}
+                          >
+                            {projects.length === 0 ? <option value="">No projects found</option> : null}
+                            {projects.map((project) => (
+                              <option key={project.id} value={project.id}>{project.title}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs uppercase tracking-wide text-slate-300">
+                            Level{dialogStartupPath ? ` (startup: ${humanizeLevelPath(dialogStartupPath)})` : ""}
+                          </label>
+                          <select
+                            className="w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-white/30 focus:outline-none disabled:opacity-50"
+                            value={projectDialogLevelPath}
+                            onChange={(e) => setProjectDialogLevelPath(e.target.value)}
+                            disabled={dialogLevelOptions.length === 0}
+                          >
+                            {dialogLevelOptions.length === 0 ? (
+                              <option value="">No levels found in project</option>
+                            ) : null}
+                            {dialogLevelOptions.map((path) => (
+                              <option key={path} value={path}>
+                                {humanizeLevelPath(path)}
+                              </option>
+                            ))}
+                          </select>
+                          {dialogLevelOptions.length > 0 ? (
+                            <p className="mt-1 text-[10px] text-slate-400 truncate" title={projectDialogLevelPath}>
+                              {projectDialogLevelPath}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="mt-5 flex items-center justify-between gap-2">
+                        <button
+                          className="rounded border border-fuchsia-300/40 bg-fuchsia-500/10 px-3 py-1.5 text-xs text-fuchsia-100 hover:bg-fuchsia-500/20"
+                          onClick={() => {
+                            setProjectDialogMode("create");
+                            setCreateProjectError(null);
+                          }}
+                        >
+                          + Create New Project
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="rounded border border-white/20 bg-white/5 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            onClick={() => setIsProjectDialogOpen(false)}
+                            disabled={!canCancelProjectDialog}
+                            title={canCancelProjectDialog ? "Cancel" : "Select a project to continue"}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="rounded border border-cyan-300/40 bg-cyan-500/20 px-3 py-1.5 text-xs text-cyan-100 hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={!projectDialogSelectionId || !projectDialogLevelPath}
+                            onClick={() => {
+                              const projectId = projectDialogSelectionId || null;
+                              const levelPath = projectDialogLevelPath || null;
+                              setIsProjectDialogOpen(false);
+                              void applyProjectSelection(projectId, levelPath, { loadLevel: true });
+                            }}
+                          >
+                            Open
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="mt-3 text-lg font-semibold text-fuchsia-200">Create New Project</h2>
+                      <p className="mt-1 text-xs text-slate-300">
+                        A new project folder will be created with an empty startup level.
+                      </p>
+                      <div className="mt-4 grid gap-4">
+                        <div>
+                          <label className="mb-1 block text-xs uppercase tracking-wide text-slate-300">Title</label>
+                          <input
+                            className="w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                            value={createProjectTitle}
+                            onChange={(e) => setCreateProjectTitle(e.target.value)}
+                            placeholder="My New Game"
+                            autoFocus
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs uppercase tracking-wide text-slate-300">
+                            Project ID <span className="text-slate-500">(folder name; auto-derived from title if empty)</span>
+                          </label>
+                          <input
+                            className="w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                            value={createProjectId}
+                            onChange={(e) => setCreateProjectId(e.target.value)}
+                            placeholder="my-new-game"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs uppercase tracking-wide text-slate-300">
+                            Startup Level Name
+                          </label>
+                          <input
+                            className="w-full rounded border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:border-white/30 focus:outline-none"
+                            value={createProjectLevelName}
+                            onChange={(e) => setCreateProjectLevelName(e.target.value)}
+                            placeholder="main"
+                          />
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            Will be created at <span className="text-slate-200">levels/{createProjectLevelName.trim() || "main"}.n2asset</span>
+                          </p>
+                        </div>
+                        {createProjectError ? (
+                          <div className="rounded border border-red-400/40 bg-red-500/10 px-2 py-2 text-xs text-red-200">
+                            {createProjectError}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="mt-5 flex items-center justify-between gap-2">
+                        <button
+                          className="rounded border border-cyan-300/40 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-100 hover:bg-cyan-500/20"
+                          onClick={() => setProjectDialogMode("open")}
+                          disabled={isCreatingProject}
+                        >
+                          ← Back to Open
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="rounded border border-white/20 bg-white/5 px-3 py-1.5 text-xs text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            onClick={() => setIsProjectDialogOpen(false)}
+                            disabled={!canCancelProjectDialog || isCreatingProject}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="rounded border border-fuchsia-300/40 bg-fuchsia-500/20 px-3 py-1.5 text-xs text-fuchsia-100 hover:bg-fuchsia-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={isCreatingProject || !createProjectTitle.trim()}
+                            onClick={() => { void handleCreateProjectSubmit(); }}
+                          >
+                            {isCreatingProject ? "Creating…" : "Create Project"}
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : null}
             {/* Top Menu Bar */}
         <div
           className="h-12 flex items-center px-4 border-b"
@@ -1110,27 +1756,65 @@ const App = () => {
               disabled={!engine}
               active={!isPlaying}
             />
-            <select
-              className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white focus:border-white/30 focus:outline-none"
-              value={(playLevelPath ?? activeLevelPath) ?? DEFAULT_LEVEL_PATH}
-              onChange={(e) => setPlayLevelPath(e.target.value)}
-              title="Select level to play"
-            >
-              {playLevelOptions.map((path) => (
-                <option key={path} value={path}>{path}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2 ml-2 px-2 py-1 rounded border border-white/10 bg-white/5">
+              <span className="text-[10px] uppercase tracking-wide text-slate-400">Project</span>
+              <button
+                className="text-xs text-cyan-200 hover:text-cyan-100 disabled:text-slate-500"
+                onClick={() => openProjectDialog("open")}
+                title="Open project picker"
+              >
+                {projectStatusLabel}
+              </button>
+              <button
+                className="rounded border border-fuchsia-300/30 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fuchsia-200 hover:bg-fuchsia-500/20"
+                onClick={() => openProjectDialog("create")}
+                title="Create new project"
+              >
+                + New
+              </button>
+              <span className="mx-1 h-4 w-px bg-white/10" />
+              <span className="text-[10px] uppercase tracking-wide text-slate-400">Level</span>
+              <select
+                className="bg-transparent text-xs text-white focus:outline-none disabled:text-slate-500"
+                value={normalizeResourcePath(playLevelPath ?? activeLevelPath ?? "")}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setPlayLevelPath(next || undefined);
+                  if (next) {
+                    void loadLevelIntoEditor(next);
+                  }
+                }}
+                disabled={!activeProject || playLevelOptions.length === 0 || isLevelLoading}
+                title="Switch level"
+              >
+                {playLevelOptions.length === 0 ? (
+                  <option value="">{activeProject ? "No levels in project" : "No project open"}</option>
+                ) : null}
+                {playLevelOptions.map((path) => (
+                  <option key={path} value={path}>
+                    {humanizeLevelPath(path)}
+                  </option>
+                ))}
+              </select>
+              {isLevelLoading ? <span className="text-[10px] text-amber-300">loading…</span> : null}
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <IconButton icon={FolderOpen} tooltip="Open Map" />
+            <IconButton icon={FolderOpen} tooltip="Load Map" onClick={() => { void handleLoadSelectedMap(); }} />
             <IconButton
               icon={Save}
-              tooltip={isSaving ? "Saving..." : "Save Map"}
+              tooltip={isSaving ? "Saving..." : activeLevelPath ? "Save Map" : "No level loaded"}
               onClick={async () => {
                 const activeEngine = engineRef.current;
                 const editorInstance = editorRef.current;
                 if (!activeEngine || !editorInstance) {
+                  return;
+                }
+
+                const targetPath = normalizeResourcePath(activeLevelPath);
+                if (!targetPath) {
+                  setStatusMessage("Open a level before saving.");
                   return;
                 }
 
@@ -1143,7 +1827,6 @@ const App = () => {
                 const serializedLevel = editorInstance.serializeLevel(level);
                 setIsSaving(true);
                 try {
-                  const targetPath = activeLevelPath ?? DEFAULT_LEVEL_PATH;
                   let contentToSave = serializedLevel;
                   try {
                     const existingContent = await activeEngine.loadLevel(targetPath);
@@ -1152,20 +1835,44 @@ const App = () => {
                     console.warn("Unable to load existing level before save; saving editor state only.", contentError);
                   }
                   await saveResourceLevel(targetPath, contentToSave);
+                  setStatusMessage(`Saved ${humanizeLevelPath(targetPath)}`);
                   console.log("Level saved", targetPath);
                 } catch (err) {
                   console.error("Failed to save level", err);
+                  setStatusMessage(`Failed to save ${humanizeLevelPath(targetPath)}`);
                 } finally {
                   setIsSaving(false);
                 }
               }}
-              disabled={!engine || isSaving}
+              disabled={!engine || isSaving || !activeLevelPath}
             />
           </div>
         </div>
 
+        {/* Status bar */}
+        <div
+          className="flex h-6 items-center gap-3 border-b px-4 text-[11px] text-slate-300"
+          style={{
+            backgroundColor: theme.panel,
+            borderColor: "rgba(8, 247, 254, 0.15)",
+          }}
+        >
+          <span className="text-slate-400">Project:</span>
+          <span className="text-cyan-200">{projectStatusLabel}</span>
+          <span className="text-slate-600">|</span>
+          <span className="text-slate-400">Level:</span>
+          <span className="text-pink-200">{levelStatusLabel}</span>
+          {statusMessage ? (
+            <>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-300 truncate">{statusMessage}</span>
+            </>
+          ) : null}
+          {isLevelLoading ? <span className="ml-auto text-amber-300">Loading level…</span> : null}
+        </div>
+
         {/* Main Content Area with bottom console panel */}
-        <div className="h-[calc(100vh-3rem)]">
+        <div className="h-[calc(100vh-4.5rem)]">
           <PanelGroup direction="vertical">
             <Panel defaultSize={85} minSize={55}>
               <PanelGroup direction="horizontal">
@@ -1354,6 +2061,7 @@ const App = () => {
           Editor not initialized.
         </div>
       )}
+          </ProjectScopeContext.Provider>
         </EditorEngineContext.Provider>
       </ConsoleContext.Provider>
     </ContainerContext.Provider>

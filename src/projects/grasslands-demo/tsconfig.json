@@ -1,0 +1,11 @@
+{
+  "extends": "@nostalgi2d/typescript-config/base.json",
+  "include": ["src"],
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "lib": ["DOM", "ESNext"],
+    "jsx": "react-jsx",
+    "experimentalDecorators": true,
+    "target": "esnext"
+  }
+}

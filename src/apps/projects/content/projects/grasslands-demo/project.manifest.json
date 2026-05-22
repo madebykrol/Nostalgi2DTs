@@ -1,0 +1,12 @@
+{
+  "id": "grasslands-demo",
+  "title": "Grasslands Demo",
+  "startupLevel": "levels/grasslands",
+  "assetRoots": [
+    "levels",
+    "objects",
+    "textures",
+    "tilemaps"
+  ],
+  "assetFiles": []
+}

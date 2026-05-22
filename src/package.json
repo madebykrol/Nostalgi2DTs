@@ -5,7 +5,9 @@
     "dev": "turbo run dev",
     "debug": "turbo run debug",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "package:webapp": "node ./scripts/package-webapp.mjs",
+    "package:game": "node ./scripts/package-webapp.mjs"
   },
   "devDependencies": {
     "@babel/plugin-proposal-decorators": "^7.28.0",
@@ -19,7 +21,8 @@
   "packageManager": "npm@11.4.2",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "projects/*"
   ],
   "dependencies": {
     "@babel/plugin-proposal-class-properties": "^7.18.6"

@@ -1,0 +1,12 @@
+{
+  "id": "flappy-rectangle",
+  "title": "Flappy Rectangle",
+  "startupLevel": "levels/new-level",
+  "assetRoots": [
+    "levels",
+    "objects",
+    "textures",
+    "tilemaps"
+  ],
+  "assetFiles": []
+}

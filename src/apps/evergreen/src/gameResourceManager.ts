@@ -43,9 +43,9 @@ export class GameResourceManager extends ResourceManager {
         return res.arrayBuffer();
     }
 
-    async loadResource(path: string, noCache?: boolean): Promise<string> {
+    async loadResource(path: string, noCache?: boolean, encode?: boolean): Promise<string> {
         if (isServer()) {
-            return await this.readFileFromDisk(path);
+            return await this.readFileFromDisk(path, encode);
         }
 
         if (isBrowser()) {
@@ -54,29 +54,41 @@ export class GameResourceManager extends ResourceManager {
             const cacheBust = noCache ? `&_=${Date.now()}` : "";
 
             if (isHttp) {
-                const url = `${base}/api/resources/content?path=${encodeURIComponent(path)}${cacheBust}`;
+                const url = `${base}/api/resources/content?path=${encodeURIComponent(path)}${encode ? "&encoding=base64" : ""}${cacheBust}`;
                 return await this.fetchText(url);
             }
 
             const url = `${base}/${path}`.replace(/\\+/g, "/");
-            return await this.fetchText(url);
+            return await this.fetchText(url, encode);
         }
 
         return "";
     }
 
-    private async fetchText(target: string): Promise<string> {
+    private async fetchText(target: string, encode?: boolean): Promise<string> {
         const response = await fetch(target);
         if (!response.ok) {
             throw new Error(`Failed to fetch resource from ${target}: ${response.status} ${response.statusText}`);
         }
+
+        if (encode) {
+            const buffer = await response.arrayBuffer();
+            return StringUtils.arrayBufferToBase64(buffer);
+        }
+
         return response.text();
     }
 
-    private async readFileFromDisk(target: string): Promise<string> {
+    private async readFileFromDisk(target: string, encode?: boolean): Promise<string> {
         const fs = await import("node:fs/promises");
         const path = await import("node:path");
         const absolutePath = path.join(process.cwd(), target);
+
+        if (encode) {
+            const data = await fs.readFile(absolutePath);
+            return data.toString("base64");
+        }
+
         return fs.readFile(absolutePath, "utf-8");
     }
 }

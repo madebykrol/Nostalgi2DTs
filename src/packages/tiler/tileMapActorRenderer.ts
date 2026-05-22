@@ -462,7 +462,6 @@ export class TileMapMaterial extends Material {
                 image.onload = () => resolve(image);
                 image.onerror = () => reject(new Error(`Failed to load image '${src}'`));
                 image.src = 'data:image/png;base64,' + resource;
-                console.log(image.src);
             }).catch(err => {
                 reject(err);
             });

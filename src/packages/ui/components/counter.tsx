@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 // import { Level } from "@nostalgi2d/engine";
 // import { Vector2 } from "@nostalgi2d/engine";
 // import { PlanckWorld } from "@nostalgi2d/planckphysics";
-// import { BombActor, DemoActor } from "@nostalgi2d/example";
+// import { BombActor, DemoActor } from "@nostalgi2d-projects/grasslands-demo";
 // import { listRendererForActor } from "../../engine/actorRegistroy";
 import { EngineContext } from "../contexts";
 import { Vector2 } from "../../engine/math";

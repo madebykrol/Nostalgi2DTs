@@ -62,7 +62,7 @@ export class DefaultResourceManager extends ResourceManager {
         // Default implementation could be empty or throw an error
        if(isServer()) {
         console.log("Load from filesystem");
-        return await this.readFileFromDisk(path);
+				return await this.readFileFromDisk(path, encode);
        }
 
        if( isBrowser()) {
@@ -85,6 +85,12 @@ export class DefaultResourceManager extends ResourceManager {
 		if (!response.ok) {
 			throw new Error(`Failed to fetch TMX map from ${path}: ${response.status} ${response.statusText}`);
 		}
+
+		if (encode && !isHttp) {
+			const buffer = await response.arrayBuffer();
+			return StringUtils.arrayBufferToBase64(buffer);
+		}
+
 		return response.text();
 	}
 
@@ -95,11 +101,15 @@ export class DefaultResourceManager extends ResourceManager {
 	// 	return fs.readFile(filePath, "utf-8");
 	// }
 
-	private async readFileFromDisk(target: string): Promise<string> {
+	private async readFileFromDisk(target: string, encode?: boolean): Promise<string> {
 		const fs = await import("node:fs/promises");
 		const path = await import("node:path");
 		
 		const absolutePath = path.join(process.cwd(), target);
+		if (encode) {
+			const data = await fs.readFile(absolutePath);
+			return data.toString("base64");
+		}
 
 		return fs.readFile(absolutePath, "utf-8");
 	}

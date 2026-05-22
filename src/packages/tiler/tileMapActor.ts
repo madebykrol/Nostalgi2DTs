@@ -78,6 +78,10 @@ export class TileMapActor extends Actor {
         this.mapData = await this.parser.parse(this._mapUrl);
         this.worldUnitsPerPixel = this.computeWorldUnitsPerPixel();
         this.updateWorldSize();
+
+        // onLoad is currently not awaited by the engine. If map parsing finishes
+        // after begin play has already run, ensure object-layer actors still spawn.
+        this.createObjectActors();
     }
 
     onBeginPlay(): void {
@@ -208,7 +212,7 @@ export class TileMapActor extends Actor {
     }
 
     private createObjectActors(): void {
-        if (!this.mapData || this.objectActorsCreated) {
+        if (!this.mapData || this.objectActorsCreated || !this.getWorld()) {
             return;
         }
 

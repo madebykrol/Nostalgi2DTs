@@ -14,8 +14,9 @@ export * from "./network";
 export * from "./editor";
 export * from "./ui";
 export { EngineBuilder } from "./engineBuilder";
+export type { ProjectRegistration } from "./projectRegistration";
 export { actor, registerDecoratedActors, nobject, registerNObjects } from "./actorRegistry";
-export {GameInstance, Controller, PlayerState, GameMode} from "./game";
+export {GameInstance, Controller, PlayerState, GameMode, Character} from "./game";
 export {InputManager} from "./input";
 
 

@@ -16,7 +16,7 @@
     "ws": "^8.18.0",
     "@nostalgi2d/engine": "*",
     "@nostalgi2d/planckphysics": "*",
-    "@nostalgi2d/example": "*",
+    "@nostalgi2d-projects/grasslands-demo": "*",
     "@xmldom/xmldom": "^0.8.11"
   },
   "devDependencies": {

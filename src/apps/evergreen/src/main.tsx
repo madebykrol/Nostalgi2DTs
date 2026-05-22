@@ -24,13 +24,61 @@ import {
   FlappyRectangleGameMode,
   FlappyRectangleController,
   flappyUiModule,
+} from "@nostalgi2d-projects/flappy-rectangle";
+import {
   ExampleTopDownRPGGameMode,
   GrasslandsMap,
   TopDownRPGController,
-} from "@nostalgi2d/example";
+} from "@nostalgi2d-projects/grasslands-demo";
 import { Parser } from "@nostalgi2d/tiler";
 import { ClientEndpoint, ClientEngine, DefaultInputManager } from "@nostalgi2d/client";
 import { GameResourceManager } from "./gameResourceManager";
+
+type GameConfig = {
+  title?: string;
+  startupLevel?: string;
+};
+
+const defaultGameConfig: Required<GameConfig> = {
+  title: "Nostalgi2D Game",
+  startupLevel: "levels/grasslands",
+};
+
+const loadGameConfig = async (): Promise<Required<GameConfig>> => {
+  try {
+    const projectResponse = await fetch("/game-project.json", { cache: "no-store" });
+    if (projectResponse.ok) {
+      const projectJson = (await projectResponse.json()) as GameConfig;
+      return {
+        title:
+          typeof projectJson.title === "string" && projectJson.title.trim().length > 0
+            ? projectJson.title.trim()
+            : defaultGameConfig.title,
+        startupLevel:
+          typeof projectJson.startupLevel === "string" && projectJson.startupLevel.trim().length > 0
+            ? projectJson.startupLevel.trim()
+            : defaultGameConfig.startupLevel,
+      };
+    }
+
+    const legacyResponse = await fetch("/game-config.json", { cache: "no-store" });
+    if (!legacyResponse.ok) {
+      return defaultGameConfig;
+    }
+
+    const json = (await legacyResponse.json()) as GameConfig;
+    return {
+      title: typeof json.title === "string" && json.title.trim().length > 0 ? json.title.trim() : defaultGameConfig.title,
+      startupLevel:
+        typeof json.startupLevel === "string" && json.startupLevel.trim().length > 0
+          ? json.startupLevel.trim()
+          : defaultGameConfig.startupLevel,
+    };
+  } catch {
+    return defaultGameConfig;
+  }
+};
+
 const App = () => {
 
   const ws = useRef<WebSocket>(null);
@@ -95,7 +143,9 @@ const App = () => {
 
     const setupLevel = async () => {
       try {
-        const level = await e.loadLevel("levels/grasslands");
+        const gameConfig = await loadGameConfig();
+        document.title = gameConfig.title;
+        const level = await e.loadLevel(gameConfig.startupLevel);
         const levelStartTime = performance.now();
         await e.loadLevelObject(level);
 
